@@ -24,8 +24,8 @@
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
 | 1.1 | Inicializar monorepo Next.js + git + lint/typecheck/test | **Done** ✅ | — |
-| 1.2 | Setup Docker Compose dev (postgres + redis + app + worker) | **Ready for Review** 🔍 | 1.1 |
-| 1.3 | Prisma schema + primeira migration aplicada localmente | Draft | 1.2 |
+| 1.2 | Setup Docker Compose dev (postgres + redis + app + worker) | **Done** ✅ | 1.1 |
+| 1.3 | Prisma schema + primeira migration aplicada localmente | **Ready for Review** 🔍 | 1.2 |
 | 1.4 | RLS policies aplicadas + role webhook_worker criada | Draft | 1.3 |
 | 1.5 | Integração Clerk (sign-in/sign-up + webhook user provisioning) | Draft | 1.1 |
 | 1.6 | Middleware de tenant + helper getTenantContext + SET LOCAL no Postgres | Draft | 1.4, 1.5 |

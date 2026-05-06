@@ -270,6 +270,22 @@ Conforme NFR-011: cron diário 03:00 BRT executa `pg_dump`, retenção 30 dias l
 
 ---
 
+## 9.5. Migration aplicada (story 1.3)
+
+**Data:** 2026-05-06
+**Comando:** `npx prisma migrate dev --name initial_schema`
+**Migration gerada:** `prisma/migrations/20260506200212_initial_schema/migration.sql`
+**RLS file (não aplicado ainda):** `prisma/migrations/20260506200212_initial_schema/rls_policies.sql` — será aplicado em **story 1.4**
+
+**Resultado validado:**
+- 12 tabelas criadas + 1 (`_prisma_migrations`) = 13 total
+- 8 enums Postgres criados (UserRole, TamanhoPacote, PacoteStatus, PacoteEventoTipo, WhatsAppMessageStatus, WhatsAppMessageDirection, CodigoMlStatus, Transportadora)
+- Índices, FKs e constraints todos presentes
+- Seed (`prisma/seed.ts`) executado com sucesso: 1 super-admin + 1 WhatsApp number placeholder
+
+**Pequena correção no schema durante a story 1.3:**
+A relação `Morador → Condominio` (via `condominio_id`) precisava de inversa explícita em `model Condominio`. Adicionados `moradores: Morador[]`, `pacote_fotos: PacoteFoto[]` e `pacote_eventos: PacoteEvento[]` por exigência do Prisma 6 (toda `@relation` precisa de inversa). Não muda a estrutura — apenas explicita as relações reversas que o Prisma usa pra gerar tipos TypeScript completos.
+
 ## 10. Backlog de melhorias pós-MVP
 
 - Particionamento `audit_log` e `pacote_evento` por mês (volume).

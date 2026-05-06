@@ -30,11 +30,18 @@ cd gestao_Pacotes_Condominios
 # Instalar dependências
 npm install
 
-# Rodar dev server
-npm run dev
+# Configurar variáveis (uma vez)
+cp .env.app.example .env.local
+
+# Subir stack Docker (postgres + redis + app + worker)
+docker compose -f infra/docker/docker-compose.yml --env-file .env.local up -d
+
+# Aplicar migrations + seed inicial
+npm run prisma:migrate    # cria/aplica migrations
+npm run prisma:seed       # popula super-admin + placeholder WhatsApp
 ```
 
-O app sobe em `http://localhost:3000`.
+O app sobe em `http://localhost:3000`. Verificar saúde com `curl http://localhost:3000/api/health/db` (deve retornar `{"ok":true,"db":"up"}`).
 
 ## Scripts npm
 

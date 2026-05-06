@@ -1,0 +1,107 @@
+storyId: 1.2-docker-compose-dev
+storyTitle: Setup Docker Compose dev (postgres + redis + app + worker)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: 2026-05-06
+verdict: PASS
+score: 9.5/10
+commit: cd7fe15
+branch: feature/1.2-docker-compose-dev
+
+summary: |
+  Implementação sólida da fundação Docker. Multi-stage Dockerfile bem
+  estruturado (4 stages, USER não-root em prod, tini em todos), compose com
+  healthchecks corretos, volumes nomeados resolvendo o conflito macOS/linux
+  de binários nativos, e runbook operacional completo em infra/README.md.
+
+  Smoke test reproduzido independentemente: PostgreSQL 16.13, Redis 7.4.9,
+  app respondendo HTTP 200 com HTML correto, worker process vivo, shutdown
+  limpo. Único ponto de atenção é a observabilidade (logs vazios no docker
+  compose logs) — funcionalidade ok, debug em dev fica prejudicado.
+
+issues:
+  - severity: medium
+    category: observability
+    description: |
+      `docker compose logs app|worker` retorna vazio mesmo com containers
+      rodando e respondendo corretamente. Causa provável: combinação de
+      npm + tini em modo non-TTY bufferizando stdout do processo Node.
+    impact: |
+      Funcionalidade NÃO afetada (validado via curl + ps aux + healthchecks).
+      Apenas debug em dev fica prejudicado — devs precisarão usar
+      `docker exec` para ver o que está acontecendo dentro do container.
+    recommendation: |
+      Investigar e corrigir em story futura. Opções:
+      1. Adicionar `tty: true, stdin_open: true` aos services app+worker
+      2. Trocar `npm run dev` por chamada direta `node node_modules/.bin/next dev`
+      3. Investigar PIPE buffering do tini ou variável NODE_NO_WARNINGS
+    blocking: false
+
+  - severity: low
+    category: config
+    description: |
+      Stage `production` do Dockerfile espera arquivos em `/app/.next/standalone/`
+      mas `next.config.ts` ainda não tem `output: 'standalone'` configurado.
+    impact: |
+      Build do stage production falharia hoje. Não bloqueia esta story
+      porque production só será exercitado em story 8.4.
+    recommendation: |
+      Story 8.4 deve, como pré-requisito, adicionar `output: 'standalone'`
+      ao next.config.ts. Já documentado no Dev Notes da story 1.2.
+    blocking: false
+
+  - severity: low
+    category: image-size
+    description: |
+      Stage `production` copia `--from=builder` que tem todas as devDependencies
+      instaladas. Sem `npm prune --production` explícito, imagem pode ficar maior
+      que necessário.
+    impact: |
+      `output: 'standalone'` do Next.js já gera bundle minificado, mitigando.
+      Imagem final será aceitável, mas otimizável.
+    recommendation: |
+      Em story 8.4, considerar adicionar stage intermediário com `npm ci --omit=dev`
+      antes do production, ou `npm prune --production` no builder.
+    blocking: false
+
+quality_attributes:
+  performance: PASS    # Stack sobe ~70s 1ª vez, ~15s subsequentes
+  security: PASS       # Sem secrets hardcoded, USER não-root em prod, .dockerignore agressivo
+  reliability: PASS    # Healthchecks corretos, depends_on com service_healthy, graceful SIGTERM via tini
+  maintainability: PASS  # infra/README.md excepcional, Dev Notes explicam cada decisão
+  testability: CONCERNS  # Logs vazios prejudicam debug em dev (medium issue acima)
+
+acceptance_criteria_validation:
+  total: 9
+  passed: 9
+  with_notes: 0
+  failed: 0
+  smoke_test_reproduced: true
+  smoke_test_results:
+    postgres_health: healthy (PostgreSQL 16.13)
+    redis_health: healthy (Redis 7.4.9)
+    app_http: HTTP 200 com HTML correto (title "Gestão de Pacotes")
+    worker_process: node workers/index.mjs running
+    pg_isready: accepting connections
+    redis_ping: PONG
+    shutdown: clean (no SIGKILL, no hang)
+
+next_actions:
+  - Story 1.2 aprovada e pronta pra próxima fase (push delegado a @devops quando solicitado)
+  - @sm pode criar story 1.3 (Prisma schema + primeira migration) imediatamente
+  - Sugerir a @po: registrar em backlog os 3 issues não-bloqueantes pra avaliação futura
+
+waivers: []
+
+reviewer_notes: |
+  Excelente qualidade de implementação. A documentação (infra/README.md e
+  Dev Notes) é referência pra próximas stories de infra — runbook
+  operacional com troubleshooting raramente é tão completo no MVP.
+
+  CodeRabbit não foi executado neste review (CLI WSL-only, ambiente macOS).
+  Validação manual + reprodução independente do smoke test foi suficiente
+  para esta story de infra.
+
+  Atenção pra story 1.3 (Prisma): o tsconfig.json hoje exclui `prisma/**/*`
+  (decisão temporária da story 1.1). Quando 1.3 instalar @prisma/client e
+  rodar `prisma generate`, essa exclusão precisa ser revisada — provavelmente
+  excluir só `prisma/seed.ts` se ele não estiver sendo importado pela app.

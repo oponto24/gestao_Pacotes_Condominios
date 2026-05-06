@@ -18,6 +18,8 @@ ENV NODE_ENV=development
 # ---------- Stage: deps ----------
 FROM base AS deps
 COPY package.json package-lock.json ./
+# Schema Prisma precisa estar presente no `npm ci` por causa do postinstall (prisma generate)
+COPY prisma ./prisma
 RUN npm ci --no-audit --no-fund
 
 # ---------- Stage: development ----------

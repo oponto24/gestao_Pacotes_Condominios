@@ -171,6 +171,25 @@ em Settings → Resources → Memory. Padrão de 4GB deveria sobrar.
 Adicionar `-f` ao comando: `docker compose ... logs -f`. Sem `-f`,
 mostra apenas o que já foi gerado.
 
+## Comandos Prisma
+
+Todos rodam **da raiz do projeto, no host** (não dentro do container). O Prisma CLI conecta no Postgres via `localhost:5432` (porta exposta pelo Docker) — por isso o `.env.local` define `DATABASE_URL=postgresql://app:dev_secret@localhost:5432/...`. Dentro do container, o `docker-compose.yml` sobrescreve com `postgres:5432` via `environment:`.
+
+| Comando | O que faz |
+|---------|-----------|
+| `npm run prisma:generate` | Gera `node_modules/@prisma/client` baseado no schema (rodado automaticamente após `npm install` via postinstall) |
+| `npm run prisma:migrate` | Cria nova migration a partir de mudanças no schema e aplica (`prisma migrate dev`) |
+| `npm run prisma:migrate:deploy` | Aplica migrations existentes sem gerar novas (usado em produção) |
+| `npm run prisma:studio` | Abre GUI web do Prisma em `localhost:5555` para inspeção do banco |
+| `npm run prisma:seed` | Roda `prisma/seed.ts` (idempotente — pode rodar várias vezes) |
+| `npm run prisma:reset` | **DESTRUTIVO**: dropa tudo, recria do zero, aplica migrations + seed (só em dev!) |
+
+**Recovery rápido** se o banco entrar em estado inconsistente:
+
+```bash
+npm run prisma:reset
+```
+
 ## Próximas mudanças (stories futuras)
 
 | Story | Mudança nesta infra |
