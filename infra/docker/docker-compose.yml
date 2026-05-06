@@ -114,9 +114,10 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      # Worker não tem porta HTTP — checa se processo node tá vivo via pgrep.
+      # Worker não tem porta HTTP — checa se processo tá vivo via pgrep.
       # `pgrep -f` busca pelo padrão na linha de comando completa.
-      test: ['CMD', 'pgrep', '-f', 'node workers/index']
+      # Padrão genérico "workers/index" casa tanto node (1.2) quanto tsx (1.8).
+      test: ['CMD', 'pgrep', '-f', 'workers/index']
       interval: 30s
       timeout: 5s
       retries: 3

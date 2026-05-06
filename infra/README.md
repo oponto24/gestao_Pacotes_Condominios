@@ -248,6 +248,15 @@ App expõe endpoints health pra monitor externo:
 
 **UptimeRobot** (monitor externo gratuito) — setup em `docs/runbooks/uptimerobot-setup.md`. Recomendado: 2 monitors (`/api/health` + `/`) com alerta por e-mail/Telegram em <5 min.
 
+## Jobs assíncronos / BullMQ (Story 1.8)
+
+Worker BullMQ real consome jobs da fila `default` em Redis. Cada job tem
+um processor registrado em `src/lib/queue/jobs/index.ts`.
+
+**Adicionar novo job, debugar, ou entender pattern de tenant context →** consulte `docs/runbooks/jobs.md`.
+
+**Endpoint admin smoke:** `POST /api/admin/queue/enqueue-ping` (super_admin only) enfileira ping pra validar round-trip.
+
 ## Próximas mudanças (stories futuras)
 
 | Story | Mudança nesta infra |
