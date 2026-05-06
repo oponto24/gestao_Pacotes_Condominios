@@ -1,0 +1,444 @@
+// =====================================================================
+// SCHEMA — Sistema de Gestão de Pacotes em Condomínios
+// =====================================================================
+// Versão: 1.0 (MVP)
+// Owner: Dara (AIOX Data Engineer)
+// Última atualização: 2026-05-06
+//
+// Princípios:
+// - Toda tabela tem id (cuid), created_at, updated_at
+// - Tabelas tenant-scoped têm condominio_id NOT NULL + RLS policy
+// - FKs sempre com onDelete explícito
+// - Soft delete (deleted_at) apenas onde audit trail é exigido
+// - Índices baseados em access patterns documentados
+// =====================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgcrypto]
+}
+
+// =====================================================================
+// ENUMS
+// =====================================================================
+
+enum UserRole {
+  super_admin
+  admin
+  porteiro
+}
+
+enum TamanhoPacote {
+  pequeno
+  medio
+  grande
+  extra_grande
+}
+
+enum PacoteStatus {
+  rascunho                  // criado, esperando IA + confirmação
+  pendente_identificacao    // IA não casou com unidade, admin precisa resolver
+  aguardando_retirada       // notificado, esperando morador
+  retirado                  // entregue ao morador
+  cancelado                 // descartado (erro de cadastro)
+}
+
+enum PacoteEventoTipo {
+  criado
+  ia_processou
+  confirmado
+  notificado
+  notificacao_falhou
+  retirado
+  cancelado
+  pendencia_resolvida
+  reenvio_notificacao
+}
+
+enum WhatsAppMessageStatus {
+  pending
+  sent
+  delivered
+  read
+  failed
+}
+
+enum WhatsAppMessageDirection {
+  outbound
+  inbound
+}
+
+enum CodigoMlStatus {
+  pendente
+  consumido
+  expirado
+}
+
+enum Transportadora {
+  correios
+  magalu
+  melhor_envio
+  super_frete
+  loggi
+  mercado_livre
+  shopee
+  amazon
+  outro
+}
+
+// =====================================================================
+// TABELAS GLOBAIS (sem RLS — acesso por super_admin)
+// =====================================================================
+
+/// Condomínio cliente do SaaS. Tenant raiz.
+model Condominio {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome            String   @db.VarChar(200)
+  cnpj            String?  @unique @db.VarChar(18)
+  endereco        String   @db.VarChar(300)
+  cep             String   @db.VarChar(9)
+  cidade          String   @db.VarChar(100)
+  estado          String   @db.VarChar(2)
+  contato_nome    String   @db.VarChar(200)
+  contato_telefone String  @db.VarChar(20)
+  contato_email   String?  @db.VarChar(200)
+  ativo           Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  deleted_at      DateTime?
+
+  unidades        Unidade[]
+  setores         Setor[]
+  pacotes         Pacote[]
+  users           User[]
+  whatsapp_numbers WhatsAppNumber[]
+  whatsapp_messages WhatsAppMessage[]
+  codigos_ml      CodigoMlPendente[]
+
+  @@index([cep])
+  @@index([ativo])
+  @@map("condominio")
+}
+
+/// Usuário do sistema. Vinculado a Clerk (clerk_id) e a um Condomínio (exceto super_admin).
+model User {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerk_id        String   @unique @db.VarChar(100)
+  email           String   @unique @db.VarChar(200)
+  nome            String   @db.VarChar(200)
+  role            UserRole
+  condominio_id   String?  @db.Uuid    // null = super_admin
+  ativo           Boolean  @default(true)
+  ultimo_login    DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  condominio      Condominio? @relation(fields: [condominio_id], references: [id], onDelete: Restrict)
+  pacotes_recebidos Pacote[] @relation("PacoteRecebedor")
+  pacotes_entregues Pacote[] @relation("PacoteEntregador")
+  eventos         PacoteEvento[]
+
+  @@index([condominio_id])
+  @@index([clerk_id])
+  @@map("user")
+}
+
+/// Número WhatsApp. No MVP existe 1 registro com condominio_id = null (compartilhado).
+/// FK opcional pra suportar feature premium futura "marca própria" (ver PRD).
+model WhatsAppNumber {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  phone_number_id       String   @unique @db.VarChar(50)   // Meta phone_number_id
+  waba_id               String   @db.VarChar(50)
+  display_phone         String   @db.VarChar(20)
+  display_name          String   @db.VarChar(100)
+  condominio_id         String?  @db.Uuid                  // null = compartilhado
+  ativo                 Boolean  @default(true)
+  quality_rating        String?  @db.VarChar(20)            // green/yellow/red (Meta)
+  messaging_limit_tier  String?  @db.VarChar(10)            // tier1/tier2/tier3/tier4
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  condominio            Condominio? @relation(fields: [condominio_id], references: [id], onDelete: SetNull)
+  messages              WhatsAppMessage[]
+
+  @@index([condominio_id])
+  @@map("whatsapp_number")
+}
+
+/// Audit log centralizado — qualquer ação sensível.
+model AuditLog {
+  id              BigInt   @id @default(autoincrement())
+  user_id         String?  @db.Uuid
+  condominio_id   String?  @db.Uuid
+  acao            String   @db.VarChar(100)
+  entidade_tipo   String?  @db.VarChar(50)
+  entidade_id     String?  @db.VarChar(100)
+  metadata        Json?
+  ip_address      String?  @db.VarChar(45)
+  user_agent      String?  @db.VarChar(500)
+  created_at      DateTime @default(now())
+
+  @@index([user_id, created_at])
+  @@index([condominio_id, created_at])
+  @@index([acao])
+  @@map("audit_log")
+}
+
+// =====================================================================
+// TABELAS TENANT-SCOPED (com condominio_id + RLS)
+// =====================================================================
+
+/// Setor de armazenamento dentro do condomínio (ex: "Sala 1", "Armário Bloco A").
+model Setor {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  condominio_id   String   @db.Uuid
+  nome            String   @db.VarChar(100)
+  descricao       String?  @db.VarChar(300)
+  capacidade      Int?
+  ativo           Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  condominio      Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  pacotes         Pacote[]
+
+  @@unique([condominio_id, nome])
+  @@index([condominio_id, ativo])
+  @@map("setor")
+}
+
+/// Unidade habitacional (apartamento ou casa).
+model Unidade {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  condominio_id   String   @db.Uuid
+  identificador   String   @db.VarChar(50)        // "101", "Apto 301-B", "Casa 12"
+  bloco           String?  @db.VarChar(50)
+  observacoes     String?  @db.VarChar(500)
+  ativo           Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  condominio      Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  moradores       Morador[]
+  pacotes         Pacote[]
+
+  @@unique([condominio_id, identificador, bloco])
+  @@index([condominio_id])
+  @@map("unidade")
+}
+
+/// Morador da unidade. Pode ser principal (recebe fallback) ou adicional.
+/// IMPORTANTE: telefone é a chave para roteamento de mensagens WhatsApp inbound.
+model Morador {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  condominio_id   String   @db.Uuid
+  unidade_id      String   @db.Uuid
+  nome            String   @db.VarChar(200)
+  nome_normalizado String  @db.VarChar(200)        // lowercase + sem acento, p/ matching IA
+  telefone        String   @db.VarChar(20)         // formato BR E.164: +5511XXXXXXXXX
+  email           String?  @db.VarChar(200)
+  is_principal    Boolean  @default(false)         // true = condômino principal (fallback)
+  ativo           Boolean  @default(true)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  deleted_at      DateTime?                        // soft delete p/ LGPD (NFR-031)
+
+  condominio      Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  unidade         Unidade @relation(fields: [unidade_id], references: [id], onDelete: Cascade)
+  pacotes_destinatario Pacote[] @relation("PacoteDestinatario")
+  pacotes_retirou Pacote[] @relation("PacoteRetiradoPor")
+  notificacoes    WhatsAppMessage[]
+  codigos_ml      CodigoMlPendente[]
+
+  @@unique([condominio_id, telefone])              // telefone único por condomínio
+  @@index([condominio_id, unidade_id])
+  @@index([condominio_id, nome_normalizado])       // busca textual rápida
+  @@index([telefone])                              // lookup global p/ webhook (não único globalmente p/ permitir mesmo morador em 2 condomínios)
+  @@index([condominio_id, is_principal])
+  @@map("morador")
+}
+
+/// Pacote — entidade central. Estado controlado por PacoteStatus.
+model Pacote {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  condominio_id   String   @db.Uuid
+
+  // Identificação
+  codigo_rastreio String?  @db.VarChar(100)         // ex: AD417365859BR
+  transportadora  Transportadora?
+
+  // Dados extraídos pela IA (após confirmação)
+  nome_destinatario_etiqueta String? @db.VarChar(200)
+  endereco_etiqueta String? @db.VarChar(500)
+  cep_etiqueta    String?  @db.VarChar(9)
+  complemento_etiqueta String? @db.VarChar(200)    // "AP 1304 bloco3"
+  remetente       String?  @db.VarChar(200)
+
+  // Vínculos resolvidos
+  unidade_id      String?  @db.Uuid                 // null se "pendente_identificacao"
+  destinatario_id String?  @db.Uuid                 // morador alvo (com prioridade ou fallback)
+  destinatario_resolvido_via String? @db.VarChar(30) // "destinatario_cadastrado" | "fallback_principal"
+
+  // Classificação e armazenamento
+  tamanho         TamanhoPacote?
+  setor_id        String?  @db.Uuid
+  posicao         String?  @db.VarChar(50)          // texto livre: "prateleira 3", "B-12"
+
+  // QR Code
+  qr_token        String   @unique @db.VarChar(64)  // token random p/ assinar QR
+  qr_consumido_em DateTime?
+
+  // Recebimento
+  funcionario_recebedor_id String? @db.Uuid
+  recebido_em     DateTime?                         // timestamp servidor (FR-019)
+
+  // Retirada
+  funcionario_entregador_id String? @db.Uuid
+  retirado_em     DateTime?                         // timestamp servidor (FR-045)
+  retirado_por_morador_id String? @db.Uuid          // se "próprio destinatário"
+  retirado_por_terceiro String? @db.VarChar(200)    // nome digitado se "não"
+
+  // Estado
+  status          PacoteStatus @default(rascunho)
+
+  // IA — dados brutos da extração (auditoria)
+  ia_extracao_raw Json?
+  ia_confianca    Decimal? @db.Decimal(3, 2)         // 0.00 a 1.00
+  ia_processada_em DateTime?
+
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  condominio      Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  unidade         Unidade? @relation(fields: [unidade_id], references: [id], onDelete: Restrict)
+  destinatario    Morador? @relation("PacoteDestinatario", fields: [destinatario_id], references: [id], onDelete: SetNull)
+  setor           Setor? @relation(fields: [setor_id], references: [id], onDelete: Restrict)
+  funcionario_recebedor User? @relation("PacoteRecebedor", fields: [funcionario_recebedor_id], references: [id], onDelete: SetNull)
+  funcionario_entregador User? @relation("PacoteEntregador", fields: [funcionario_entregador_id], references: [id], onDelete: SetNull)
+  retirado_por_morador Morador? @relation("PacoteRetiradoPor", fields: [retirado_por_morador_id], references: [id], onDelete: SetNull)
+
+  fotos           PacoteFoto[]
+  eventos         PacoteEvento[]
+  notificacoes    WhatsAppMessage[]
+  codigos_ml      CodigoMlPendente[]
+
+  @@index([condominio_id, status])                  // lista admin filtrada por status
+  @@index([condominio_id, unidade_id])              // pacotes por unidade
+  @@index([condominio_id, destinatario_id])         // pacotes por morador
+  @@index([condominio_id, recebido_em(sort: Desc)]) // ordenação cronológica
+  @@index([condominio_id, status, recebido_em(sort: Desc)]) // dashboard porteiro
+  @@index([codigo_rastreio])                        // busca por código
+  @@index([qr_token])                               // scan retirada
+  @@map("pacote")
+}
+
+/// Foto da etiqueta. Pode haver múltiplas (caso porteiro tire várias).
+model PacoteFoto {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  condominio_id   String   @db.Uuid
+  pacote_id       String   @db.Uuid
+  storage_path    String   @db.VarChar(500)         // caminho relativo no storage
+  mime_type       String   @db.VarChar(50)
+  bytes           Int
+  hash_sha256     String   @db.VarChar(64)
+  is_principal    Boolean  @default(true)           // foto usada na IA
+  created_at      DateTime @default(now())
+
+  pacote          Pacote @relation(fields: [pacote_id], references: [id], onDelete: Cascade)
+
+  @@index([pacote_id])
+  @@index([condominio_id])
+  @@map("pacote_foto")
+}
+
+/// Evento na timeline do pacote. Imutável (audit trail).
+model PacoteEvento {
+  id              BigInt   @id @default(autoincrement())
+  condominio_id   String   @db.Uuid
+  pacote_id       String   @db.Uuid
+  tipo            PacoteEventoTipo
+  user_id         String?  @db.Uuid                 // quem causou
+  metadata        Json?                             // payload livre por tipo
+  observacao      String?  @db.VarChar(500)
+  created_at      DateTime @default(now())
+
+  pacote          Pacote @relation(fields: [pacote_id], references: [id], onDelete: Cascade)
+  user            User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([pacote_id, created_at])
+  @@index([condominio_id, tipo, created_at])
+  @@map("pacote_evento")
+}
+
+/// Mensagem WhatsApp (outbound = notificação enviada, inbound = morador respondeu).
+model WhatsAppMessage {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  condominio_id   String   @db.Uuid
+  whatsapp_number_id String @db.Uuid
+  meta_message_id String?  @unique @db.VarChar(100) // wamid retornado pela Meta
+  direction       WhatsAppMessageDirection
+  status          WhatsAppMessageStatus @default(pending)
+
+  to_phone        String   @db.VarChar(20)
+  from_phone      String   @db.VarChar(20)
+
+  template_name   String?  @db.VarChar(50)          // outbound: nome do template
+  template_params Json?                             // outbound: variáveis usadas
+  body_text       String?  @db.Text                 // inbound: texto recebido
+
+  // Vínculos opcionais
+  pacote_id       String?  @db.Uuid                 // outbound de notificação
+  morador_id      String?  @db.Uuid                 // morador alvo
+
+  // Tracking Meta
+  sent_at         DateTime?
+  delivered_at    DateTime?
+  read_at         DateTime?
+  failed_at       DateTime?
+  failure_reason  String?  @db.VarChar(500)
+  retry_count     Int      @default(0)
+
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  condominio      Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  whatsapp_number WhatsAppNumber @relation(fields: [whatsapp_number_id], references: [id], onDelete: Restrict)
+  pacote          Pacote? @relation(fields: [pacote_id], references: [id], onDelete: SetNull)
+  morador         Morador? @relation(fields: [morador_id], references: [id], onDelete: SetNull)
+
+  @@index([condominio_id, created_at(sort: Desc)])
+  @@index([pacote_id])
+  @@index([morador_id])
+  @@index([status])
+  @@index([meta_message_id])
+  @@map("whatsapp_message")
+}
+
+/// Código de retirada Mercado Livre enviado pelo morador via WhatsApp.
+model CodigoMlPendente {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  condominio_id   String   @db.Uuid
+  morador_id      String   @db.Uuid
+  codigo          String   @db.VarChar(50)
+  descricao       String?  @db.VarChar(500)         // texto livre extraído (ex: "bola futebol")
+  mensagem_origem_id String? @db.Uuid               // FK pra WhatsAppMessage inbound
+  status          CodigoMlStatus @default(pendente)
+  pacote_id       String?  @db.Uuid                 // preenchido quando consumido
+  consumido_em    DateTime?
+  expira_em       DateTime                          // now + 30 dias (FR-056)
+  created_at      DateTime @default(now())
+
+  condominio      Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  morador         Morador @relation(fields: [morador_id], references: [id], onDelete: Cascade)
+  pacote          Pacote? @relation(fields: [pacote_id], references: [id], onDelete: SetNull)
+
+  @@index([condominio_id, morador_id, status])
+  @@index([condominio_id, status, expira_em])
+  @@map("codigo_ml_pendente")
+}

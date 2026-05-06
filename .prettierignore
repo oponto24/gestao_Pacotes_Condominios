@@ -1,0 +1,14 @@
+node_modules
+.next
+coverage
+build
+dist
+.aiox-core
+.codex
+.cursor
+.gemini
+.antigravity
+.claude
+prisma/migrations
+docs
+*.md
