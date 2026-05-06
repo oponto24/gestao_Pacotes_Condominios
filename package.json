@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "worker:dev": "node workers/index.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",

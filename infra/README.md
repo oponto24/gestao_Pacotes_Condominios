@@ -1,0 +1,182 @@
+# Infra — Runbook operacional
+
+Este diretório contém toda a infraestrutura de execução do sistema:
+ambiente de desenvolvimento local (Docker Compose) e, futuramente, a
+configuração de produção da VPS Hostinger (story 8.4).
+
+## Pré-requisitos
+
+Você precisa de **um** runtime Docker instalado no host:
+
+| Opção | Recomendado para | Como instalar |
+|-------|------------------|---------------|
+| **OrbStack** | macOS (escolha desta equipe) | https://orbstack.dev |
+| **Docker Desktop** | macOS / Windows | https://www.docker.com/products/docker-desktop |
+| **Colima** | macOS via brew, sem GUI | `brew install colima docker docker-compose && colima start` |
+| **Docker Engine** | Linux | https://docs.docker.com/engine/install |
+
+Confirmar instalação:
+
+```bash
+docker --version           # ≥ 24.x
+docker compose version     # ≥ v2 (note o espaço, não é docker-compose)
+```
+
+## Estrutura
+
+```
+infra/
+├── README.md                       # este arquivo
+└── docker/
+    ├── Dockerfile                  # multi-stage: dev / builder / production
+    └── docker-compose.yml          # stack de desenvolvimento local
+```
+
+## Configurando o `.env.local` (uma vez)
+
+Antes de subir o stack, copie o template e preencha:
+
+```bash
+cp .env.app.example .env.local
+```
+
+Os valores **mínimos** pra subir o stack agora (story 1.2):
+
+```bash
+NODE_ENV=development
+APP_URL=http://localhost:3000
+DATABASE_URL=postgresql://app:dev_secret@postgres:5432/gestao_pacotes
+DATABASE_WEBHOOK_URL=postgresql://webhook_worker:dev_secret@postgres:5432/gestao_pacotes
+REDIS_URL=redis://redis:6379
+LOG_LEVEL=info
+```
+
+Demais variáveis (Clerk, Anthropic, Meta) podem ficar vazias — não são
+exercitadas até as stories 1.5, 3.5 e 4.1 respectivamente.
+
+> **Importante:** `.env.local` está gitignored. Nunca commit.
+
+## Comandos do dia a dia
+
+Todos os comandos abaixo rodam **da raiz do projeto** (não de `infra/`).
+
+### Subir o stack
+```bash
+docker compose -f infra/docker/docker-compose.yml --env-file .env.local up -d --build
+```
+
+Primeira execução leva 60-180s (build da imagem + pull de postgres/redis).
+Execuções subsequentes são quase instantâneas.
+
+### Ver o status
+```bash
+docker compose -f infra/docker/docker-compose.yml ps
+```
+
+Saída esperada (4 services com status `running` e healthcheck `healthy`):
+
+```
+NAME                            IMAGE                  STATUS
+gestao-pacotes-dev-app-1        gestao-pacotes:dev     Up (running)
+gestao-pacotes-dev-postgres-1   postgres:16-alpine     Up (healthy)
+gestao-pacotes-dev-redis-1      redis:7.4-alpine       Up (healthy)
+gestao-pacotes-dev-worker-1     gestao-pacotes:dev     Up (running)
+```
+
+### Acompanhar logs
+
+```bash
+# todos os serviços, follow
+docker compose -f infra/docker/docker-compose.yml logs -f
+
+# só um serviço
+docker compose -f infra/docker/docker-compose.yml logs -f app
+docker compose -f infra/docker/docker-compose.yml logs -f worker
+```
+
+### Acessar o Postgres
+
+```bash
+docker compose -f infra/docker/docker-compose.yml exec postgres \
+  psql -U app -d gestao_pacotes
+```
+
+### Acessar o Redis
+
+```bash
+docker compose -f infra/docker/docker-compose.yml exec redis redis-cli
+```
+
+### Derrubar o stack
+
+```bash
+# para os containers, mantém volumes (dados preservados)
+docker compose -f infra/docker/docker-compose.yml down
+
+# para tudo E apaga volumes (reset completo do banco)
+docker compose -f infra/docker/docker-compose.yml down -v
+```
+
+### Rebuild forçado (após mudar Dockerfile ou package.json)
+
+```bash
+docker compose -f infra/docker/docker-compose.yml build --no-cache
+```
+
+## Atalho recomendado (opcional)
+
+Para encurtar comandos, adicione no seu `~/.zshrc`:
+
+```bash
+alias dc='docker compose -f infra/docker/docker-compose.yml --env-file .env.local'
+```
+
+Aí você usa: `dc up -d`, `dc logs -f app`, `dc down` etc.
+
+## Troubleshooting
+
+### "Port 5432/6379/3000 já está em uso"
+
+Você tem um Postgres/Redis local rodando no host. Duas opções:
+
+1. **Parar o serviço local** — `brew services stop postgresql` (ou similar)
+2. **Mudar o port mapping** no `docker-compose.yml` (ex: `'5433:5432'`).
+   Não recomendado — quebra a paridade com produção.
+
+### "Volume node_modules está corrompido / dependência não encontrada"
+
+Quando você instala uma nova dependência via `npm install` no host, o
+`node_modules` do volume nomeado fica desatualizado. Solução:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml down -v
+docker compose -f infra/docker/docker-compose.yml up -d --build
+```
+
+(O `down -v` apaga também `pgdata`/`redisdata` — tudo volta do zero.)
+
+### Build muito lento no macOS
+
+Se estiver usando Docker Desktop, considere migrar para **OrbStack** —
+file sharing 2-5x mais rápido. Bind mounts do projeto inteiro (~1.2GB
+incluindo `.aiox-core/`) ficam dolorosos no Docker Desktop padrão.
+
+### Container "exited (137)" no logs
+
+OOM kill — o container excedeu o limite de RAM. No OrbStack: ajustar
+em Settings → Resources → Memory. Padrão de 4GB deveria sobrar.
+
+### Logs não aparecem em tempo real
+
+Adicionar `-f` ao comando: `docker compose ... logs -f`. Sem `-f`,
+mostra apenas o que já foi gerado.
+
+## Próximas mudanças (stories futuras)
+
+| Story | Mudança nesta infra |
+|-------|---------------------|
+| 1.3 | Postgres recebe migrations Prisma + RLS policies |
+| 1.4 | Role `webhook_worker` BYPASSRLS criada via SQL |
+| 1.8 | Worker deixa de ser placeholder (BullMQ + jobs reais) |
+| 1.9 | Volume `storage` bind para fotos das etiquetas |
+| 8.4 | `docker-compose.prod.yml` separado + Caddy + secrets |
