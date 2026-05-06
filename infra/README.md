@@ -257,6 +257,12 @@ um processor registrado em `src/lib/queue/jobs/index.ts`.
 
 **Endpoint admin smoke:** `POST /api/admin/queue/enqueue-ping` (super_admin only) enfileira ping pra validar round-trip.
 
+## Logger estruturado e Storage (Story 1.9)
+
+- **Logger Pino:** `src/lib/logger.ts` — singleton + helpers `loggerForRequest`, `loggerForJob`, `loggerForTenant`. Detalhes em `docs/runbooks/observability.md`.
+- **Storage abstraction:** `src/lib/storage/` — `LocalStorageDriver` hoje (volume nomeado `storage` em compose), trocável por S3/R2 sem refactor de callers. Detalhes em `docs/runbooks/storage.md`.
+- **Endpoint admin smoke storage:** `POST /api/admin/storage/test` (super_admin only) executa put → get → delete e retorna metadata.
+
 ## Próximas mudanças (stories futuras)
 
 | Story | Mudança nesta infra |

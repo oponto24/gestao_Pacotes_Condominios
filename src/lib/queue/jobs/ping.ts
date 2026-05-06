@@ -1,4 +1,5 @@
 import type { Job } from 'bullmq';
+import { loggerForJob } from '@/lib/logger';
 
 export type PingPayload = {
   message: string;
@@ -22,10 +23,9 @@ export const PING_JOB_NAME = 'ping' as const;
  * ver pattern em `docs/runbooks/jobs.md`.
  */
 export async function processPing(job: Job<PingPayload>): Promise<PingResult> {
+  const log = loggerForJob(job);
   const received_at = new Date().toISOString();
-  console.log(
-    `[ping] processing job=${job.id} message="${job.data.message}" received_at=${received_at}`,
-  );
+  log.info({ message: job.data.message, received_at }, '[ping] processing');
 
   // Sem trabalho real — só eco
   const result: PingResult = {
@@ -35,6 +35,6 @@ export async function processPing(job: Job<PingPayload>): Promise<PingResult> {
     message_echo: job.data.message,
   };
 
-  console.log(`[ping] processed job=${job.id} pong=true`);
+  log.info('[ping] processed');
   return result;
 }

@@ -3,6 +3,7 @@ import { redis } from '@/lib/redis';
 import { JOB_PROCESSORS } from '@/lib/queue/jobs';
 import { DEFAULT_QUEUE_NAME } from '@/lib/queue/queues';
 import { WORKER_DEFAULTS } from '@/lib/queue/connection';
+import { logger, loggerForJob } from '@/lib/logger';
 
 /**
  * Worker BullMQ — substitui o placeholder da story 1.2.
@@ -21,8 +22,10 @@ async function dispatcher(job: Job<any>) {
   return processor(job);
 }
 
-console.log(`[worker] iniciando — fila=${DEFAULT_QUEUE_NAME} pid=${process.pid}`);
-console.log(`[worker] jobs registrados: ${Object.keys(JOB_PROCESSORS).join(', ')}`);
+logger.info(
+  { fila: DEFAULT_QUEUE_NAME, pid: process.pid, jobs: Object.keys(JOB_PROCESSORS) },
+  '[worker] iniciando',
+);
 
 const worker = new Worker(DEFAULT_QUEUE_NAME, dispatcher, {
   connection: redis,
@@ -31,22 +34,31 @@ const worker = new Worker(DEFAULT_QUEUE_NAME, dispatcher, {
 });
 
 worker.on('completed', (job) => {
-  console.log(`[worker] completed name=${job.name} id=${job.id}`);
+  loggerForJob(job).info('completed');
 });
 
 worker.on('failed', (job, err) => {
-  console.error(
-    `[worker] failed name=${job?.name} id=${job?.id} attempt=${job?.attemptsMade}/${job?.opts.attempts} error="${err.message}"`,
+  if (!job) {
+    logger.error({ err: err.message }, '[worker] failed sem job');
+    return;
+  }
+  loggerForJob(job).error(
+    {
+      attempt: job.attemptsMade,
+      max_attempts: job.opts.attempts,
+      err: err.message,
+    },
+    'failed',
   );
 });
 
 worker.on('error', (err) => {
-  console.error('[worker] error', err);
+  logger.error({ err: err.message }, '[worker] error');
 });
 
 // Graceful shutdown — espera jobs em-vôo terminarem antes de sair
 const shutdown = async (signal: string) => {
-  console.log(`[worker] recebido ${signal}, encerrando…`);
+  logger.info({ signal }, '[worker] encerrando');
   try {
     // 30s pra finalizar jobs em-vôo. Se exceder, o orchestrator (Docker/SIGKILL)
     // mata o processo.
@@ -57,10 +69,10 @@ const shutdown = async (signal: string) => {
       ),
     ]);
     await redis.quit();
-    console.log('[worker] encerrado limpo.');
+    logger.info('[worker] encerrado limpo');
     process.exit(0);
   } catch (err) {
-    console.error('[worker] erro durante shutdown', err);
+    logger.error({ err: err instanceof Error ? err.message : err }, '[worker] erro durante shutdown');
     process.exit(1);
   }
 };

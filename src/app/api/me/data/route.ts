@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withTenant } from '@/server/db-tenant';
 import { isTenantError } from '@/server/errors';
+import { loggerForRequest } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,7 +15,8 @@ export const runtime = 'nodejs';
  * - sem condominio_id: erro 403
  * - não autenticado: erro 401
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const log = loggerForRequest(req).child({ scope: 'api/me/data' });
   try {
     const unidades = await withTenant(async (tx) => {
       return tx.unidade.findMany({
@@ -36,7 +38,7 @@ export async function GET() {
         { status: err.httpStatus },
       );
     }
-    console.error('[api/me/data] erro inesperado', err);
+    log.error({ err }, 'erro inesperado');
     return NextResponse.json({ ok: false, code: 'internal_error' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { db } from '@/lib/db';
+import { loggerForRequest } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -39,9 +40,10 @@ function pickName(p: ClerkUserPayload): string {
 }
 
 export async function POST(req: Request) {
+  const log = loggerForRequest(req).child({ scope: 'clerk-webhook' });
   const secret = process.env.CLERK_WEBHOOK_SECRET;
   if (!secret || secret === 'whsec_PENDING_DASHBOARD_CONFIG') {
-    console.error('[clerk-webhook] CLERK_WEBHOOK_SECRET não configurada');
+    log.error('CLERK_WEBHOOK_SECRET não configurada');
     // 200 para não causar retry da Clerk até config estar pronta
     return NextResponse.json({ ok: false, reason: 'webhook_not_configured' }, { status: 200 });
   }
@@ -64,7 +66,7 @@ export async function POST(req: Request) {
       'svix-signature': svixSignature,
     }) as ClerkWebhookEvent;
   } catch {
-    console.warn('[clerk-webhook] HMAC inválido', { svixId });
+    log.warn({ svix_id: svixId }, 'HMAC inválido');
     return NextResponse.json({ ok: false, reason: 'invalid_signature' }, { status: 400 });
   }
 
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
       const email = pickPrimaryEmail(event.data);
       const nome = pickName(event.data);
       if (!email) {
-        console.warn('[clerk-webhook] user sem email primário', { clerk_id: event.data.id });
+        log.warn({ clerk_id: event.data.id }, 'user sem email primário');
         return NextResponse.json({ ok: false, reason: 'no_email' }, { status: 200 });
       }
 
@@ -95,25 +97,22 @@ export async function POST(req: Request) {
         },
       });
 
-      console.log(`[clerk-webhook] ${event.type} processado`, {
-        clerk_id: event.data.id,
-        email,
-      });
+      log.info({ event_type: event.type, clerk_id: event.data.id, email }, 'evento processado');
     } else if (event.type === 'user.deleted') {
       // NÃO deletar — preserva FKs em pacotes/eventos. Marca inativo.
       await db.user.updateMany({
         where: { clerk_id: event.data.id },
         data: { ativo: false },
       });
-      console.log('[clerk-webhook] user.deleted → ativo=false', { clerk_id: event.data.id });
+      log.info({ clerk_id: event.data.id }, 'user.deleted → ativo=false');
     } else {
-      console.log('[clerk-webhook] evento ignorado', { type: event.type });
+      log.info({ event_type: event.type }, 'evento ignorado');
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     // Sempre 200 para Clerk não ficar retentando indefinidamente; logamos para debug.
-    console.error('[clerk-webhook] erro interno', err);
+    log.error({ err }, 'erro interno');
     return NextResponse.json({ ok: false, reason: 'internal_error' }, { status: 200 });
   }
 }

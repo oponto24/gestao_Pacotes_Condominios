@@ -3,6 +3,7 @@ import { getTenantContext } from '@/server/middleware/tenant';
 import { isTenantError, UnauthorizedError } from '@/server/errors';
 import { enqueue } from '@/lib/queue/queues';
 import { PING_JOB_NAME, type PingPayload } from '@/lib/queue/jobs';
+import { loggerForRequest } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,6 +16,7 @@ export const runtime = 'nodejs';
  * remover na story 8.4.
  */
 export async function POST(req: Request) {
+  const log = loggerForRequest(req).child({ scope: 'admin/queue/enqueue-ping' });
   try {
     const ctx = await getTenantContext();
     if (ctx.kind !== 'super_admin') {
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
         { status: err.httpStatus },
       );
     }
-    console.error('[admin/queue/enqueue-ping] erro inesperado', err);
+    log.error({ err }, 'erro inesperado');
     return NextResponse.json({ ok: false, code: 'internal_error' }, { status: 500 });
   }
 }
