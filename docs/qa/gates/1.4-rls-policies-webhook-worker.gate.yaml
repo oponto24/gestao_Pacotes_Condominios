@@ -1,0 +1,130 @@
+storyId: 1.4-rls-policies-webhook-worker
+storyTitle: RLS policies aplicadas + role webhook_worker BYPASSRLS
+reviewedBy: '@qa (Quinn)'
+reviewedAt: 2026-05-06
+verdict: PASS
+score: 9.5/10
+commit: b94cab7
+branch: feature/1.4-rls-policies-webhook-worker
+
+summary: |
+  Story crítica de segurança executada com profundidade adequada. Dex
+  encontrou e resolveu 3 problemas reais durante a execução que NÃO
+  estavam previstos no schema da Dara (sintaxe GRANT CONNECT, FORCE RLS
+  para owner, SUPERUSER bypassa RLS). A descoberta da role separada
+  `app_runtime` é a parte mais valiosa — sem ela, RLS seria teatro de
+  segurança em produção.
+
+  Validei independentemente como cada role: `app_runtime` sem context
+  retorna 0, INSERT cross-tenant falha com erro RLS, `webhook_worker`
+  bloqueado em `condominio`, permitido em `morador`. Suite Vitest com
+  6 cenários (positivos + negativos) é referência pra próximas stories
+  de segurança.
+
+issues:
+  - severity: medium
+    category: security
+    description: |
+      `apply-rls.sh` passa as senhas como argumento `-c "ALTER ROLE ... PASSWORD '<senha>'"`
+      pro psql. Em sistemas multi-usuário, `ps aux` durante a execução
+      pode expor as senhas via argumentos de processo (~milissegundos de janela).
+    impact: |
+      Risk baixo no dev local (single-user macOS). Em produção (story 8.4)
+      essa estratégia precisa mudar — Docker secrets ou stdin pipe.
+    recommendation: |
+      Para a story 8.4 (deploy VPS), usar variante com stdin:
+        echo "ALTER ROLE x WITH PASSWORD '$pwd'" | psql -U app -d gestao_pacotes
+      Mais seguro porque psql lê do stdin, sem expor em ps aux.
+    blocking: false
+
+  - severity: medium
+    category: error-handling
+    description: |
+      `apply-rls.sh` usa `> /dev/null 2>&1` no comando que seta as senhas.
+      Se algo falhar (ex: role não existe ainda, conexão dropada),
+      o script segue silenciosamente como se tivesse sucesso.
+    impact: |
+      Pode mascarar falhas em senha não setada → app conecta com placeholder
+      → falha em runtime sem clareza da causa raiz.
+    recommendation: |
+      Trocar `> /dev/null 2>&1` por `2>&1 | grep -v "ALTER ROLE" || true`
+      ou capturar stderr separadamente. Validar exit code explicitamente.
+    blocking: false
+
+  - severity: low
+    category: design
+    description: |
+      `app_runtime` tem `GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES`
+      que inclui tabelas globais (`condominio`, `user`, `audit_log`, `whatsapp_number`).
+      RLS NÃO está habilitado nessas tabelas (intencional — são acessadas
+      por super-admin). Logo `app_runtime` pode tecnicamente acessá-las.
+    impact: |
+      Defesa em profundidade pra tabelas globais é via middleware aplicacional
+      (story 1.6). RLS deliberadamente não cobre essas. Não é vazamento — é
+      o design — mas vale documentar pra evitar surpresa em refactors futuros.
+    recommendation: |
+      Adicionar comentário no SCHEMA.md §11 deixando explícito que `app_runtime`
+      tem grants amplos em tabelas globais por design (controle aplicacional).
+      Quando middleware estiver pronto (1.6), validar que tabelas globais só
+      são acessadas via super-admin via testes de role.
+    blocking: false
+
+  - severity: medium
+    category: security
+    description: |
+      Mesmas 2 vulns moderate transitivas em `postcss` (via Next.js).
+      Recorrente desde story 1.1.
+    impact: |
+      Build-time only, sem exposição runtime. Risco baixo.
+    recommendation: |
+      Já documentado nos gates anteriores. Aguardar deduplicação Next.js.
+    blocking: false
+
+quality_attributes:
+  performance: PASS    # Suite RLS roda em ~150ms; apply-rls.sh em ~1s
+  security: PASS       # Multi-tenancy validado matematicamente; least-privilege em webhook_worker
+  reliability: PASS    # Script idempotente; testes podem rodar repetidos
+  maintainability: PASS  # Dev Notes excepcionais — root-cause analysis das 3 descobertas
+  testability: PASS    # Suite integration é base pra próximas stories de segurança
+
+acceptance_criteria_validation:
+  total: 13
+  passed: 13
+  with_notes: 0
+  failed: 0
+  smoke_test_reproduced: true
+  security_validation:
+    rls_force_8_tables: PASS  # SELECT count FROM pg_class WHERE relrowsecurity AND relforcerowsecurity = 8
+    helpers_sql: PASS         # app_current_condominio() / app_is_super_admin() funcionando
+    roles_three: PASS         # app(super,bypass), app_runtime(neither), webhook_worker(bypass)
+    isolation_positive: PASS  # 6/6 testes Vitest passando
+    isolation_negative: PASS  # INSERT cross-tenant rejeitado por RLS WITH CHECK
+    least_privilege: PASS     # webhook_worker SELECT condominio = denied; DELETE morador = denied
+    super_admin_global: PASS  # SET app.is_super_admin=true vê tudo
+
+next_actions:
+  - Story 1.4 aprovada — primeiro marco real de segurança do projeto
+  - Suite de 6 testes RLS é blueprint para futuros testes integration de segurança
+  - @sm pode criar story 1.5 (Integração Clerk) com base sólida de auth/RLS
+  - Importante story 8.4 (deploy): usar stdin pra senhas + Docker secrets
+  - Backlog: refinar apply-rls.sh com error handling melhor (2-3h trabalho)
+
+waivers: []
+
+reviewer_notes: |
+  Esta é a primeira story onde o trabalho dele @dev passou MUITO além do
+  spec. Os 3 fixes (GRANT sintaxe, FORCE RLS, role app_runtime) são
+  descobertas que NÃO estavam no schema da Dara — Dex teve que entender
+  Postgres internals pra resolver. Documentação do "por quê" está em Dev
+  Notes, não em comentários no código (correto — código deve descrever
+  o "como", não a história).
+
+  Atenção pra próximas stories:
+  - Story 1.5 (Clerk) deve usar `db` de `src/lib/db.ts` (já configurado
+    pra DATABASE_RUNTIME_URL) — RLS vai filtrar queries automaticamente
+    quando middleware de tenant context (story 1.6) for criado
+  - Story 1.6 deve adicionar testes de middleware tenant também integration
+  - Story 8.4 (deploy VPS) precisa migrar senhas pra Docker secrets
+
+  CodeRabbit não foi executado (CLI WSL-only, ambiente macOS). Validação
+  manual + reprodução independente do smoke test foi suficiente.
