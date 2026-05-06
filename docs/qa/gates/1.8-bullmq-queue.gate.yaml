@@ -1,0 +1,127 @@
+storyId: 1.8-bullmq-queue
+storyTitle: BullMQ queue + worker real + ping job
+reviewedBy: '@qa (Quinn)'
+reviewedAt: 2026-05-06
+verdict: PASS
+score: 9.5/10
+commit: d1b4f8c
+branch: feature/1.8-bullmq-queue
+
+summary: |
+  Story de fundação assíncrona executada com qualidade alta. Worker
+  placeholder (1.2) substituído por Worker BullMQ real + estrutura modular
+  pra próximas stories adicionarem jobs sem refactor.
+
+  Validei E2E independentemente:
+  - Ping completed em <1.5s
+  - Job desconhecido vai pra failed com mensagem clara
+  - Idempotência por jobId preserva primeiro payload (BullMQ default)
+
+  Graceful shutdown bem implementado (SIGTERM + SIGINT, Promise.race com
+  timeout 30s, redis.quit() após worker.close()). Pattern defensivo —
+  evita perder jobs em-vôo durante deploy.
+
+  Pattern de tenant context em jobs documentado em runbook (heads-up da
+  Quinn 1.6 endereçado): payload carrega condominioId + processor usa
+  withTenantContext (não withTenant que depende de auth Clerk).
+
+issues:
+  - severity: low
+    category: type-safety
+    description: |
+      Dispatcher usa `Job<any>` com `eslint-disable-next-line`. Necessário
+      porque o map JOB_PROCESSORS é Record<string, AnyProcessor> genérico.
+      Type safety está no processor individual.
+    impact: |
+      Aceitável — alternativa seria registry com discriminated union
+      gigante, complexidade não justificada pra MVP.
+    recommendation: |
+      Manter. Documentar em jobs.md que cada novo job DEVE ter Payload/Result
+      tipados — discipline em vez de tipo fancy.
+    blocking: false
+
+  - severity: low
+    category: observability
+    description: |
+      `console.log/error` direto em todos os pontos. Logs do worker
+      ficam vazios em alguns casos por buffering npm+tini (gotcha
+      conhecido desde 1.2).
+    impact: |
+      Aceitável até story 1.9 (Pino logger). Funcionalidade não afetada.
+    recommendation: |
+      Story 1.9 deve refatorar TODOS os console.* do worker pra logger
+      estruturado COM `condominio_id` e `job_id` em todos os events.
+    blocking: false
+
+  - severity: low
+    category: forward-compat
+    description: |
+      Endpoint admin `/api/admin/queue/enqueue-ping` está acessível em
+      produção (apenas guard por super_admin). Em prod, esse endpoint
+      não deveria existir — só dev/debug.
+    impact: |
+      Risco baixo (super_admin é único user com acesso). Mas é superfície
+      de ataque desnecessária em prod.
+    recommendation: |
+      Story 8.4 (deploy VPS) deve adicionar guard:
+      `if (process.env.NODE_ENV === 'production') return 404`.
+      Ou remover do build de produção via Next.js.
+    blocking: false
+
+  - severity: medium
+    category: security
+    description: |
+      Mesmas 2 vulns moderate em postcss (recorrente desde 1.1).
+    impact: build-time only.
+    recommendation: já documentado.
+    blocking: false
+
+quality_attributes:
+  performance: PASS    # ping completed em <1.5s, concurrency 5 OK pro MVP
+  security: PASS       # endpoint admin requer super_admin, redis pool reusado
+  reliability: PASS    # graceful shutdown 30s, retry 3x exponential, GC configurado
+  maintainability: PASS  # arquitetura modular jobs/, runbook ~250 linhas, Dev Notes 10 decisões
+  testability: PASS    # 3 testes integration cobrem completion + failed + idempotência
+
+acceptance_criteria_validation:
+  total: 9
+  passed: 9
+  with_notes: 0
+  failed: 0
+  smoke_test_reproduced: true
+  e2e_evidence:
+    ping_completed: 'state=completed, pong=true em <1.5s'
+    failed_unknown_job: 'state=failed, failedReason="No processor registered for job name unknown-qa-test"'
+    idempotency_jobId: 'mesmo jobId não duplica, primeiro payload preservado'
+    worker_healthy: 'Up 5 minutes (healthy)'
+    endpoint_no_auth: 'HTTP 401 unauthorized'
+
+next_actions:
+  - Story 1.8 aprovada. Fundação assíncrona pronta pra próximas stories
+  - @sm pode criar story 1.9 (Pino logger) — pendência crítica pra observabilidade
+  - Pattern modular `src/lib/queue/jobs/` é blueprint pra extractLabel (3.5),
+    sendWhatsApp (4.3), process-incoming-msg (7.2), expire-codigo-ml (7.5)
+  - Backlog: remover endpoint admin em prod (story 8.4)
+
+waivers: []
+
+reviewer_notes: |
+  Excelente story. A escolha de Opção B (`withTenant` callback) na 1.6
+  pagou dividendo aqui — workers usam `withTenantContext` direto, pattern
+  documentado, sem ambiguidade.
+
+  3 gotchas conhecidos foram tratados:
+  - REDIS_URL host vs container (mesma estratégia DATABASE_URL da 1.3)
+  - Volume node_modules cacheado (rebuild com --build)
+  - Vitest it.skipIf static-time (5ª ocorrência, padrão estabelecido)
+
+  Decisão de map mutable (Record<string, AnyProcessor>) é o trade-off
+  certo pra MVP. Discriminated union gigante seria over-engineering.
+
+  Ponto a destacar: documentação `docs/runbooks/jobs.md` (~250 linhas)
+  é referência completa — pattern, troubleshooting, debugging via Redis
+  CLI, próximas stories. Investimento que paga toda vez que dev novo
+  precisar adicionar job.
+
+  CodeRabbit não foi executado (CLI WSL-only, ambiente macOS). Validação
+  manual + reprodução E2E independente + suite integration foi suficiente.
