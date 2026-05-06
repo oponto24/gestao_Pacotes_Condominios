@@ -234,6 +234,20 @@ O script é idempotente:
 
 Após rodar, `curl http://localhost:3000/api/me` (com cookie Clerk válido) retorna `{ kind: 'tenant', condominioId, role: 'admin' }`.
 
+## Monitoramento externo (Story 1.7)
+
+App expõe endpoints health pra monitor externo:
+
+| Endpoint | Cobertura | Status code |
+|----------|-----------|-------------|
+| `GET /api/health` | Agregado: db + redis + uptime + version | 200 ok / 503 degraded ou down |
+| `GET /api/health/db` | Postgres (legado da story 1.3) | 200 / 503 |
+| `GET /api/health/redis` | Redis (ping + set/get round-trip) | 200 / 503 |
+
+**Healthcheck Docker** ativo em `app` e `worker` services do compose — `docker compose ps` mostra `(healthy)` quando ok.
+
+**UptimeRobot** (monitor externo gratuito) — setup em `docs/runbooks/uptimerobot-setup.md`. Recomendado: 2 monitors (`/api/health` + `/`) com alerta por e-mail/Telegram em <5 min.
+
 ## Próximas mudanças (stories futuras)
 
 | Story | Mudança nesta infra |

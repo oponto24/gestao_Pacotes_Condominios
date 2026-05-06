@@ -88,6 +88,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      # alpine tem BusyBox wget por default. --spider faz HEAD-like sem baixar body.
+      test: ['CMD', 'wget', '--quiet', '--spider', '--tries=1', '--timeout=5', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      # start_period generoso pra Next.js compilar JIT na primeira request
+      start_period: 60s
 
   worker:
     build:
@@ -105,6 +113,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      # Worker não tem porta HTTP — checa se processo node tá vivo via pgrep.
+      # `pgrep -f` busca pelo padrão na linha de comando completa.
+      test: ['CMD', 'pgrep', '-f', 'node workers/index']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   pgdata:

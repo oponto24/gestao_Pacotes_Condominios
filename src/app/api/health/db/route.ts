@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { checkDb } from '@/lib/health';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
+/**
+ * Endpoint legado (story 1.3) — mantido por retrocompatibilidade.
+ * Para status agregado de todos os componentes use `/api/health` (story 1.7).
+ */
 export async function GET() {
-  try {
-    await db.$queryRaw`SELECT 1`;
-    return NextResponse.json({ ok: true, db: 'up' });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'unknown error';
-    return NextResponse.json({ ok: false, db: 'down', error: message }, { status: 503 });
+  const result = await checkDb();
+  if (result.status === 'ok') {
+    return NextResponse.json({ ok: true, db: 'up', latency_ms: result.latency_ms });
   }
+  return NextResponse.json(
+    { ok: false, db: 'down', error: result.error },
+    { status: 503 },
+  );
 }
