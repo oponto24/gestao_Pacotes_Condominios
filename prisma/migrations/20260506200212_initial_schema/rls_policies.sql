@@ -34,6 +34,7 @@ $$;
 
 -- Setor
 ALTER TABLE setor ENABLE ROW LEVEL SECURITY;
+ALTER TABLE setor FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS setor_tenant_isolation ON setor;
 CREATE POLICY setor_tenant_isolation ON setor
   USING (condominio_id = app_current_condominio() OR app_is_super_admin())
@@ -41,6 +42,7 @@ CREATE POLICY setor_tenant_isolation ON setor
 
 -- Unidade
 ALTER TABLE unidade ENABLE ROW LEVEL SECURITY;
+ALTER TABLE unidade FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS unidade_tenant_isolation ON unidade;
 CREATE POLICY unidade_tenant_isolation ON unidade
   USING (condominio_id = app_current_condominio() OR app_is_super_admin())
@@ -48,6 +50,7 @@ CREATE POLICY unidade_tenant_isolation ON unidade
 
 -- Morador
 ALTER TABLE morador ENABLE ROW LEVEL SECURITY;
+ALTER TABLE morador FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS morador_tenant_isolation ON morador;
 CREATE POLICY morador_tenant_isolation ON morador
   USING (condominio_id = app_current_condominio() OR app_is_super_admin())
@@ -59,6 +62,7 @@ CREATE POLICY morador_tenant_isolation ON morador
 
 -- Pacote
 ALTER TABLE pacote ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pacote FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS pacote_tenant_isolation ON pacote;
 CREATE POLICY pacote_tenant_isolation ON pacote
   USING (condominio_id = app_current_condominio() OR app_is_super_admin())
@@ -66,6 +70,7 @@ CREATE POLICY pacote_tenant_isolation ON pacote
 
 -- PacoteFoto
 ALTER TABLE pacote_foto ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pacote_foto FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS pacote_foto_tenant_isolation ON pacote_foto;
 CREATE POLICY pacote_foto_tenant_isolation ON pacote_foto
   USING (condominio_id = app_current_condominio() OR app_is_super_admin())
@@ -73,6 +78,7 @@ CREATE POLICY pacote_foto_tenant_isolation ON pacote_foto
 
 -- PacoteEvento
 ALTER TABLE pacote_evento ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pacote_evento FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS pacote_evento_tenant_isolation ON pacote_evento;
 CREATE POLICY pacote_evento_tenant_isolation ON pacote_evento
   USING (condominio_id = app_current_condominio() OR app_is_super_admin())
@@ -80,6 +86,7 @@ CREATE POLICY pacote_evento_tenant_isolation ON pacote_evento
 
 -- WhatsAppMessage
 ALTER TABLE whatsapp_message ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_message FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS whatsapp_message_tenant_isolation ON whatsapp_message;
 CREATE POLICY whatsapp_message_tenant_isolation ON whatsapp_message
   USING (condominio_id = app_current_condominio() OR app_is_super_admin())
@@ -87,6 +94,7 @@ CREATE POLICY whatsapp_message_tenant_isolation ON whatsapp_message
 
 -- CodigoMlPendente
 ALTER TABLE codigo_ml_pendente ENABLE ROW LEVEL SECURITY;
+ALTER TABLE codigo_ml_pendente FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS codigo_ml_pendente_tenant_isolation ON codigo_ml_pendente;
 CREATE POLICY codigo_ml_pendente_tenant_isolation ON codigo_ml_pendente
   USING (condominio_id = app_current_condominio() OR app_is_super_admin())
@@ -97,6 +105,32 @@ CREATE POLICY codigo_ml_pendente_tenant_isolation ON codigo_ml_pendente
 -- ------------------------------------------------------------
 -- condominio, user, whatsapp_number, audit_log
 -- Isolamento garantido pela aplicação (middleware de role).
+
+-- ------------------------------------------------------------
+-- ROLE DE RUNTIME APP (NOSUPERUSER — sujeita a RLS)
+-- ------------------------------------------------------------
+-- POSTGRES_USER=app vem como SUPERUSER do docker postgres.
+-- SUPERUSER bypassa RLS independente de BYPASSRLS/FORCE — inviável
+-- pra runtime do app. Solução: role separada `app_runtime` SEM
+-- SUPERUSER nem BYPASSRLS, com grants de DML em todas as tabelas.
+-- Prisma migrate continua usando `app` (precisa SUPERUSER pra
+-- criar extensions, enums, etc). App e testes usam `app_runtime`.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_runtime') THEN
+    CREATE ROLE app_runtime WITH LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD NULL;
+  END IF;
+END $$;
+
+GRANT CONNECT ON DATABASE gestao_pacotes TO app_runtime;
+GRANT USAGE ON SCHEMA public TO app_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_runtime;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_runtime;
+-- Default privileges para tabelas/sequences criadas no futuro pelo `app`:
+ALTER DEFAULT PRIVILEGES FOR ROLE app IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_runtime;
+ALTER DEFAULT PRIVILEGES FOR ROLE app IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO app_runtime;
 
 -- ------------------------------------------------------------
 -- ROLE PARA WORKER WEBHOOK (BYPASSRLS)
@@ -113,7 +147,8 @@ END $$;
 -- Senha definida via secret externo, não em migration:
 --   ALTER ROLE webhook_worker WITH PASSWORD 'xxx';
 
-GRANT CONNECT ON DATABASE CURRENT_DATABASE() TO webhook_worker;
+-- Postgres não aceita função em GRANT CONNECT — usar nome literal
+GRANT CONNECT ON DATABASE gestao_pacotes TO webhook_worker;
 GRANT USAGE ON SCHEMA public TO webhook_worker;
 GRANT SELECT ON morador TO webhook_worker;
 GRANT INSERT, SELECT, UPDATE ON whatsapp_message TO webhook_worker;

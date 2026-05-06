@@ -190,6 +190,34 @@ Todos rodam **da raiz do projeto, no host** (não dentro do container). O Prisma
 npm run prisma:reset
 ```
 
+## Aplicar RLS policies (Story 1.4)
+
+Após `prisma:migrate`, aplicar a camada de defesa em profundidade (RLS):
+
+```bash
+# 1. Gerar senhas (uma vez, nunca commitar)
+openssl rand -hex 32  # use como APP_RUNTIME_DB_PASSWORD em .env.local
+openssl rand -hex 32  # use como WEBHOOK_WORKER_DB_PASSWORD em .env.local
+
+# 2. Aplicar (idempotente — safe pra rerun)
+npm run db:apply-rls
+```
+
+O script:
+- Aplica `prisma/migrations/20260506200212_initial_schema/rls_policies.sql`
+- Cria roles `app_runtime` (NOSUPERUSER, sujeito a RLS) e `webhook_worker` (BYPASSRLS, grants mínimos)
+- Define senhas via `ALTER ROLE` (nunca em arquivo committed)
+- Valida com 2 contadores (8 tabelas RLS, 2 roles ativas)
+
+**Após `apply-rls`, recreie containers** pra que o app pegue `DATABASE_RUNTIME_URL`:
+```bash
+docker compose -f infra/docker/docker-compose.yml stop app worker
+docker compose -f infra/docker/docker-compose.yml rm -f app worker
+docker compose -f infra/docker/docker-compose.yml --env-file .env.local up -d app worker
+```
+
+**Testes RLS:** rodam automaticamente em `npm run test` (pulam se DB não acessível).
+
 ## Próximas mudanças (stories futuras)
 
 | Story | Mudança nesta infra |

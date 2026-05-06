@@ -1,0 +1,117 @@
+storyId: 1.3-prisma-schema-migration
+storyTitle: Prisma schema + primeira migration aplicada localmente
+reviewedBy: '@qa (Quinn)'
+reviewedAt: 2026-05-06
+verdict: PASS
+score: 9.5/10
+commit: d1dc033
+branch: feature/1.3-prisma-schema-migration
+
+summary: |
+  Story bem executada com 9 decisões pragmáticas todas justificadas. A
+  parte mais crítica — gerenciamento do dual DATABASE_URL host vs container,
+  rebuild da imagem com Prisma + reset de volume node_modules — foi executada
+  corretamente após investigação adequada. Mini-fix no schema da Dara
+  (relações inversas) é exigência do Prisma e estruturalmente neutro.
+
+  Smoke test independente reproduzido: 12 tabelas + _prisma_migrations,
+  8 enums Postgres, super-admin populado, /api/health/db retornando OK 200.
+  Quality gates verdes incluindo typecheck com prisma/ agora incluído
+  (atendendo concern do gate 1.2).
+
+issues:
+  - severity: medium
+    category: tech-debt
+    description: |
+      `package.json#prisma` deprecated em Prisma 6, será removido em Prisma 7.
+      Atualmente emite warning a cada comando `npx prisma`.
+    impact: |
+      Cosmético hoje. Quando Prisma 7 for adotado (story futura), exige
+      criar `prisma.config.ts` e mover seed config pra lá.
+    recommendation: |
+      Story futura "Migrar para Prisma 7 + prisma.config.ts" quando 7.x
+      estabilizar e ecossistema (shadcn examples, tutoriais) acompanhar.
+    blocking: false
+
+  - severity: low
+    category: process
+    description: |
+      Schema da Dara foi modificado por Dex (relações inversas em Condominio).
+      Mudança estruturalmente neutra mas não passou por revisão da Dara.
+    impact: |
+      Mudança é exigência do Prisma 6, não decisão de design. Risco zero
+      pra integridade do modelo.
+    recommendation: |
+      Padrão para o futuro: mudanças no schema via `prisma format` ou
+      exigências de validação devem ser anotadas em commit message
+      explicitamente. Considerar `prisma validate` no pre-commit hook
+      quando CI estiver montado (story 8.4).
+    blocking: false
+
+  - severity: low
+    category: forward-compat
+    description: |
+      Worker (`workers/index.mjs`) é placeholder e ainda não importa o
+      Prisma client. Quando 1.8 (BullMQ) trouxer jobs reais, vai precisar
+      importar `@/lib/db`.
+    impact: |
+      Nenhum agora. Possível issue de path resolution: `workers/` está fora
+      do `src/`, então `@/lib/db` pode não resolver via tsconfig paths.
+      Pode exigir importar como `../src/lib/db.ts` ou ajustar build.
+    recommendation: |
+      Story 1.8 deve testar import do Prisma client no worker como primeira
+      coisa. Se path quebrar, opções: (a) mover worker para `src/workers/`,
+      (b) duplicar `@/*` alias no tsconfig do worker, (c) usar caminho
+      relativo. Decisão arquitetural pra Aria revisar.
+    blocking: false
+
+  - severity: medium
+    category: security
+    description: |
+      2 vulnerabilidades moderate em `postcss` (transitive via Next.js).
+      Mesmo issue da story 1.1 — não foi resolvida.
+    impact: |
+      Build-time only, sem exposição runtime. Risco baixo.
+    recommendation: |
+      Já documentado em 1.1.gate.yaml. Aguardar deduplicação do Next.js.
+    blocking: false
+
+quality_attributes:
+  performance: PASS    # /api/health/db <100ms; build adicionou rota dynamic (124B)
+  security: CONCERNS   # vulns transitivas postcss (não-bloqueante)
+  reliability: PASS    # singleton evita pool exhaustion; route handler com try/catch
+  maintainability: PASS  # Dev Notes excepcionais, decisões justificadas
+  testability: PASS    # /api/health/db é smoke endpoint reutilizável
+
+acceptance_criteria_validation:
+  total: 10
+  passed: 10
+  with_notes: 1   # AC4 — story dizia 12 enums, real é 8 (validado correto)
+  failed: 0
+  smoke_test_reproduced: true
+  smoke_test_results:
+    stack_status: 4 services up (postgres+redis healthy)
+    health_endpoint: HTTP 200 com {"ok":true,"db":"up"}
+    tables: 12 app + 1 _prisma_migrations = 13 total
+    enums: 8 Postgres enums (UserRole, TamanhoPacote, PacoteStatus, PacoteEventoTipo, WhatsAppMessageStatus, WhatsAppMessageDirection, CodigoMlStatus, Transportadora)
+    seed: super-admin (gustavs.silvs@gmail.com) presente
+    typecheck_with_prisma: passing
+
+next_actions:
+  - Story 1.3 aprovada — pode ir para próxima fase
+  - @sm pode criar story 1.4 (RLS policies + role webhook_worker) imediatamente
+  - Próximo @devops push (quando solicitado) já tem 3 commits empilhados (1.1, 1.2, 1.3)
+
+waivers: []
+
+reviewer_notes: |
+  Implementação madura. O gerenciamento do "dual DATABASE_URL" (host
+  usa localhost, container usa nome do service via override em
+  environment:) é o tipo de decisão arquitetural sutil que costuma quebrar
+  projetos Prisma+Docker. Bem resolvido e documentado.
+
+  Atenção pra 1.4: o arquivo `rls_policies.sql` está em
+  `prisma/migrations/20260506200212_initial_schema/` mas Prisma NÃO vai
+  aplicá-lo automaticamente (Prisma só processa `migration.sql`). Story 1.4
+  precisará rodá-lo via `psql -f` ou similar. Documentar o método escolhido
+  no story 1.4.

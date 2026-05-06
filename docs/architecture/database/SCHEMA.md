@@ -286,6 +286,43 @@ Conforme NFR-011: cron diário 03:00 BRT executa `pg_dump`, retenção 30 dias l
 **Pequena correção no schema durante a story 1.3:**
 A relação `Morador → Condominio` (via `condominio_id`) precisava de inversa explícita em `model Condominio`. Adicionados `moradores: Morador[]`, `pacote_fotos: PacoteFoto[]` e `pacote_eventos: PacoteEvento[]` por exigência do Prisma 6 (toda `@relation` precisa de inversa). Não muda a estrutura — apenas explicita as relações reversas que o Prisma usa pra gerar tipos TypeScript completos.
 
+## 11. RLS aplicado em 1.4 + estratégia de roles
+
+**Data:** 2026-05-06
+**Comando:** `npm run db:apply-rls`
+**Validado por:** suite de testes integration em `tests/integration/rls.test.ts` (6 cenários)
+
+### Roles Postgres em uso
+
+| Role | Privilégios | Quem usa | Notas |
+|------|-------------|----------|-------|
+| `app` | SUPERUSER, BYPASSRLS | Prisma CLI (migrations, seed) | Default do POSTGRES_USER. SUPERUSER ignora RLS. |
+| `app_runtime` | LOGIN, NOSUPERUSER, NOBYPASSRLS, DML em todas tabelas | App Next.js + workers + tests RLS | **SUJEITO A RLS** — defesa em profundidade real. |
+| `webhook_worker` | LOGIN, BYPASSRLS, SELECT em morador + INSERT/UPDATE em msg/codigo | Handler webhook Meta | Cross-tenant lookup por telefone. Princípio do menor privilégio. |
+
+### Por que `app_runtime` é necessário
+
+O Postgres SUPERUSER **bypassa RLS sempre**, mesmo com `FORCE ROW LEVEL SECURITY`. O image `postgres:16-alpine` cria `POSTGRES_USER=app` como SUPERUSER por default. Por isso:
+- `DATABASE_URL` (= `app`) = só pra Prisma migrations (precisa SUPERUSER)
+- `DATABASE_RUNTIME_URL` (= `app_runtime`) = pra runtime do app (sujeito a RLS)
+- `DATABASE_WEBHOOK_URL` (= `webhook_worker`) = pra handler de webhook Meta
+
+### Validações aplicadas
+
+- ✅ 8 tabelas com RLS habilitado (`relrowsecurity=true`) e FORCE (`relforcerowsecurity=true`)
+- ✅ Helpers `app_current_condominio()` e `app_is_super_admin()` retornam valores corretos
+- ✅ Sem context, query retorna 0 (RLS bloqueia)
+- ✅ Com context = Cond A, vê só dados de A
+- ✅ Tentativa de INSERT cross-tenant levanta erro `new row violates row-level security policy`
+- ✅ Com `is_super_admin = 'true'`, vê tudo
+- ✅ `webhook_worker` SELECT em `morador` OK; SELECT em `condominio` BLOQUEADO; DELETE em `morador` BLOQUEADO
+
+### Issues encontrados e fixados durante 1.4
+
+1. **`GRANT CONNECT ON DATABASE CURRENT_DATABASE()`** falha sintaxe — substituído por nome literal `gestao_pacotes` no SQL.
+2. **Adicionado `FORCE ROW LEVEL SECURITY`** em todas as 8 tabelas (sem isso, owner bypassa RLS).
+3. **Criada role `app_runtime`** porque o `app` user é SUPERUSER (bypassa RLS independentemente de FORCE).
+
 ## 10. Backlog de melhorias pós-MVP
 
 - Particionamento `audit_log` e `pacote_evento` por mês (volume).
