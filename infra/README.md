@@ -218,6 +218,22 @@ docker compose -f infra/docker/docker-compose.yml --env-file .env.local up -d ap
 
 **Testes RLS:** rodam automaticamente em `npm run test` (pulam se DB não acessível).
 
+## Promover usuário a admin de condomínio (DEV)
+
+**Story 1.6** introduziu `infra/scripts/promote-user.sh` para acelerar testes manuais do middleware tenant em DEV. **Não usar em produção** — em prod, admin associa user via UI (story futura).
+
+```bash
+# Pré-requisitos: stack rodando + user já cadastrou via Clerk
+bash infra/scripts/promote-user.sh oponto24@gmail.com
+```
+
+O script é idempotente:
+- Cria condomínio fixture "Edifício Teste 1.6" se não existir
+- Atualiza `user.condominio_id` e `user.role = 'admin'`
+- Mostra a linha resultante para validação
+
+Após rodar, `curl http://localhost:3000/api/me` (com cookie Clerk válido) retorna `{ kind: 'tenant', condominioId, role: 'admin' }`.
+
 ## Próximas mudanças (stories futuras)
 
 | Story | Mudança nesta infra |

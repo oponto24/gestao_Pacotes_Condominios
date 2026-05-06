@@ -27,8 +27,8 @@
 | 1.2 | Setup Docker Compose dev (postgres + redis + app + worker) | **Done** ✅ | 1.1 |
 | 1.3 | Prisma schema + primeira migration aplicada localmente | **Done** ✅ | 1.2 |
 | 1.4 | RLS policies aplicadas + role webhook_worker criada | **Done** ✅ | 1.3 |
-| 1.5 | Integração Clerk (sign-in/sign-up + webhook user provisioning) | **Ready for Review** 🔍 | 1.3, 1.4 |
-| 1.6 | Middleware de tenant + helper getTenantContext + SET LOCAL no Postgres | Draft | 1.4, 1.5 |
+| 1.5 | Integração Clerk (sign-in/sign-up + webhook user provisioning) | **Done** ✅ | 1.3, 1.4 |
+| 1.6 | Middleware de tenant + helper getTenantContext + SET LOCAL no Postgres | **Ready for Review** 🔍 | 1.4, 1.5 |
 | 1.7 | Endpoint /api/health + UptimeRobot configurado | Draft | 1.2 |
 | 1.8 | BullMQ + Redis connection + job de teste | Draft | 1.2 |
 | 1.9 | Logger Pino estruturado + storage abstraction (local) | Draft | 1.1 |

@@ -1,0 +1,137 @@
+storyId: 1.5-clerk-integration
+storyTitle: Integração Clerk (auth + sign-in/sign-up + webhook user provisioning)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: 2026-05-06
+verdict: PASS
+score: 9.5/10
+commits: [b2415d7, 5fdb612]
+branch: feature/1.5-clerk-integration
+
+summary: |
+  Story crítica de auth + webhook executada com qualidade alta. Marco do
+  projeto: primeiro fluxo E2E REAL com serviço externo (Clerk Dashboard
+  → tunnel cloudflared → app local → Postgres) confirmado pelo fundador.
+
+  Implementação corretamente seguiu o padrão Clerk: HMAC svix obrigatório
+  antes de processar payload, upsert preserva condominio_id/role em
+  user.updated, user.deleted faz UPDATE ativo=false em vez de DELETE
+  (preserva FKs em pacotes futuros).
+
+  Descoberta crítica documentada: doc oficial passada pelo fundador
+  recomendava `proxy.ts`, mas Clerk 7.3.1 ainda exige `src/middleware.ts`.
+  Dex resolveu corretamente renomeando, e marcou como tech-debt para
+  upgrade futuro. Excelente exemplo de pragmatismo.
+
+issues:
+  - severity: low
+    category: observability
+    description: |
+      Handler usa `console.log/warn/error` direto em vez de logger
+      estruturado (Pino vem na story 1.9). Logs ficam difíceis de filtrar/
+      grep em produção.
+    impact: |
+      Aceitável até 1.9 chegar. Sem impacto em dev.
+    recommendation: |
+      Quando 1.9 trouxer Pino, refatorar handler pra usar `logger.info` /
+      `logger.warn` com structured fields.
+    blocking: false
+
+  - severity: low
+    category: edge-case
+    description: |
+      Type union de `ClerkWebhookEvent.type` inclui `string` solto:
+      `'user.created' | 'user.updated' | 'user.deleted' | string`.
+      Perde type safety (qualquer string passa).
+    impact: |
+      Defensivo — aceita futuros eventos Clerk sem quebrar (svix.send,
+      session.created, etc). Trade-off intencional.
+    recommendation: |
+      Quando precisar processar mais eventos, restringir o union e
+      remover `| string`. Não bloqueia.
+    blocking: false
+
+  - severity: low
+    category: idempotency
+    description: |
+      Handler não mantém histórico de svix-ids processados. Se Clerk
+      retentar mesmo evento (ex: timeout do nosso lado), upsert idempotente
+      cobre, mas não há proteção explícita.
+    impact: |
+      Risco mínimo — `db.user.upsert` é naturalmente idempotente. Cenário
+      patológico seria atacante reenviar webhook antigo (mas com mesmo
+      svix-id e HMAC válido — dificil sem secret).
+    recommendation: |
+      Pós-MVP, considerar tabela `webhook_event_log(svix_id PK, processed_at)`
+      pra rejeitar duplicatas explicitamente. Padrão de defense-in-depth.
+    blocking: false
+
+  - severity: medium
+    category: security
+    description: |
+      Mesmas 2 vulns moderate em postcss (recorrente desde 1.1).
+      Não introduzido por esta story.
+    impact: |
+      Build-time only.
+    recommendation: |
+      Já documentado nos gates anteriores.
+    blocking: false
+
+  - severity: low
+    category: tech-debt
+    description: |
+      `src/middleware.ts` em vez do `proxy.ts` recomendado pela doc oficial
+      mais recente passada pelo fundador. Razão: Clerk 7.3.1 ainda procura
+      por `middleware.ts`.
+    impact: |
+      Funcional. Quando upgradar Clerk pra versão que suportar `proxy.ts`,
+      basta renomear de volta.
+    recommendation: |
+      Story futura "Upgrade Clerk + migrate to proxy.ts" quando estável.
+    blocking: false
+
+quality_attributes:
+  performance: PASS    # webhook ~26ms processing
+  security: PASS       # HMAC svix obrigatório, secret de env, sem vazamento de clerk_id
+  reliability: PASS    # upsert preserva dados, user.deleted não quebra FKs, retry-safe
+  maintainability: PASS  # tipos explícitos, helpers nomeados, root-cause documentado
+  testability: PASS    # 5 testes integration cobrem positivos + negativos contra endpoint real
+
+acceptance_criteria_validation:
+  total: 11
+  passed: 11
+  with_notes: 0
+  failed: 0
+  e2e_real_validated: true
+  e2e_evidence:
+    user_in_db: 'user_3DMzMSLDaYlutU7oTrpurq3g3eX | oponto24@gmail.com | porteiro | true'
+    home_renders: 'Bem-vindo, oponto24@gmail.com! Papel: porteiro'
+    webhook_post_no_header: 'HTTP 400 missing_svix_headers'
+    webhook_post_invalid_sig: 'HTTP 400 invalid_signature'
+    test_suite: '14/14 (3 unit + 6 RLS + 5 clerk-webhook)'
+
+next_actions:
+  - Story 1.5 aprovada — primeiro fluxo E2E real do projeto validado
+  - @sm pode criar story 1.6 (middleware tenant) — vai usar getCurrentUser desta
+  - Backlog: refatorar handler pra Pino quando 1.9 chegar
+  - Backlog: tabela webhook_event_log pra idempotência defensive (pós-MVP)
+
+waivers: []
+
+reviewer_notes: |
+  Excelente execução. A descoberta do `proxy.ts` vs `middleware.ts` é exatamente
+  o tipo de incompatibilidade que ferramenta automática não pega — Dex teve que
+  ler erro Clerk e decidir pragmaticamente. A documentação está clara: quando
+  Clerk lançar versão suportando `proxy.ts`, é só renomear.
+
+  O fluxo de webhook setup (cloudflared + Dashboard) é processualmente complexo
+  pro fundador. Worth considerar para roadmap pós-MVP: docker-compose com
+  ngrok/cloudflared como service interno (apenas dev) + auto-update da URL no
+  Clerk via API (eliminating manual step).
+
+  Atenção pra 1.6 (middleware tenant): vai chamar `getCurrentUser()` desta
+  story em CADA request. Se RLS for setado via SET LOCAL, precisa estar dentro
+  de transação. Performance pode importar — talvez cachear user lookup em Redis
+  pelo lifetime da request.
+
+  CodeRabbit não foi executado (CLI WSL-only, ambiente macOS). Validação
+  manual + reprodução do smoke + suite integration completa foi suficiente.

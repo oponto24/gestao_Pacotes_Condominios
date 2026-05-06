@@ -323,6 +323,56 @@ O Postgres SUPERUSER **bypassa RLS sempre**, mesmo com `FORCE ROW LEVEL SECURITY
 2. **Adicionado `FORCE ROW LEVEL SECURITY`** em todas as 8 tabelas (sem isso, owner bypassa RLS).
 3. **Criada role `app_runtime`** porque o `app` user é SUPERUSER (bypassa RLS independentemente de FORCE).
 
+## 12. Middleware tenant em runtime (story 1.6)
+
+**Implementado:** 2026-05-06.
+
+### Fluxo Clerk → RLS automático
+
+```
+Request HTTP
+  ↓
+Clerk middleware (src/middleware.ts) — autentica
+  ↓
+Route handler chama withTenant(callback) ou getTenantContext()
+  ↓
+getTenantContext() — cached por request via React.cache()
+  - chama getCurrentUser() (Clerk auth + lookup user no DB)
+  - Resolve para: { kind: 'tenant'|'super_admin', userId, condominioId, role }
+  - Lança UnauthorizedError | PendingProvisioningError | NoCondominioAssignedError
+  ↓
+withTenantContext(ctx, callback) wrappa em db.$transaction:
+  - Para super_admin: SET LOCAL app.is_super_admin = 'true'
+  - Para tenant: SET LOCAL app.current_condominio = '<uuid>'
+  ↓
+callback(tx) — Prisma queries dentro da transação são automaticamente
+  filtradas pelo RLS (camada 1.4)
+```
+
+### Pontos de atenção
+
+- **`SET LOCAL` exige transação ativa** — fora dela é silenciosamente ignorado.
+  `withTenantContext` força `$transaction` por isso.
+- **Postgres não aceita placeholder em `SET LOCAL`** — precisa interpolar string.
+  Validamos formato UUID via regex ANTES de interpolar (defesa contra injection).
+- **Webhook handlers (Clerk, Meta) NÃO usam middleware tenant** — são cross-tenant
+  por design e usam `db` direto (`@/lib/db`). Ver `src/app/api/webhooks/clerk/route.ts`.
+- **Cache via `React.cache()`** — múltiplas chamadas a `getTenantContext()` no mesmo
+  request server retornam o mesmo resultado (sem re-fetch do user no DB).
+
+### Endpoints smoke permanentes
+
+- `GET /api/me` — retorna o `TenantContext` resolvido (sem dados do banco)
+- `GET /api/me/data` — exemplo de query usando `withTenant` (lista unidades visíveis)
+
+### Erros HTTP mapeados
+
+| Erro | Status | Cenário |
+|------|--------|---------|
+| `UnauthorizedError` | 401 | Não logado |
+| `PendingProvisioningError` | 503 | Logado mas webhook Clerk ainda não criou linha no DB |
+| `NoCondominioAssignedError` | 403 | Logado mas user.condominio_id é NULL e role != super_admin |
+
 ## 10. Backlog de melhorias pós-MVP
 
 - Particionamento `audit_log` e `pacote_evento` por mês (volume).
