@@ -1,0 +1,30 @@
+storyId: '3.9'
+storyTitle: 'Tela /chegada/organizar (tamanho + setor + posição)'
+verdict: PASS
+reviewer: '@qa (Quinn)'
+date: '2026-05-07'
+summary: |
+  Form mobile-first com 4 botões grandes de tamanho + select de setor + input
+  posição. Status do pacote vira aguardando_retirada (gatilho Epic 4 WhatsApp).
+  Idempotente. Mensagem amigável se nenhum setor cadastrado.
+
+quality_checks:
+  code_review: { status: PASS }
+  unit_tests: { status: PASS, notes: '8 validator + 4 integration. 296/296 total.' }
+  acceptance_criteria: { status: PASS }
+  no_regressions: { status: PASS, notes: 'Lint, typecheck, build OK. /chegada/organizar/[id] = 4.66 kB' }
+  performance: { status: PASS }
+  security:
+    status: PASS
+    notes: 'Tenant isolation: setor_id validado contra tenant. Idempotência previne dupla mudança de status.'
+  documentation: { status: PASS }
+
+issues:
+  - severity: low
+    category: requirements
+    description: 'Smoke E2E pendente: depende de seed criar pelo menos 1 setor (CRUD admin de setores ainda não existe)'
+    recommendation: 'Tech debt: CRUD admin setores virá na 6.5. Para piloto, seed.ts pode criar "Recepção" automaticamente.'
+
+next_steps:
+  - '@devops *push + merge'
+  - 'Próxima: 3.10 (lista pendentes_identificacao)'
