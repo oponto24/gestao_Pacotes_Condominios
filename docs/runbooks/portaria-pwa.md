@@ -91,8 +91,8 @@ Ferramenta útil para validar maskable: https://maskable.app/
 | Story | O que adiciona |
 |---|---|
 | **3.1** ✅ | Layout shell + bottom nav + manifest |
-| **3.2** ✅ | `<PhotoCapture>` componente — câmera + preview + retake (esta story) |
-| 3.3 | `<BarcodeScannerInput>` componente — html5-qrcode |
+| **3.2** ✅ | `<PhotoCapture>` componente — câmera + preview + retake |
+| **3.3** ✅ | `<BarcodeScannerInput>` componente — html5-qrcode + fallback (esta story) |
 | 3.4 | API POST /api/pacotes (rascunho + foto + IA job) |
 | 3.5 | Worker `extractLabel` — Claude Haiku vision |
 | 3.6 | `/chegada` real — formulário de captura |
@@ -166,6 +166,74 @@ Durante streaming, indicador visual no canto superior direito do visor:
 `facingMode='environment'` falha em desktop (sem câmera traseira) →
 fallback automático para qualquer câmera disponível. Mesmo fluxo
 funciona em ambos.
+
+## BarcodeScannerInput (story 3.3)
+
+Componente reusável de captura de código de barras (1D) ou QR Code.
+
+### API
+
+```tsx
+<BarcodeScannerInput
+  value={codigo}
+  onChange={setCodigo}
+  onError={(msg) => /* opcional */}
+  placeholder="Código do pacote (opcional)"
+  disabled={false}
+  maxLength={100}
+/>
+```
+
+### Comportamento
+
+- **Input texto sempre editável** — fallback para digitação manual se câmera falhar
+- **Botão "Bipar"** abre modal fullscreen com scanner html5-qrcode
+- **Detecção fecha modal automaticamente** + preenche input + vibração 50ms
+- **Permissão negada NÃO bloqueia** — usuário pode fechar modal e digitar
+
+### Formatos suportados
+
+QR_CODE · CODE_128 · CODE_39 · EAN_13 · EAN_8 · UPC_A.
+Cobertura típica: Correios (CODE_128) + e-commerce BR (EAN/UPC) + QR.
+
+### State machine
+
+```
+  closed ──▶ requesting ──▶ scanning ──▶ closed (após detecção)
+   ▲             │              │
+   │             └──┬───────────┘
+   │                ▼
+   └───────────── error ──── retry ──▶ requesting
+                    │
+                    └─ "Fechar e digitar manualmente" ──▶ closed
+```
+
+### Cleanup html5-qrcode (anti-leak)
+
+⚠️ **Crítico:** scanner deixado ativo prende câmera + acende LED + privacy concern.
+
+Cleanup em **2 passos**: `instance.stop()` (para o stream) + `instance.clear()` (limpa o DOM do div).
+
+Idempotente — pode ser chamado múltiplas vezes (close manual, detecção, unmount, error).
+
+### Decisões técnicas
+
+| Decisão | Motivo |
+|---|---|
+| `html5-qrcode` (não BarcodeDetector API) | iOS Safari ainda limitado em 2025; html5-qrcode é polyfill confiável |
+| Dynamic import (`await import('html5-qrcode')`) | Lib ~50KB só carrega quando user clica "Bipar" — bundle inicial fica leve |
+| Modal fullscreen via `<Sheet>` | Reuso da story 2.4 + viewport grande melhora detecção |
+| `useId()` no div do scanner | Evita conflito "instância já anexada" se modal abre/fecha rápido (sugestão @po) |
+| Flag `alreadyDetected.current` | Previne onChange múltiplas vezes do mesmo código (sugestão @po) |
+| `maxLength=100` no input texto | Defesa contra paste acidental de strings gigantes (sugestão @po) |
+
+### Como testar com QR Code
+
+1. Acesse `https://www.qr-code-generator.com/` ou similar
+2. Gere QR com texto "TESTE-3.3"
+3. No `/admin/.../chegada` (ou playground), click "Bipar"
+4. Aponte câmera pro QR na tela
+5. Detecção deve ocorrer em ~1s e fechar modal
 
 ## Tech debt registrado
 
