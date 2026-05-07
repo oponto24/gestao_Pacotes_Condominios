@@ -111,11 +111,11 @@
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 6.1 | Lista /admin/pacotes — DataTable com filtros (status, unidade, período) | Draft | 2.7, 3.4 |
-| 6.2 | Busca textual por morador/apto/código (ILIKE em nome_normalizado) | Draft | 6.1 |
-| 6.3 | Página /admin/pacotes/[id] — detalhe completo + PacoteTimeline | Draft | 6.1 |
-| 6.4 | Ação "Resolver pendência" — modal escolher unidade/morador (FR-064) | Draft | 6.3, 3.10 |
-| 6.5 | Ação "Reenviar WhatsApp" + "Cancelar pacote" no detalhe | Draft | 6.3, 4.6 |
+| 6.1 | Lista /admin/pacotes — DataTable com filtros (status, unidade, período) | **Ready for Review** 🔵 | 2.7, 3.4 |
+| 6.2 | Busca textual por morador/apto/código (ILIKE) | **Ready for Review** 🔵 | 6.1 |
+| 6.3 | Página /admin/pacotes/[id] — detalhe completo + PacoteTimeline | **Ready for Review** 🔵 | 6.1 |
+| 6.4 | Ação "Resolver pendência" — link pra /chegada/confirmar/[id] (FR-064) | **Ready for Review** 🔵 | 6.3, 3.10 |
+| 6.5 | Ação "Reenviar WhatsApp" + "Cancelar pacote" no detalhe | Draft (depende Epic 4) | 6.3, 4.6 |
 
 ---
 
