@@ -98,10 +98,10 @@
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 5.1 | Tela /retirada — scanner QR + fallback código manual | Draft | 3.1, 3.3 |
-| 5.2 | API POST /api/pacotes/{id}/retirar/iniciar — valida token, retorna dados | Draft | 1.6 |
-| 5.3 | Sheet de confirmação "destinatário próprio?" (FR-042) | Draft | 5.1, 5.2 |
-| 5.4 | API POST /api/pacotes/{id}/retirar/confirmar — registra evento + invalida QR | Draft | 5.3 |
+| 5.1 | Tela /retirada — scanner QR + fallback código manual | **Ready for Review** 🔵 | 3.1, 3.3 |
+| 5.2 | API POST /api/pacotes/retirar/iniciar — valida token, retorna dados | **Ready for Review** 🔵 | 1.6 |
+| 5.3 | Tela /retirada/confirmar/[token] + sheet "próprio destinatário?" (FR-042) | **Ready for Review** 🔵 | 5.1, 5.2 |
+| 5.4 | API PATCH /api/pacotes/{id}/retirar/confirmar — registra evento + invalida QR | **Ready for Review** 🔵 | 5.3 |
 
 ---
 
