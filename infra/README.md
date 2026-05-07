@@ -263,6 +263,12 @@ um processor registrado em `src/lib/queue/jobs/index.ts`.
 - **Storage abstraction:** `src/lib/storage/` — `LocalStorageDriver` hoje (volume nomeado `storage` em compose), trocável por S3/R2 sem refactor de callers. Detalhes em `docs/runbooks/storage.md`.
 - **Endpoint admin smoke storage:** `POST /api/admin/storage/test` (super_admin only) executa put → get → delete e retorna metadata.
 
+## Cadastros admin (Stories 2.2-2.4)
+
+CRUDs tenant-scoped administráveis pelo síndico/admin: Setor (✅ 2.2),
+Unidade (futuro 2.3), Morador (futuro 2.4). Detalhes em
+[`docs/runbooks/admin-cadastros.md`](../docs/runbooks/admin-cadastros.md).
+
 ## Admin (Story 2.7)
 
 Layout `/admin/*` com sidebar lateral + header sticky + drawer mobile. Rotas
