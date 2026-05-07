@@ -1,7 +1,7 @@
 # Runbook — Cadastros Admin (tenant-scoped)
 
-> **Stories:** 2.2 (Setor), 2.3 (Unidade), 2.4 (Morador) — em progresso
-> **Owner:** Dev (Dex) | **Última atualização:** 2026-05-06
+> **Stories:** 2.2 (Setor), 2.3 (Unidade), 2.4 (Morador), 2.5 (CSV upload+parse) — em progresso
+> **Owner:** Dev (Dex) | **Última atualização:** 2026-05-07
 
 ## Visão geral
 
@@ -180,7 +180,64 @@ Helpers em `src/lib/validators/_shared.ts` (extraídos da 2.1 para reuso).
 Aceita `(11) 98765-4321` ou `+5511987654321` no input, normaliza para
 `+5511987654321` antes do save. Será usado pela story 4.x (Meta WhatsApp).
 
+## Importação CSV (story 2.5 — upload + parser + validação)
+
+Tela: **Cadastros → Importar CSV** (`/admin/cadastros/importar`)
+
+### Schema do arquivo
+
+Cabeçalho obrigatório (ordem das colunas é flexível, nomes não):
+
+```csv
+bloco,identificador,morador_nome,morador_telefone,morador_email
+```
+
+| Coluna | Obrigatório | Notas |
+|---|---|---|
+| `bloco` | Coluna sim, valor não | Vazio = unidade sem bloco. Ex: `(bloco='', identificador='5')` é distinto de `(bloco='A', identificador='5')` |
+| `identificador` | ✅ | Nome/número da unidade dentro do bloco. Ex: `101`, `Casa-3`, `Loja-A` |
+| `morador_nome` | ✅ | Min 3 caracteres, max 200. Será o morador **principal** da unidade |
+| `morador_telefone` | ✅ | Aceita `(11) 98765-4321` ou `+5511987654321`. Normalizado para E.164 |
+| `morador_email` | Coluna sim, valor não | Vazio = sem email |
+
+### Limites
+
+- **1000 linhas** máx por arquivo (anti-DoS)
+- **256KB** tamanho máx do arquivo
+- **UTF-8** (com ou sem BOM — Excel exporta com BOM por padrão; o parser strip)
+- **Aspas duplas** escapam vírgulas internas no nome (RFC 4180): `"Silva, João"`
+
+### Validações
+
+**Por linha:**
+- Telefone formato BR válido (regex de `_shared.ts`)
+- Nome min 3 chars
+- Email formato válido se preenchido
+- Identificador min 1 char
+
+**Cross-row (intra-arquivo):**
+- `(bloco, identificador)` único — duplicata marca **ambas as linhas** como erro
+- `morador_telefone` único — duplicata marca **ambas as linhas** como erro
+
+### Comportamento da tela 2.5
+
+- Apenas **analisa** o arquivo — **não persiste nada** no banco
+- Resposta: lista de linhas válidas + lista de linhas com erro (linha + mensagem)
+- Resultado salvo em `sessionStorage['csvImportResult']` para a story 2.6 consumir
+- Próximo passo (story 2.6): preview detalhado + commit transacional
+
+### Exemplo de arquivo
+
+Template: [`docs/runbooks/exemplos/import-exemplo.csv`](exemplos/import-exemplo.csv)
+
+### LGPD (NFR-030)
+
+Ao subir CSV, o admin **declara ter consentimento** dos moradores listados.
+A tela registrará `audit_log` com `actor_user_id`, `count`, `timestamp` (story 8.x).
+
+---
+
 ## Próximas stories
 
-- **2.5/2.6** — Importação CSV (upload + parser + validação + commit)
+- **2.6** — Preview detalhado + commit transacional
 - **3.7** — Algoritmo de matching IA usando `nome_normalizado`

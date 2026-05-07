@@ -7,6 +7,7 @@ import { SignOutButton } from '@clerk/nextjs';
 import {
   ChevronDown,
   ChevronRight,
+  FileUp,
   Home,
   Layers,
   LogOut,
@@ -40,6 +41,7 @@ const CADASTROS: NavGroup = {
     { href: '/admin/setores', label: 'Setores', icon: <Layers className="h-4 w-4" aria-hidden /> },
     { href: '/admin/unidades', label: 'Unidades', icon: <Home className="h-4 w-4" aria-hidden /> },
     { href: '/admin/moradores', label: 'Moradores', icon: <Users className="h-4 w-4" aria-hidden /> },
+    { href: '/admin/cadastros/importar', label: 'Importar CSV', icon: <FileUp className="h-4 w-4" aria-hidden /> },
   ],
 };
 
