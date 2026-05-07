@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { PhotoCapture } from '@/components/portaria/PhotoCapture';
 import { BarcodeScannerInput } from '@/components/portaria/BarcodeScannerInput';
+import { Button } from '@/components/ui/button';
 
 /**
  * Playground temporário da story 3.2 — exercita PhotoCapture em browser real.
@@ -18,6 +19,46 @@ export function ChegadaPlaygroundClient() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [codigo, setCodigo] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState<{
+    pacote_id: string;
+    foto_storage_path: string;
+  } | null>(null);
+
+  async function handleSubmit() {
+    if (!captured) return;
+    setSubmitting(true);
+    setError(null);
+    setSubmitResult(null);
+    try {
+      const formData = new FormData();
+      formData.set('file', captured.blob, 'foto.jpg');
+      if (codigo.trim()) formData.set('codigo_rastreio', codigo.trim());
+
+      const res = await fetch('/api/pacotes', { method: 'POST', body: formData });
+      const body = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        pacote_id?: string;
+        foto_storage_path?: string;
+        message?: string;
+      };
+
+      if (!res.ok) {
+        throw new Error(body.message ?? `HTTP ${res.status}`);
+      }
+      if (!body.pacote_id || !body.foto_storage_path) {
+        throw new Error('Resposta inesperada da API');
+      }
+      setSubmitResult({
+        pacote_id: body.pacote_id,
+        foto_storage_path: body.foto_storage_path,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Falha no envio');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -75,11 +116,37 @@ export function ChegadaPlaygroundClient() {
           </p>
           <button
             type="button"
-            onClick={() => setCaptured(null)}
+            onClick={() => {
+              setCaptured(null);
+              setSubmitResult(null);
+            }}
             className="text-xs text-primary underline"
           >
             Limpar e tirar outra
           </button>
+
+          {!submitResult && (
+            <div className="pt-2">
+              <Button onClick={handleSubmit} disabled={submitting} className="w-full">
+                {submitting ? 'Enviando...' : 'Enviar para API (POST /api/pacotes)'}
+              </Button>
+            </div>
+          )}
+
+          {submitResult && (
+            <div className="rounded-md border border-success/30 bg-success/5 p-3 text-sm">
+              <p className="font-medium text-success">✅ Pacote criado em rascunho</p>
+              <p className="mt-1 text-xs text-text-secondary">
+                <code className="break-all">pacote_id: {submitResult.pacote_id}</code>
+              </p>
+              <p className="text-xs text-text-secondary">
+                <code className="break-all">foto: {submitResult.foto_storage_path}</code>
+              </p>
+              <p className="mt-2 text-xs text-text-secondary">
+                Job <code>extractLabel</code> enfileirado. Worker IA roda na story 3.5.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
