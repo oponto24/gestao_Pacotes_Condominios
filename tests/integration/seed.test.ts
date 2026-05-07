@@ -10,13 +10,21 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 
 const DB_REACHABLE =
   !!process.env.DATABASE_URL && process.env.DATABASE_URL.includes('postgresql://');
 
 const SEED_EMAIL = 'seed-test@example.com';
+const SEED_EMAIL_ALT = 'seed-test-alt@example.com';
 const PLACEHOLDER_PHONE_ID = 'PLACEHOLDER_META_PHONE_NUMBER_ID';
+
+// Mesma lógica do seed.ts:pendingClerkIdFor — duplicada aqui pra evitar import
+// transitivo de Prisma client com path alias `@/`.
+function expectedPendingClerkId(email: string): string {
+  return `pending_clerk_link_${crypto.createHash('sha256').update(email).digest('hex').slice(0, 16)}`;
+}
 
 const projectRoot = path.resolve(__dirname, '..', '..');
 
@@ -50,7 +58,9 @@ const db = DB_REACHABLE ? new PrismaClient() : null;
 
 async function cleanup() {
   if (!db) return;
-  await db.user.deleteMany({ where: { email: { in: [SEED_EMAIL, 'webhook-recon@example.com'] } } });
+  await db.user.deleteMany({
+    where: { email: { in: [SEED_EMAIL, SEED_EMAIL_ALT, 'webhook-recon@example.com'] } },
+  });
   await db.whatsAppNumber.deleteMany({ where: { phone_number_id: PLACEHOLDER_PHONE_ID } });
 }
 
@@ -65,7 +75,7 @@ describe.skipIf(!DB_REACHABLE)('seed inicial (story 1.10)', () => {
     const user = await db!.user.findUnique({ where: { email: SEED_EMAIL } });
     expect(user).not.toBeNull();
     expect(user!.role).toBe('super_admin');
-    expect(user!.clerk_id).toBe('pending_clerk_link');
+    expect(user!.clerk_id).toBe(expectedPendingClerkId(SEED_EMAIL));
     expect(user!.condominio_id).toBeNull();
     expect(user!.ativo).toBe(true);
 
@@ -112,5 +122,24 @@ describe.skipIf(!DB_REACHABLE)('seed inicial (story 1.10)', () => {
     expect(() =>
       runSeed({ NODE_ENV: 'production' }),
     ).toThrow(/META_PHONE_NUMBER_ID/);
+  });
+
+  it('rodar seed para 2 emails diferentes não causa unique constraint collision', async () => {
+    // Regressão do bug HIGH (QA review story 1.10): clerk_id literal `pending_clerk_link`
+    // colidia quando o seed era rodado para um SEGUNDO super-admin (troca de SUPER_ADMIN_EMAIL).
+    // Fix: clerk_id = `pending_clerk_link_${sha256(email).slice(0,16)}` — único por email.
+    runSeed({ SUPER_ADMIN_EMAIL: SEED_EMAIL });
+    runSeed({ SUPER_ADMIN_EMAIL: SEED_EMAIL_ALT });
+
+    const u1 = await db!.user.findUnique({ where: { email: SEED_EMAIL } });
+    const u2 = await db!.user.findUnique({ where: { email: SEED_EMAIL_ALT } });
+
+    expect(u1).not.toBeNull();
+    expect(u2).not.toBeNull();
+    expect(u1!.clerk_id).toBe(expectedPendingClerkId(SEED_EMAIL));
+    expect(u2!.clerk_id).toBe(expectedPendingClerkId(SEED_EMAIL_ALT));
+    expect(u1!.clerk_id).not.toBe(u2!.clerk_id);
+    expect(u1!.role).toBe('super_admin');
+    expect(u2!.role).toBe('super_admin');
   });
 });

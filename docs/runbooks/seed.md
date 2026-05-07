@@ -34,9 +34,11 @@ placeholder silenciosamente (que quebraria story 4.1 sem aviso).
 
 ## Reconciliação Clerk (super-admin)
 
-O seed cria o super-admin com `clerk_id='pending_clerk_link'`. Quando o usuário
-faz login pela primeira vez via Clerk, o webhook (`/api/webhooks/clerk`) detecta
-que o `clerk_id` real ainda não existe no banco e faz **fallback por email**:
+O seed cria o super-admin com `clerk_id='pending_clerk_link_<sha256(email)[0:16]>'`
+(único por email — preserva unique constraint quando múltiplos super-admins
+são seedados). Quando o usuário faz login pela primeira vez via Clerk, o webhook
+(`/api/webhooks/clerk`) detecta que o `clerk_id` real ainda não existe no banco
+e faz **fallback por email**:
 
 1. Procura user com mesmo email (criado pelo seed)
 2. Substitui `pending_clerk_link` pelo `clerk_id` real

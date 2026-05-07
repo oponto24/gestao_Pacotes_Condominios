@@ -12,6 +12,7 @@
  *   npm run db:reset-and-seed   # apenas dev (drop + migrate + seed)
  */
 
+import crypto from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import { logger as rootLogger } from '../src/lib/logger';
 
@@ -19,8 +20,14 @@ const log = rootLogger.child({ mode: 'seed' });
 const db = new PrismaClient();
 
 // Marcador semântico de "super-admin criado pelo seed mas ainda não logou via Clerk".
+// Único por email (sha256 hash 16 chars) para preservar unique constraint quando
+// múltiplos super-admins são seedados (ex: troca de SUPER_ADMIN_EMAIL).
 // Webhook Clerk (story 1.5) faz fallback por email e substitui por clerk_id real.
-const PENDING_CLERK_LINK = 'pending_clerk_link';
+const PENDING_CLERK_PREFIX = 'pending_clerk_link';
+function pendingClerkIdFor(email: string): string {
+  const hash = crypto.createHash('sha256').update(email).digest('hex').slice(0, 16);
+  return `${PENDING_CLERK_PREFIX}_${hash}`;
+}
 
 interface SeedSummary {
   super_admin: 'created' | 'updated';
@@ -47,7 +54,7 @@ async function seedSuperAdmin(email: string): Promise<'created' | 'updated'> {
 
   await db.user.create({
     data: {
-      clerk_id: PENDING_CLERK_LINK,
+      clerk_id: pendingClerkIdFor(email),
       email,
       nome: 'Super Admin',
       role: 'super_admin',
