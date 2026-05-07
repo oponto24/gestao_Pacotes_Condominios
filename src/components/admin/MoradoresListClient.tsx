@@ -38,7 +38,6 @@ interface Props {
   rows: MoradorRow[];
   total: number;
   unidades: UnidadeOption[];
-  includeInativos: boolean;
   includeArquivados: boolean;
 }
 
@@ -50,7 +49,6 @@ export function MoradoresListClient({
   rows,
   total,
   unidades,
-  includeInativos,
   includeArquivados,
 }: Props) {
   const router = useRouter();
@@ -64,19 +62,6 @@ export function MoradoresListClient({
     if (currentValue) next.delete(key);
     else next.set(key, 'true');
     startTransition(() => router.push(`?${next.toString()}`));
-  }
-
-  async function toggleAtivo(id: string, ativo: boolean) {
-    const res = await fetch(`/api/admin/moradores/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ativo: !ativo }),
-    });
-    if (!res.ok) {
-      alert(ativo ? 'Falha ao desativar.' : 'Falha ao ativar.');
-      return;
-    }
-    router.refresh();
   }
 
   async function marcarPrincipal(id: string, nome: string) {
@@ -126,9 +111,6 @@ export function MoradoresListClient({
           <p className="text-sm text-text-secondary">{total} no total</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" onClick={() => toggleParam('inativos', includeInativos)}>
-            {includeInativos ? 'Ocultar inativos' : 'Mostrar inativos'}
-          </Button>
           <Button variant="ghost" onClick={() => toggleParam('arquivados', includeArquivados)}>
             {includeArquivados ? 'Ocultar arquivados' : 'Mostrar arquivados'}
           </Button>
@@ -226,9 +208,6 @@ export function MoradoresListClient({
                             Tornar principal
                           </Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => toggleAtivo(m.id, m.ativo)}>
-                          {m.ativo ? 'Desativar' : 'Ativar'}
-                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => archive(m.id, m.nome)}>
                           Arquivar
                         </Button>

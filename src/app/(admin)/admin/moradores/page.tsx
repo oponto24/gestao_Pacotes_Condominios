@@ -10,12 +10,11 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 interface Props {
-  searchParams: Promise<{ inativos?: string; arquivados?: string }>;
+  searchParams: Promise<{ arquivados?: string }>;
 }
 
 export default async function MoradoresPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const includeInativos = sp.inativos === 'true';
   const includeArquivados = sp.arquivados === 'true';
 
   // Lista moradores + unidades ativas (para dropdown do form)
@@ -23,7 +22,7 @@ export default async function MoradoresPage({ searchParams }: Props) {
     listMoradores({
       page: 1,
       pageSize: 200,
-      includeInativos,
+      includeInativos: false,
       includeArquivados,
     }),
     listUnidades({ page: 1, pageSize: 500, includeInativas: false }),
@@ -41,7 +40,6 @@ export default async function MoradoresPage({ searchParams }: Props) {
       rows={rows}
       total={moradoresResult.total}
       unidades={unidades}
-      includeInativos={includeInativos}
       includeArquivados={includeArquivados}
     />
   );

@@ -275,4 +275,23 @@ describe.skipIf(!DB_REACHABLE)('Morador DB helpers (tenant-scoped)', () => {
     const todos = await withTenantContext(ctxA(), (tx) => tx.morador.count());
     expect(todos).toBeGreaterThan(ativos);
   });
+
+  it('lista com includeArquivados=true precisa relaxar AMBOS filtros (regressão smoke S8)', async () => {
+    // Bug regressão: soft delete seta `ativo=false`. Se o where mantiver `ativo: true`
+    // mesmo com includeArquivados=true, arquivados nunca aparecem na lista.
+    const padrao = await withTenantContext(ctxA(), (tx) =>
+      tx.morador.count({ where: { deleted_at: null, ativo: true } }),
+    );
+    const apenasRelaxandoDeletedAt = await withTenantContext(ctxA(), (tx) =>
+      tx.morador.count({ where: { ativo: true } }),
+    );
+    const relaxandoAmbos = await withTenantContext(ctxA(), (tx) =>
+      tx.morador.count(),
+    );
+
+    // Se relaxar só deleted_at (bug), arquivados continuam fora porque ativo=false.
+    expect(apenasRelaxandoDeletedAt).toBe(padrao);
+    // Relaxando ambos, arquivados aparecem.
+    expect(relaxandoAmbos).toBeGreaterThan(padrao);
+  });
 });

@@ -31,7 +31,7 @@ export function listMoradores(params: ListMoradoresParams) {
   return withTenant(async (tx) => {
     const where = {
       ...(params.includeArquivados ? {} : { deleted_at: null }),
-      ...(params.includeInativos ? {} : { ativo: true }),
+      ...(params.includeInativos || params.includeArquivados ? {} : { ativo: true }),
       ...(params.unidadeId ? { unidade_id: params.unidadeId } : {}),
       ...(params.q
         ? {
