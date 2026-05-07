@@ -1,0 +1,23 @@
+storyId: '3.10'
+storyTitle: 'Tela /portaria/pendentes (lista pendente_identificacao)'
+verdict: PASS
+reviewer: '@qa (Quinn)'
+date: '2026-05-07'
+summary: |
+  Lista de pacotes pendente_identificacao ordenados por urgência (mais antigo
+  primeiro), linka para /chegada/confirmar (3.8) que tem o form de resolução.
+  Empty state amigável. BottomNavBar já apontava aqui (3.1).
+
+quality_checks:
+  code_review: { status: PASS }
+  unit_tests: { status: PASS, notes: '3 integration tests + 299/299 total' }
+  acceptance_criteria: { status: PASS }
+  no_regressions: { status: PASS }
+  performance: { status: PASS, notes: 'Limit 100; paginação é tech debt' }
+  security: { status: PASS, notes: 'Tenant isolation via withTenantContext' }
+  documentation: { status: PASS }
+
+issues: []
+next_steps:
+  - '@devops merge'
+  - 'Epic 3 funcional CONCLUÍDO 🎉. Próximo: 3.11 Brand Ponto24, depois 3.12 Deploy VPS'
