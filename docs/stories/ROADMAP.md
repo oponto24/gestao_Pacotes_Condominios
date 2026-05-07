@@ -36,19 +36,21 @@
 
 ---
 
-## Epic 2 — Cadastros (P0)
+## Epic 2 — Cadastros (P0) — Em progresso (4/7 Done)
 
 **Objetivo:** CRUD completo de condomínios, setores, unidades, moradores. Importação CSV.
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 2.1 | CRUD Condominio (super-admin only) | **Ready for Review** 🔍 | 1.6, 1.10 |
-| 2.2 | CRUD Setor por condomínio (admin) | **Ready for Review** 🔍 | 1.6, 2.1, 2.7 |
-| 2.3 | CRUD Unidade por condomínio (admin) | **Ready for Review** 🔍 | 2.2 |
+| 2.1 | CRUD Condominio (super-admin only) | **Done** ✅ | 1.6, 1.10 |
+| 2.2 | CRUD Setor por condomínio (admin) | **Done** ✅ | 1.6, 2.1, 2.7 |
+| 2.3 | CRUD Unidade por condomínio (admin) | **Done** ✅ | 2.2 |
 | 2.4 | CRUD Morador (principal + adicionais) por unidade (admin) | Draft | 2.3 |
 | 2.5 | Importação CSV — upload + parser + validação | Draft | 2.4 |
 | 2.6 | Importação CSV — preview com erros + commit transacional | Draft | 2.5 |
-| 2.7 | Layout AdminLayout + navegação cadastros | **Ready for Review** 🔍 | 1.5, 1.6, 2.1 |
+| 2.7 | Layout AdminLayout + navegação cadastros | **Done** ✅ | 1.5, 1.6, 2.1 |
+
+**Mergeadas em main via PR #13** (merge cumulativo, mesma estratégia do Epic 1 → PR #9).
 
 ---
 
