@@ -1,0 +1,160 @@
+storyId: 2.1
+storyTitle: CRUD Condominio (super-admin only)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-06'
+verdict: PASS
+score: 9.5/10
+
+summary: |
+  Story inaugural do Epic 2 implementada com excelente qualidade arquitetural.
+  Helpers centralizados (super-admin-guard, handle-error, errors.ts ampliado)
+  preparam o terreno para todo o Epic 2 — investimento que paga dividendos.
+  Validação Zod com transforms (sugestão PO), soft delete + restore, UI
+  funcional com Sheet lateral. Smoke E2E 9/9 validado pelo usuário.
+  62/62 tests passando.
+
+acceptance_criteria:
+  ac1_zod_validators: PASS  # transforms aplicados (sugestão PO atendida)
+  ac2_get_list: PASS        # paginado + _count + filtro arquivados + busca q
+  ac3_post_create: PASS     # 409 conflict CNPJ ativo OU arquivado
+  ac4_get_detail: PASS      # _count completo (4 entidades)
+  ac5_patch_update: PASS    # log inclui changed (apenas keys)
+  ac6_delete_archive: PASS  # soft delete + endpoint restore separado
+  ac7_shadcn_components: PASS  # 5 componentes manuais (input/label/table/sheet/badge)
+  ac8_super_admin_page: PASS  # server component + redirect + empty state com CTA
+  ac9_condominio_form: PASS  # useState + Zod (decisão consciente, sem RHF)
+  ac10_seed_test_endpoint: PASS  # DEV only com guard NODE_ENV
+  ac11_tests: PASS          # 12 validator + 7 DB helpers + 1 HTTP guard
+  ac12_documentation: PASS  # runbook super-admin.md completo
+  ac13_quality_gates: PASS  # lint/typecheck/build/test + smoke E2E manual
+
+quality_checks:
+  code_review:
+    score: 9/10
+    findings:
+      - severity: low
+        category: code
+        description: |
+          Inconsistência menor: `DELETE` retorna 404 quando já arquivado,
+          mas `restore` retorna 200 com `already_active: true` quando já ativo.
+        recommendation: |
+          Padronizar: ambos idempotentes (200 com flag) OU ambos rígidos (404).
+          Recomendo idempotente em ambos — UX mais resiliente. Não-bloqueante.
+
+      - severity: info
+        category: code
+        description: |
+          `condominio_email` no DB pode ser NULL OU '' (string vazia) dependendo
+          do caminho de update. Helper `updateCondominio` faz `data.contato_email || null`
+          o que normaliza string vazia para NULL — bom. Mas o `create` faz
+          `data.contato_email ?? null` que mantém '' como '' (Zod schema converte
+          '' para undefined antes, então OK).
+        recommendation: |
+          Funcional. Documentar invariante "contato_email: NULL ou string não-vazia"
+          em comment do schema Prisma quando próxima migration tocar nesse campo.
+
+      - severity: info
+        category: design
+        description: |
+          Helper `requireSuperAdmin()` lança `ForbiddenError` (403) para qualquer
+          role != super_admin (admin, porteiro). Correto. Mas error message
+          "Apenas super_admin pode acessar este endpoint" expõe o termo interno
+          "super_admin" ao admin que tenta acessar.
+        recommendation: |
+          Trocar para "Acesso negado" genérico. Pequeno hardening de security
+          através de obscuridade. Não-bloqueante.
+
+  unit_tests:
+    score: 10/10
+    coverage:
+      validators (12):
+        - payload válido + normalização CNPJ/CEP/E.164
+        - CNPJ vazio → undefined
+        - CEP/CNPJ inválido com mensagem PT-BR
+        - estado lowercase rejeitado
+        - telefone curto rejeitado
+        - nome curto rejeitado
+        - email inválido rejeitado
+        - update parcial OK
+        - listQuery defaults + coerce + boundary (pageSize > 100)
+      db_helpers (7):
+        - create + getById com _count
+        - list paginado + filtro q
+        - update parcial preserva campos
+        - archive faz soft delete (verificado deleted_at !== null + ativo=false)
+        - restore reverte (verificado deleted_at === null)
+        - findByCnpj detecta duplicata mesmo arquivado
+        - list respeita filtro includeArquivados
+      http (1):
+        - GET sem auth → 401
+
+  acceptance_criteria_traceability:
+    score: 10/10
+    notes: |
+      13 ACs com 60+ sub-itens marcados [x]. Todos rastreáveis a código + testes.
+      Sugestões PO (Zod transforms + empty state com CTA) atendidas.
+
+  no_regressions:
+    score: 10/10
+    evidence: 62/62 tests passando (42 baseline Epic 1 + 20 novos).
+
+  performance:
+    score: 10/10
+    notes: |
+      Lista paginada com 1 query Prisma + `_count` (sem N+1).
+      Limite max 100 por página previne abuse.
+      Sem índices novos necessários (Prisma usa PK + nome para ORDER).
+
+  security:
+    score: 10/10
+    findings:
+      - Guard centralizado `requireSuperAdmin()` em TODOS os 5 endpoints
+      - Validação Zod aplicada em payloads (CREATE/PATCH) e query (LIST)
+      - Smoke confirmou: GET e POST sem auth retornam 401
+      - Soft delete preserva FKs (sem perda de dados história)
+      - Endpoint seed-test bloqueado em prod (NODE_ENV check)
+      - Sem secrets vazados nos logs (logger Pino com redact da story 1.9)
+      - CNPJ unique global previne duplicação cross-arquivado
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/super-admin.md (quem é super_admin, CRUD, validação, permissões)
+      - infra/README.md atualizado
+      - Dev Agent Record com 9 decisões documentadas
+      - Smoke E2E 9/9 cenários validados pelo usuário (anexado na story)
+
+issues: []
+
+observations:
+  - severity: info
+    description: |
+      Reuso futuro: `super-admin-guard.ts` e `handle-error.ts` foram desenhados
+      como utilitários compartilhados. Stories 2.2-2.7 (CRUDs admin scoped por
+      tenant) podem espelhar este pattern com `requireAdmin()` ou
+      `requireRole(['admin', 'super_admin'])`.
+  - severity: info
+    description: |
+      `errors.ts` ampliado com 4 classes (Forbidden/NotFound/Conflict/Validation)
+      todas extendem TenantError → integram com handleApiError() existente.
+      Boa fundação para Epic 2.
+  - severity: info
+    description: |
+      Smoke E2E manual (9/9) cobre o caminho do usuário. Falta apenas confirmar
+      visualmente em mobile breakpoint (Sheet em telas <768px) — out of scope
+      para esta story (PWA layout vem na 3.1).
+
+recommendations:
+  before_next_story:
+    - Padronizar idempotência DELETE/restore (LOW issue) — ou aceitar como tech debt
+    - Trocar mensagem "Apenas super_admin..." por "Acesso negado" genérico (INFO)
+  for_future_stories:
+    - Story 2.2-2.4: reaproveitar `requireSuperAdmin` pattern criando `requireRole(['admin','super_admin'])` ou similar
+    - Story 8.1: SuperAdminLayout dedicado — adicionar nav lateral com /super-admin/condominios + outros futuros
+    - Story 8.3: audit_log de criar/arquivar condomínio (compliance LGPD)
+
+next_action: |
+  Story aprovada para push. @devops Gage executa:
+    1. *pre-push (já validado)
+    2. *push origin feature/2.1-crud-condominio
+    3. *create-pr → PR #10 contra main (primeira do Epic 2)
