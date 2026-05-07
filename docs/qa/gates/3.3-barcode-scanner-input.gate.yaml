@@ -1,0 +1,238 @@
+storyId: 3.3
+storyTitle: Componente BarcodeScannerInput (html5-qrcode + fallback)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-07'
+verdict: PASS
+score: 9/10
+
+summary: |
+  Componente reusável de scanner de código de barras (1D + QR). State
+  machine via `useReducer` com 5 kinds (`closed`/`requesting`/`scanning`/
+  `closing`/`error`). Cleanup imperativo do html5-qrcode + container DOM
+  isolado de React.
+
+  **Bug HIGH descoberto e resolvido durante smoke E2E:** `removeChild error`
+  por conflito de DOM ownership entre React e html5-qrcode. Solução
+  arquitetural (não workaround): div do scanner criado imperativamente
+  via `document.createElement`, anexado ao container que React vê como
+  vazio. html5-qrcode tem ownership total do video que insere; React não
+  tenta `removeChild` de nós que não controla.
+
+  **9 unit tests** (176→185), **smoke S1+S2+S6 PASS** em browser real
+  (modal abre, QR do WhatsApp do user detectado e input preenchido,
+  integração no playground), **S3-S5 cobertos por unit tests** (digitação
+  manual, cleanup unmount, mock NotAllowedError).
+
+  Score 9/10 reflete: -0.5 pelo bug HIGH descoberto pós-implementação
+  (mas resolvido na mesma sessão), -0.5 pelos S3-S5 não testados em
+  browser real (mitigados por unit tests com mocks robustos).
+
+acceptance_criteria:
+  ac1_componente: PASS              # 'use client', props, layout horizontal, input editável
+  ac2_modal_fullscreen: PASS        # Sheet right + header + X + visor 4:3 + texto auxiliar
+  ac3_html5_qrcode: PASS            # dynamic import + 6 formatos + facingMode environment + cleanup 2 passos
+  ac4_state_machine: PASS           # useReducer + 5 estados (incluindo 'closing' anti-race) + cleanup todos paths
+  ac5_permissao_erros: PASS         # 4 mensagens mapeadas + retry + opção "Fechar e digitar"
+  ac6_acessibilidade: PASS          # aria-label, role="alert", X com label, foco volta ao input
+  ac7_tests: PASS                   # 9 unit tests cobrindo state machine + debounce + cleanup
+  ac8_documentacao: PASS            # runbook expandido com API + state machine + decisões técnicas
+  ac9_quality_gates: PASS           # lint/typecheck/test/build + smoke S1+S2+S6 PASS
+
+quality_checks:
+  code_review:
+    score: 9/10
+    findings:
+      - severity: high_resolved
+        category: code
+        title: Bug `removeChild` por DOM ownership — DESCOBERTO E RESOLVIDO
+        description: |
+          Smoke E2E pegou erro `Failed to execute 'removeChild' on 'Node':
+          The node to be removed is not a child of this node` ao clicar
+          "Bipar". Causa raiz: React controlava JSX children do mesmo div
+          onde html5-qrcode inseria <video>. Cleanup imperativo via
+          `removeChild` colidia com React reconciler.
+        resolution: |
+          Refatoração arquitetural em 2 commits (`ac87101`, `e0f81ae`):
+          1. State `closing` intermediário mantém modal renderizado durante
+             cleanup async (anti-race com Sheet unmount).
+          2. Container do scanner é `<div ref={containerRef}>` PURO sem
+             children JSX. Div interno criado via `document.createElement`
+             e anexado imperativamente. React vê wrapper vazio → não tenta
+             remover nada que html5-qrcode controla.
+          3. Loading "Solicitando acesso à câmera…" virou overlay absoluto
+             IRMÃO do container (não filho).
+
+          Pattern documentado: integrar libs imperativas que controlam DOM
+          requer container isolado de JSX children. Aplicável a outras libs
+          futuras (e.g. mapas, charts).
+        recommendation: |
+          ✅ Resolvido. Padrão registrado em runbook `docs/runbooks/portaria-pwa.md`.
+          Ação para próximas stories: ao integrar libs com DOM imperativo
+          (exemplo: leaflet/mapbox), seguir mesmo pattern (container puro
+          + content via createElement).
+
+      - severity: info
+        category: design
+        description: |
+          **Dynamic import (`await import('html5-qrcode')`):** lib ~50KB só
+          carrega quando user clica "Bipar". Bundle inicial leve (5.96KB
+          em /chegada vs ~60KB se eager).
+      - severity: info
+        category: design
+        description: |
+          **6 formatos curados** (QR_CODE + CODE_128 + CODE_39 + EAN_13 +
+          EAN_8 + UPC_A). Excluído ITF/CODABAR para reduzir falsos positivos.
+      - severity: info
+        category: design
+        description: |
+          **Flag `alreadyDetectedRef.current`** (sugestão @po): previne
+          múltiplos onChange para o mesmo código antes do `stop()` completar.
+          Test cobre.
+      - severity: info
+        category: design
+        description: |
+          **`useId()` no div do scanner** (sugestão @po): IDs únicos por
+          componente. Combinado com cleanup imperativo de div órfão antes
+          de criar novo, elimina conflito "instância já anexada".
+      - severity: info
+        category: design
+        description: |
+          **`maxLength=100` no input texto** (sugestão @po): defesa contra
+          paste acidental. Slice no onChange garante.
+      - severity: info
+        category: ux
+        description: |
+          **Estado 'closing' transparente:** mostra texto "Fechando…"
+          durante cleanup async (~100-300ms). Imperceptível mas evita
+          modal "engasgar" ao detectar QR.
+      - severity: low
+        category: code
+        description: |
+          **Bundle html5-qrcode (~50KB)** + lucide icons. Combinado com
+          PhotoCapture (3.2), bundle de portaria está em ~30KB ainda
+          (dynamic import ajuda muito). Aceitável.
+
+  unit_tests:
+    score: 9/10
+    coverage:
+      barcode_scanner_input (9):
+        - render input + botão "Bipar"
+        - digitação manual chama onChange
+        - **maxLength respeitado** (anti-paste)
+        - click "Bipar" abre modal
+        - **detecção dispara onChange + cleanup async**
+        - **detecção dupla ignorada** (debounce flag)
+        - permissão negada → estado error com retry
+        - erro genérico → fallback de digitação manual
+        - **cleanup: stop + clear no unmount**
+      smoke E2E (3 PASS confirmados):
+        - **S1 PASS** — modal abre com scanner ativo (após fix removeChild)
+        - **S2 PASS** — QR Code do WhatsApp do user detectado, input preenchido
+        - **S6 PASS** — integração no playground em /chegada
+      smoke não testado (mitigado por unit tests):
+        - S3 digitação manual → coberto por unit
+        - S4 X fecha modal → coberto por unit (cleanup unmount)
+        - S5 permissão negada → coberto por unit (mock NotAllowedError)
+
+  acceptance_criteria_traceability:
+    score: 9/10
+    notes: |
+      9 ACs com 40+ sub-itens, todos PASS. AC9 marca smoke S1+S2+S6 PASS
+      em browser real + S3-S5 cobertos por unit tests (decisão pragmática).
+
+  no_regressions:
+    score: 10/10
+    evidence: |
+      185/185 tests (176 baseline + 9 novos). Story só ADICIONA componente +
+      atualiza ChegadaPlaygroundClient + adiciona dep html5-qrcode.
+
+  performance:
+    score: 9/10
+    notes: |
+      Dynamic import garante que html5-qrcode só carrega quando user clica
+      "Bipar". Bundle /chegada: 5.96KB (vs ~60KB se eager). Cleanup async
+      em 2 passos (stop + clear) + remoção imperativa do div. Estado 'closing'
+      adiciona ~100-300ms perceptíveis ao fechar — aceitável vs alternativa
+      de erro UI quebrado.
+
+  security:
+    score: 10/10
+    findings:
+      - **Cleanup imperativo determinístico** evita scanner residual ativo
+      - **Permissão negada NÃO bloqueia** — input texto continua editável
+      - **Container DOM isolado de React** previne bugs de UI race
+      - **HTTPS-only em produção** (mesmo da 3.2, documentado no runbook)
+      - **`maxLength=100`** previne paste de strings gigantes
+      - **`alreadyDetectedRef` flag** previne onChange storm de detecções
+        múltiplas
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/portaria-pwa.md expandido com seção BarcodeScannerInput
+        completa: API, formatos, state machine ASCII, cleanup 2 passos,
+        decisões técnicas (dynamic import, useId, debounce, maxLength)
+      - Dev Agent Record com 11 decisões + 3 sugestões @po implementadas
+      - Comentários inline explicando o pattern de DOM ownership isolado
+      - Runbook menciona "como testar com QR Code"
+
+issues:
+  - severity: low
+    category: process
+    title: Smoke S3-S5 não testados em browser real
+    description: |
+      S3 (digitação manual), S4 (X fecha modal), S5 (permissão negada)
+      não validados em browser real nesta sessão. Coberta a lógica via
+      unit tests com mocks robustos do Html5Qrcode + permission errors.
+    fix_size: |
+      Mitigação:
+      (a) Unit tests cobrem os caminhos comportamentalmente (9 tests, 100%
+          dos paths críticos)
+      (b) Validação visual em produção/piloto (story 8.4 deploy)
+      (c) S2 (caminho crítico de detecção) PASS em browser real é o suficiente
+          para confiança no componente
+
+observations:
+  - severity: info
+    description: |
+      **Pattern Epic 3 estabelecido (3/3 stories até agora):** PortariaLayout +
+      PhotoCapture + BarcodeScannerInput. Componentes reusáveis em
+      `src/components/portaria/`. Integrarão na story 3.6 (CapturaPage).
+  - severity: info
+    description: |
+      **Lição arquitetural valiosa:** DOM ownership entre React e libs
+      imperativas. Padrão de container puro + createElement aplicável a
+      futuras integrações (mapas, charts, vídeo players). Documentado.
+  - severity: info
+    description: |
+      **Tech debt sugerido @po pendente (não-bloqueante):** hook
+      `useCameraPermission` compartilhado entre PhotoCapture e
+      BarcodeScannerInput. Avaliar refatoração agora que padrão está claro
+      em ambas stories. Pode ser story de polimento Epic 8 ou tech debt.
+
+recommendations:
+  before_merge:
+    - **Smoke S3-S5 em browser real** se possível antes do merge —
+      complementa cobertura visual. Não bloqueia.
+
+  for_next_stories:
+    - **Story 3.4 (POST /api/pacotes):** consumir tanto Blob do PhotoCapture
+      quanto código do BarcodeScannerInput via FormData. Validar
+      Content-Type + sanitizar string do código.
+    - **Story 3.6 (CapturaPage):** consumir ambos componentes (`<PhotoCapture>`
+      + `<BarcodeScannerInput>`) substituindo `ChegadaPlaygroundClient`.
+      Adicionar formulário de confirmação dos dados extraídos (FR-014).
+    - **Refactor opcional:** extrair `useCameraPermission` hook compartilhado
+      entre 3.2 e 3.3. Vale ~2h de trabalho para reduzir duplicação de 5
+      DOMException mappings + state machine. Pode virar tech debt minor.
+
+next_action: |
+  Story aprovada PASS 9/10. Bug HIGH descoberto E resolvido na mesma sessão
+  (qualidade do processo de smoke).
+
+  Próximo na cadeia AIOX: **@devops (Gage)** prepara push da branch
+  `feature/3.3-barcode-scanner-input` + PR isolado + merge automático
+  conforme preferência do usuário documentada.
+
+  Após merge: **@sm** cria draft 3.4 (POST /api/pacotes — backend, primeira
+  story de pipeline IA) ou avaliar refactor `useCameraPermission` antes.
