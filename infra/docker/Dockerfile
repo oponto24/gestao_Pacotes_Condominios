@@ -5,13 +5,14 @@
 #   - deps        : instala dependências (cache layer otimizado)
 #   - development : roda `next dev` (usado por app + worker em dev)
 #   - builder     : compila Next.js para produção
-#   - production  : imagem final mínima (usada em story 8.4 — deploy VPS)
+#   - production  : imagem final p/ app Next.js (standalone)
+#   - worker      : imagem final p/ worker BullMQ (story 3.12)
 # =====================================================================
 
 # ---------- Base ----------
 FROM node:22-alpine AS base
 WORKDIR /app
-RUN apk add --no-cache libc6-compat tini
+RUN apk add --no-cache libc6-compat tini openssl
 ENV NODE_ENV=development
 # tini = init process leve (PID 1) para evitar zombie processes em containers
 
@@ -36,22 +37,40 @@ FROM base AS builder
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+RUN npx prisma generate && npm run build
 
-# ---------- Stage: production ----------
+# ---------- Stage: production (app Next.js) ----------
 FROM node:22-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache tini && \
+RUN apk add --no-cache tini openssl && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "server.js"]
+
+# ---------- Stage: worker (BullMQ via tsx) ----------
+# Worker não precisa do build standalone — só do código + deps.
+# Roda TS direto via tsx pra evitar custom build do worker.
+FROM base AS worker
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY package.json package-lock.json tsconfig.json ./
+COPY src ./src
+COPY prisma ./prisma
+COPY workers ./workers
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["npx", "tsx", "workers/index.ts"]

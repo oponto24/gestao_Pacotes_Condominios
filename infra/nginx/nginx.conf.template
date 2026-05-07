@@ -1,0 +1,67 @@
+# Template Nginx para produção (story 3.12)
+# Variável ${DOMAIN} é interpolada na inicialização do container Nginx (envsubst).
+
+# HTTP → redirect HTTPS (após Let's Encrypt emitir cert)
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    # Path de validação Let's Encrypt
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Redirect tudo o resto pra HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS — proxy para Next.js
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Headers de segurança
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # Upload de foto: 10MB folga (PRD limita app a 5MB)
+    client_max_body_size 10M;
+    client_body_timeout 60s;
+
+    # Compressão
+    gzip on;
+    gzip_vary on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
+    gzip_min_length 1000;
+
+    # Path Let's Encrypt continua aceitando HTTP
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Tudo vai pro Next.js
+    location / {
+        proxy_pass http://app:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 90s;
+        proxy_send_timeout 90s;
+    }
+}
