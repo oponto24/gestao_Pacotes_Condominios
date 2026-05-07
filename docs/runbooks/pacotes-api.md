@@ -62,10 +62,36 @@
 - Path: `pacotes/{condominio_id}/{pacote_id}/original.{jpg|png}`
 - Permite cleanup fácil (admin deleta pacote → deleta dir)
 
-### Job extractLabel (story 3.5 ✅ implementada)
+### Job extractLabel (stories 3.5 + 3.7 ✅ implementadas)
 
 Payload: `{ pacote_id, condominio_id }`
 jobId: `pacote_id` (idempotência via 3.4)
+
+**Pipeline completo (3.5 IA + 3.7 matching):**
+
+1. Worker carrega pacote + foto + condominio + **unidades + moradores ativos** (super-admin bypass de RLS, filtra por tenant)
+2. Lê foto via `storage.get`
+3. Chama Claude Haiku 4.5 vision → JSON estruturado (Zod validado)
+4. **Roda `matchUnidadeMorador()`** — função pura, custo zero:
+   - Parse de complemento via regex BR (`AP 1304 Bloco 3` → `{apto:'1304', bloco:'3'}`)
+   - Busca unidade pelo número + bloco (se extraído)
+   - Match de nome via Levenshtein ≥ 0.7 contra moradores da unidade
+   - Fallback: morador `is_principal=true`
+5. Atualiza pacote em transação:
+   - **Sempre:** `ia_extracao_raw`, `ia_confianca`, `ia_processada_em`, campos textuais (`nome_destinatario_etiqueta`, `cep_etiqueta`, `complemento_etiqueta`, `remetente`)
+   - **Matched:** `unidade_id`, `destinatario_id`, `destinatario_resolvido_via`; status fica `rascunho` (3.8 confirma)
+   - **Pending:** `status = pendente_identificacao` (FR-021); pode ter `unidade_id` se achou unidade mas sem morador
+
+**Resultados de matching (`MatchResult.kind`):**
+
+| Resultado | status | unidade_id | destinatario_id | resolvido_via |
+|---|---|---|---|---|
+| `matched` (destinatário) | rascunho | UUID | UUID | `destinatario_cadastrado` |
+| `matched` (fallback) | rascunho | UUID | UUID principal | `fallback_principal` |
+| `pending/no_complemento` | pendente_identificacao | null | null | null |
+| `pending/unidade_nao_encontrada` | pendente_identificacao | null | null | null |
+| `pending/ambiguous_unidade` | pendente_identificacao | null | null | null |
+| `pending/no_morador` | pendente_identificacao | UUID | null | null |
 
 **Worker** lê foto via `storage.get`, chama **Claude Haiku 4.5 vision** com prompt caching ephemeral, valida JSON com Zod, e atualiza:
 - `pacote.ia_extracao_raw` (JSON com 6 campos: nome, endereço, CEP, complemento, transportadora, remetente)

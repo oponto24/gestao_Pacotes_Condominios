@@ -3,6 +3,10 @@ import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { storage } from '@/lib/storage';
 import { extractLabelFromImage } from '@/lib/anthropic/extract-label';
+import {
+  matchUnidadeMorador,
+  type MatchResult,
+} from '@/lib/matching/match-unidade-morador';
 import { loggerForJob } from '@/lib/logger';
 
 /**
@@ -27,6 +31,7 @@ export type ExtractLabelResult = {
   confianca: number;
   duration_ms: number;
   model: string;
+  match: MatchResult;
 };
 
 export const EXTRACT_LABEL_JOB_NAME = 'extractLabel' as const;
@@ -37,7 +42,7 @@ export async function processExtractLabel(
   const log = loggerForJob(job).child({ scope: 'extractLabel' });
   const { pacote_id, condominio_id } = job.data;
 
-  // 1. Carrega pacote + foto principal (bypassa RLS via super_admin context)
+  // 1. Carrega pacote + foto + condominio + unidades + moradores (bypassa RLS)
   const result = await db.$transaction(async (tx) => {
     await tx.$executeRaw`SET LOCAL app.is_super_admin = 'true'`;
 
@@ -57,7 +62,28 @@ export async function processExtractLabel(
       throw new Error(`Foto principal não encontrada para pacote ${pacote_id}`);
     }
 
-    return { pacote, foto };
+    const condominio = await tx.condominio.findUniqueOrThrow({
+      where: { id: condominio_id },
+      select: { cep: true },
+    });
+
+    const unidades = await tx.unidade.findMany({
+      where: { condominio_id, ativo: true },
+      select: { id: true, identificador: true, bloco: true },
+    });
+
+    const moradores = await tx.morador.findMany({
+      where: { condominio_id, ativo: true, deleted_at: null },
+      select: {
+        id: true,
+        unidade_id: true,
+        nome: true,
+        nome_normalizado: true,
+        is_principal: true,
+      },
+    });
+
+    return { pacote, foto, condominio, unidades, moradores };
   });
 
   // 2. Lê foto do storage (fora da transação — I/O externo)
@@ -69,18 +95,56 @@ export async function processExtractLabel(
     mimeType: result.foto.mime_type,
   });
 
-  // 4. Atualiza pacote + cria evento em transação
+  // Narrow do union (extraction.json é success ou fallback de erro)
+  const iaJson = extraction.json as Record<string, unknown>;
+  const iaNome = (iaJson.nome_destinatario as string | null | undefined) ?? null;
+  const iaEndereco = (iaJson.endereco as string | null | undefined) ?? null;
+  const iaCep = (iaJson.cep as string | null | undefined) ?? null;
+  const iaComplemento = (iaJson.complemento as string | null | undefined) ?? null;
+  const iaRemetente = (iaJson.remetente as string | null | undefined) ?? null;
+
+  // 4. Roda matching IA → unidade/morador (story 3.7) — função pura, custo zero
+  const match = matchUnidadeMorador({
+    condominio_cep: result.condominio.cep,
+    ia: {
+      nome_destinatario: iaNome,
+      cep: iaCep,
+      complemento: iaComplemento,
+    },
+    unidades: result.unidades,
+    moradores: result.moradores,
+  });
+
+  // 5. Atualiza pacote + cria evento em transação
   await db.$transaction(async (tx) => {
     await tx.$executeRaw`SET LOCAL app.is_super_admin = 'true'`;
 
-    await tx.pacote.update({
-      where: { id: pacote_id },
-      data: {
-        ia_extracao_raw: extraction.json as Prisma.InputJsonValue,
-        ia_confianca: new Prisma.Decimal(extraction.confianca),
-        ia_processada_em: new Date(),
-      },
-    });
+    const updateData: Prisma.PacoteUpdateInput = {
+      ia_extracao_raw: extraction.json as Prisma.InputJsonValue,
+      ia_confianca: new Prisma.Decimal(extraction.confianca),
+      ia_processada_em: new Date(),
+      // Campos textuais extraídos (servem pra UI da 3.8 e auditoria)
+      nome_destinatario_etiqueta: iaNome,
+      endereco_etiqueta: iaEndereco,
+      cep_etiqueta: iaCep,
+      complemento_etiqueta: iaComplemento,
+      remetente: iaRemetente,
+    };
+
+    if (match.kind === 'matched') {
+      updateData.unidade = { connect: { id: match.unidade_id } };
+      updateData.destinatario = { connect: { id: match.destinatario_id } };
+      updateData.destinatario_resolvido_via = match.resolvido_via;
+      // Status permanece rascunho — story 3.8 confirma
+    } else {
+      // pending: muda para pendente_identificacao (FR-021)
+      updateData.status = 'pendente_identificacao';
+      if (match.unidade_id) {
+        updateData.unidade = { connect: { id: match.unidade_id } };
+      }
+    }
+
+    await tx.pacote.update({ where: { id: pacote_id }, data: updateData });
 
     await tx.pacoteEvento.create({
       data: {
@@ -95,7 +159,21 @@ export async function processExtractLabel(
           output_tokens: extraction.usage.output_tokens,
           cache_creation_input_tokens: extraction.usage.cache_creation_input_tokens ?? null,
           cache_read_input_tokens: extraction.usage.cache_read_input_tokens ?? null,
-        },
+          matching: {
+            kind: match.kind,
+            unidade_id: match.unidade_id,
+            destinatario_id: match.kind === 'matched' ? match.destinatario_id : null,
+            resolvido_via: match.kind === 'matched' ? match.resolvido_via : null,
+            reason: match.kind === 'pending' ? match.reason : null,
+            cep_diverge: match.flags.cep_diverge,
+            complemento_extraido: match.flags.complemento_extraido
+              ? {
+                  apto: match.flags.complemento_extraido.apto,
+                  bloco: match.flags.complemento_extraido.bloco,
+                }
+              : null,
+          },
+        } as Prisma.InputJsonValue,
       },
     });
   });
@@ -110,8 +188,10 @@ export async function processExtractLabel(
       tokens_input: extraction.usage.input_tokens,
       tokens_output: extraction.usage.output_tokens,
       cache_read: extraction.usage.cache_read_input_tokens,
+      match_kind: match.kind,
+      match_reason: match.kind === 'pending' ? match.reason : match.resolvido_via,
     },
-    'IA extração concluída',
+    'IA extração + matching concluídos',
   );
 
   return {
@@ -119,5 +199,6 @@ export async function processExtractLabel(
     confianca: extraction.confianca,
     duration_ms: extraction.durationMs,
     model: extraction.model,
+    match,
   };
 }
