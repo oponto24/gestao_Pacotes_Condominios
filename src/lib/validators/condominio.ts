@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PHONE_REGEX, digitsOnly, normalizePhone } from './_shared';
 
 /**
  * Validação Zod compartilhada client+server para Condominio.
@@ -7,30 +8,17 @@ import { z } from 'zod';
  * - Inputs aceitam pontuação humana (CNPJ/CEP/telefone formatados)
  * - `transform` normaliza pra forma canônica (sem pontuação) ANTES do save
  * - Mensagens em português
+ *
+ * Helpers de telefone (PHONE_REGEX, normalizePhone, digitsOnly) movidos
+ * para `_shared.ts` na story 2.4 para reuso em moradores.
  */
 
 // XX.XXX.XXX/XXXX-XX (com pontuação) ou 14 dígitos puros
 const CNPJ_REGEX = /^(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{14})$/;
 // XXXXX-XXX (com hífen) ou 8 dígitos
 const CEP_REGEX = /^(\d{5}-\d{3}|\d{8})$/;
-// E.164 (+55XXXXXXXXXXX, 12-14 dígitos no total) OU formato BR (XX) XXXXX-XXXX / XX XXXXX-XXXX / com ou sem espaços
-const PHONE_REGEX = /^(\+\d{12,14}|\(?\d{2}\)?\s?\d{4,5}-?\d{4})$/;
 // UF brasileiro — exatamente 2 chars uppercase
 const UF_REGEX = /^[A-Z]{2}$/;
-
-function digitsOnly(s: string): string {
-  return s.replace(/\D/g, '');
-}
-
-/** Normaliza telefone BR pra E.164 (+55XXXXXXXXXXX). */
-function normalizePhone(phone: string): string {
-  const d = digitsOnly(phone);
-  // Já tem código do país
-  if (d.length >= 12 && d.startsWith('55')) return `+${d}`;
-  // Formato nacional (10 ou 11 dígitos)
-  if (d.length === 10 || d.length === 11) return `+55${d}`;
-  return `+${d}`;
-}
 
 const baseShape = {
   nome: z

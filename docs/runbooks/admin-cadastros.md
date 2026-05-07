@@ -116,6 +116,71 @@ passarem. Sempre check explícito antes do INSERT.
 
 UI esconde botão "Excluir" quando qualquer um > 0.
 
+## Morador (Story 2.4)
+
+Moradores vinculados a unidades. **1 principal por unidade** (recebe
+notificações WhatsApp como fallback) + N adicionais.
+
+### UI
+
+`/admin/moradores` (sidebar do AdminLayout).
+
+### API REST
+
+| Método | Path | Propósito |
+|---|---|---|
+| `GET` | `/api/admin/moradores` | Lista paginada com `_count.pacotes_destinatario` + `unidade` |
+| `GET` | `/api/admin/moradores/[id]` | Detalhe |
+| `POST` | `/api/admin/moradores` | Cria — invariante 1-principal aplicado em transação |
+| `PATCH` | `/api/admin/moradores/[id]` | Update parcial — **NÃO aceita `unidade_id`** |
+| `DELETE` | `/api/admin/moradores/[id]` | **Soft delete LGPD** (NFR-031) — seta `deleted_at`, NÃO físico |
+| `POST` | `/api/admin/moradores/[id]/restore` | Reverte soft delete |
+
+**Query params do list:** `?page=1&pageSize=20&q=<busca>&unidade_id=<uuid>&include_inativos=false&include_arquivados=false`
+
+### Modelo
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `condominio_id` | UUID | injetado do tenant context |
+| `unidade_id` | UUID | FK obrigatória — **NÃO mudável via PATCH** |
+| `nome` | string (3-200) | trim |
+| `nome_normalizado` | string (200) | **derivado** server-side via `normalizarNome(nome)` (matching IA story 3.7) |
+| `telefone` | string (E.164) | **UNIQUE composite com condominio_id** — mesmo telefone em condomínios diferentes coexiste |
+| `email` | string (max 200) | opcional, sem unique |
+| `is_principal` | boolean | **invariante: 1 por unidade** (transação) |
+| `ativo` | boolean | desativação reversível |
+| `deleted_at` | DateTime? | **soft delete LGPD** (NFR-031) — preserva FKs históricas |
+
+### Invariante "1 principal por unidade"
+
+Aplicado em transação no CREATE e PATCH. Antes do INSERT/UPDATE com
+`is_principal=true`, faz `updateMany({ unidade_id, is_principal: true,
+deleted_at: null }, { is_principal: false })`.
+
+**Soft delete também desmarca `is_principal`** (admin precisa re-marcar
+explicitamente após restore).
+
+### Soft delete vs DELETE físico (LGPD)
+
+- **Por que soft:** preserva FKs históricos (`pacote.destinatario_id`,
+  `whatsapp_message.morador_id`)
+- `deleted_at IS NOT NULL` esconde da lista por padrão; restore reverte
+- **Restore NÃO restaura `is_principal`:** evita conflito silencioso
+
+### `nome_normalizado` (matching IA da 3.7)
+
+Calculado server-side via `normalizarNome(nome)`: lowercase + remove acentos
+(`João` → `joao`) + trim + colapsa espaços. Será consumido pelo algoritmo
+de matching IA-extraído ↔ morador.
+
+### Telefone E.164
+
+Helpers em `src/lib/validators/_shared.ts` (extraídos da 2.1 para reuso).
+Aceita `(11) 98765-4321` ou `+5511987654321` no input, normaliza para
+`+5511987654321` antes do save. Será usado pela story 4.x (Meta WhatsApp).
+
 ## Próximas stories
 
-- **2.4 — CRUD Morador:** principal + adicionais por unidade
+- **2.5/2.6** — Importação CSV (upload + parser + validação + commit)
+- **3.7** — Algoritmo de matching IA usando `nome_normalizado`
