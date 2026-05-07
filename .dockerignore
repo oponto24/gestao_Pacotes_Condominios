@@ -31,10 +31,10 @@ ideia_de_projeto.md
 # Modelos de etiquetas (referência humana, não consumida pelo app)
 modelos_de_etiquetas
 
-# Prisma — schema precisa entrar na imagem pro postinstall (prisma generate)
-# Migrations e seed.ts ficam excluídos via subpath
-prisma/migrations
-prisma/seed.ts
+# Prisma — schema + migrations precisam entrar na imagem
+# (postinstall faz prisma generate; deploy roda prisma migrate deploy)
+# seed.ts é opcional — entra para podermos rodar npm run prisma:seed em prod via worker
+# (story 3.12 — deploy VPS)
 
 # Testes (não vão pra imagem de produção)
 tests
