@@ -31,6 +31,33 @@ export class NoCondominioAssignedError extends TenantError {
   }
 }
 
+export class ForbiddenError extends TenantError {
+  constructor(message = 'Acesso negado') {
+    super(message, 403, 'forbidden');
+  }
+}
+
+export class NotFoundError extends TenantError {
+  constructor(message = 'Recurso não encontrado') {
+    super(message, 404, 'not_found');
+  }
+}
+
+export class ConflictError extends TenantError {
+  constructor(message = 'Conflito') {
+    super(message, 409, 'conflict');
+  }
+}
+
+export class ValidationError extends TenantError {
+  constructor(
+    message = 'Dados inválidos',
+    public readonly fields?: Record<string, string[]>,
+  ) {
+    super(message, 400, 'validation_error');
+  }
+}
+
 export function isTenantError(e: unknown): e is TenantError {
   return e instanceof TenantError;
 }

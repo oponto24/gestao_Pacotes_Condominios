@@ -10,6 +10,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Tokens shadcn (mapeados pra CSS vars em globals.css) — usados por
+        // componentes ui/* (sheet, input, badge etc). Sem isso, classes como
+        // bg-background ficam vazias e overlays/painéis ficam transparentes.
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
+        // Texto secundário (descrições, placeholders, labels muted)
+        'text-secondary': '#6B7280',
         // Brand
         primary: {
           DEFAULT: '#2563EB',

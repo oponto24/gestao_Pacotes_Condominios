@@ -42,13 +42,13 @@
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 2.1 | CRUD Condominio (super-admin only) | Draft | 1.6 |
-| 2.2 | CRUD Setor por condomínio (admin) | Draft | 2.1 |
-| 2.3 | CRUD Unidade por condomínio (admin) | Draft | 2.1 |
+| 2.1 | CRUD Condominio (super-admin only) | **Ready for Review** 🔍 | 1.6, 1.10 |
+| 2.2 | CRUD Setor por condomínio (admin) | **Ready for Review** 🔍 | 1.6, 2.1, 2.7 |
+| 2.3 | CRUD Unidade por condomínio (admin) | **Ready for Review** 🔍 | 2.2 |
 | 2.4 | CRUD Morador (principal + adicionais) por unidade (admin) | Draft | 2.3 |
 | 2.5 | Importação CSV — upload + parser + validação | Draft | 2.4 |
 | 2.6 | Importação CSV — preview com erros + commit transacional | Draft | 2.5 |
-| 2.7 | Layout AdminLayout + navegação cadastros | Draft | 1.5 |
+| 2.7 | Layout AdminLayout + navegação cadastros | **Ready for Review** 🔍 | 1.5, 1.6, 2.1 |
 
 ---
 

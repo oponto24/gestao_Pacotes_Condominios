@@ -263,6 +263,25 @@ um processor registrado em `src/lib/queue/jobs/index.ts`.
 - **Storage abstraction:** `src/lib/storage/` — `LocalStorageDriver` hoje (volume nomeado `storage` em compose), trocável por S3/R2 sem refactor de callers. Detalhes em `docs/runbooks/storage.md`.
 - **Endpoint admin smoke storage:** `POST /api/admin/storage/test` (super_admin only) executa put → get → delete e retorna metadata.
 
+## Cadastros admin (Stories 2.2-2.4)
+
+CRUDs tenant-scoped administráveis pelo síndico/admin: Setor (✅ 2.2),
+Unidade (futuro 2.3), Morador (futuro 2.4). Detalhes em
+[`docs/runbooks/admin-cadastros.md`](../docs/runbooks/admin-cadastros.md).
+
+## Admin (Story 2.7)
+
+Layout `/admin/*` com sidebar lateral + header sticky + drawer mobile. Rotas
+stub para Pacotes/Setores/Unidades/Moradores aguardam implementação nas
+stories 2.2-2.4 e 6.1. Detalhes (estrutura, permissões, como adicionar
+páginas/items): [`docs/runbooks/admin-layout.md`](../docs/runbooks/admin-layout.md).
+
+## Super-admin (Story 2.1)
+
+UI de gestão de condomínios em `/super-admin/condominios` (apenas role
+`super_admin`). Detalhes (API REST, validação Zod, soft delete, permissões):
+[`docs/runbooks/super-admin.md`](../docs/runbooks/super-admin.md).
+
 ## Seed inicial (Story 1.10)
 
 Cria super-admin + WhatsApp number placeholder. Idempotente, com reconciliação Clerk por email.

@@ -1,0 +1,154 @@
+storyId: 2.2
+storyTitle: CRUD Setor por condomínio (admin)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-06'
+verdict: PASS
+score: 9.5/10
+
+summary: |
+  Primeiro CRUD tenant-scoped do Epic 2 entregue com excelente qualidade.
+  Pattern arquitetural sólido (`requireAdmin` + `withTenant` + `handleApiError`)
+  estabelece base para 2.3-2.4. Test crítico de tenant isolation passa
+  explicitamente. Bug de contraste descoberto durante smoke E2E foi fixado
+  retroativamente (beneficia stories 2.1 + 2.7 + 2.2). 82/82 tests.
+
+acceptance_criteria:
+  ac1_require_admin: PASS    # Helper centralizado, tipo concreto retornado
+  ac2_zod_validators: PASS   # preprocess para opcionais limpos (ajuste do dev)
+  ac3_db_helpers: PASS       # TODAS funções via withTenant() — RLS automático
+  ac4_get_list: PASS         # paginado + _count.pacotes + filtro inativos
+  ac5_post_create: PASS      # 409 conflict por nome duplicado (composite unique)
+  ac6_get_detail: PASS       # _count + 404 em outro tenant via RLS
+  ac7_patch_update: PASS     # partial + 409 em rename para nome existente
+  ac8_delete: PASS           # bloqueia DELETE se _count.pacotes > 0
+  ac9_admin_setores_page: PASS  # stub 2.7 substituído por server real
+  ac10_setor_form: PASS      # useState + Zod, mesmo pattern do CondominioForm
+  ac11_tests: PASS           # 14 novos (7 unit + 7 integration com isolation crítico)
+  ac12_documentation: PASS   # docs/runbooks/admin-cadastros.md (expansível 2.3/2.4)
+  ac13_quality_gates: PASS   # lint/typecheck/test + smoke E2E 10/10
+
+quality_checks:
+  code_review:
+    score: 9/10
+    findings:
+      - severity: low
+        category: code
+        description: |
+          `requireAdmin` retorna interface concreta construída manualmente em vez
+          de `Extract<TenantContext, ...>`. Decisão consciente do dev (TS narrow
+          falhou com discriminated union). Funcional, mas duplica shape do tipo
+          se TenantContext mudar.
+        recommendation: |
+          OK pra MVP. Refactor opcional: usar type guard function que faz narrow
+          via predicate (`function isAdminCtx(ctx): ctx is AdminCtx`). Não-bloqueante.
+
+      - severity: info
+        category: code
+        description: |
+          Página `/admin/setores` carrega `pageSize: 100` sem paginação visual.
+          Aceitável (admin típico tem <50 setores). Documentado em Dev Notes.
+        recommendation: |
+          Adicionar paginador igual ao da 2.1 quando virar dor (>100 setores num
+          condomínio é cenário irrealista pra MVP).
+
+      - severity: info
+        category: code
+        description: |
+          `findSetorByNome` no PATCH faz query separada antes do update. Poderia
+          ser feito via `try/catch` no `update` aproveitando unique constraint
+          DB-level (1 query vs 2). Trade-off: mensagem de erro PT-BR fica
+          melhor com check explícito.
+        recommendation: |
+          Manter pattern atual — UX da mensagem de erro vale a query extra.
+
+  unit_tests:
+    score: 10/10
+    coverage:
+      validators (7):
+        - payload mínimo aceito + descricao opcional → undefined
+        - payload completo + coerce capacidade string→number
+        - nome vazio rejeitado
+        - capacidade negativa rejeitada
+        - update partial + ativo boolean
+        - listQuery defaults + parse boolean
+      integration_tenant (7):
+        - **TENANT ISOLATION CRÍTICO:** setor de A não vaza para B (RLS)
+        - update preserva campos não enviados
+        - unique composite (condominio_id, nome) respeitado
+        - mesmo nome em tenants diferentes coexistem
+        - inactive encontrado por findFirst sem filtro ativo
+        - delete físico funciona quando sem pacotes
+      gaps:
+        - DELETE 409 (com pacotes vinculados) não tem teste explícito porque
+          requer fixture de pacote — aceitável, lógica trivial e validada por
+          QA via review do código
+
+  acceptance_criteria_traceability:
+    score: 10/10
+    notes: 13 ACs com 60+ sub-itens marcados [x]. Cada AC rastreável a código + teste.
+
+  no_regressions:
+    score: 10/10
+    evidence: |
+      82/82 tests passando (68 baseline + 14 novos).
+      Fix de contraste no Tailwind/Sheet NÃO quebrou suite — beneficia retroativamente.
+
+  performance:
+    score: 10/10
+    notes: |
+      Lista usa Promise.all (count + items paralelos).
+      `_count.pacotes` via Prisma — 1 query agregada (sem N+1).
+      pageSize cap em 100 previne abuse.
+
+  security:
+    score: 10/10
+    findings:
+      - **TENANT ISOLATION VALIDADO:** test integration prova RLS funcional
+        (setor de A não vaza para queries de B)
+      - `requireAdmin()` em todos os 5 endpoints (smoke confirmou 401 sem auth)
+      - `condominio_id` injetado do tenant context — payload Zod NÃO tem
+        o campo (defesa contra escape via input)
+      - Update NÃO permite mudar `condominio_id` (campos enumerados)
+      - DELETE valida `_count.pacotes` antes (preservação de FKs históricos)
+      - Smoke E2E confirmou conflito 409 funcional (nome duplicado dentro tenant)
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/admin-cadastros.md (estrutura para 2.3/2.4 expandirem)
+      - infra/README.md atualizado
+      - Dev Agent Record com 6 decisões documentadas
+      - Smoke E2E 10/10 + descoberta do bug de contraste documentada
+
+issues: []
+
+observations:
+  - severity: info
+    description: |
+      **Bug retroativo crítico fixado:** durante smoke E2E descobriu-se que
+      tailwind.config.ts não mapeava CSS vars (--background, --border, --input,
+      --ring) para classes Tailwind. Sheet ficava transparente, contraste
+      degradado em toda UI. Fix (commit d8d27d3) corrige stories 2.1 + 2.7 + 2.2
+      simultaneamente. Lição: validar tokens Tailwind em smoke visual desde a
+      primeira UI (story 2.1).
+  - severity: info
+    description: |
+      **Pattern reutilizável estabelecido para Epic 2:** `requireAdmin()` +
+      `withTenant()` + Zod validators + DB helpers + Sheet form + List client.
+      Stories 2.3 (Unidade) e 2.4 (Morador) podem espelhar 1:1 substituindo
+      apenas modelo + fields.
+
+recommendations:
+  before_next_story:
+    - Considerar adicionar smoke visual rápido na CI futura (Playwright headless
+      com screenshot) — preveniria bugs visuais como o de contraste
+  for_future_stories:
+    - Story 2.3: copiar pattern, adicionar FK `setor_id` ao Unidade + select
+    - Story 2.4: pattern + relacionamento N:1 com Unidade
+    - Epic 6 (admin pacotes): consumir setores ativos via select dropdown
+
+next_action: |
+  Story aprovada para push. @devops Gage executa:
+    1. *pre-push (já validado)
+    2. *push origin feature/2.2-crud-setor
+    3. *create-pr → PR #12 stacked sobre feature/2.7-admin-layout

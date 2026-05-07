@@ -1,0 +1,165 @@
+storyId: 2.7
+storyTitle: AdminLayout + navegação cadastros
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-06'
+verdict: PASS
+score: 9.5/10
+
+summary: |
+  Story de fundação visual entregue com excelente decoupling: server layout
+  faz auth/data fetch, client wrapper gerencia state mobile. Route group `(admin)`
+  do Next 15 corretamente aplicado. Sheet refactor non-breaking preserva
+  callers da 2.1. EmptyState atom investido para reuso em telas vazias futuras.
+  Smoke E2E 7/7 validado pelo usuário. 68/68 tests passando.
+
+acceptance_criteria:
+  ac1_admin_sidebar: PASS    # items + active + sub-items + Sair via Clerk
+  ac2_admin_header: PASS     # sticky + hamburger mobile + condomínio + UserMenu
+  ac3_user_menu: PASS        # <details>/<summary> nativo (sem dep nova)
+  ac4_admin_layout: PASS     # server guard + data fetch + redirect coverage
+  ac5_mobile_drawer: PASS    # Sheet side='left' + onNavigate fecha
+  ac6_dashboard_stub: PASS   # super-set: 3 stat cards _count
+  ac7_stubs_coming_soon: PASS  # 4 stubs DRY via ComingSoonPlaceholder
+  ac8_empty_state_atom: PASS  # reutilizável (icon + title + description + action)
+  ac9_state_hoisting: PASS   # AdminLayoutClient gerencia mobileOpen
+  ac10_role_guard: PASS      # super_admin/porteiro/pending/erro coberto + edge case condomínio inexistente
+  ac11_tests: PASS           # 6 unit (3 sidebar + 3 empty-state) — 68/68 total
+  ac12_documentation: PASS   # runbook admin-layout.md + infra/README atualizado
+  ac13_quality_gates: PASS   # lint/typecheck/test/build + smoke E2E manual 7/7
+
+quality_checks:
+  code_review:
+    score: 9/10
+    findings:
+      - severity: low
+        category: performance
+        description: |
+          `AdminLayout` faz 2 queries Prisma sequenciais (condominio + user)
+          após `getTenantContext`. Poderiam ser paralelas via `Promise.all`.
+          Cada uma é ~5ms, impacto baixo (<10ms total).
+        recommendation: |
+          Quick win opcional: `await Promise.all([db.condominio..., db.user...])`.
+          Não-bloqueante. Considerar em story de polimento.
+
+      - severity: info
+        category: ux
+        description: |
+          UserMenu via `<details>` não fecha automaticamente ao clicar fora.
+          Documentado em Dev Notes como decisão consciente — UX aceitável,
+          próximo clique fecha implicitamente.
+        recommendation: |
+          Se virar dor reportada, migrar para Radix DropdownMenu (focus trap +
+          click outside automático). Story de polimento futuro.
+
+      - severity: info
+        category: a11y
+        description: |
+          Sidebar tem `aria-label="Navegação admin"` ✅.
+          Items ativos usam `aria-current="page"` ✅.
+          Hamburger tem `aria-label` ✅.
+          Tudo conforme.
+        recommendation: |
+          Excelente baseline de acessibilidade. Manter padrão nas próximas
+          stories de UI (2.2-2.4, Epic 6).
+
+      - severity: info
+        category: design
+        description: |
+          `condominioCidadeUf` formatado como string "São Paulo/SP" no server,
+          passado pronto para o cliente. Boa separação — client não duplica
+          lógica de formatação.
+        recommendation: nenhuma
+
+  unit_tests:
+    score: 9/10
+    coverage:
+      admin_sidebar (3):
+        - renderiza items principais (Pacotes/Cadastros/Setores/Unidades/Moradores/Sair)
+        - item ativo recebe aria-current=page (matching pathname)
+        - toggle de Cadastros esconde sub-items
+      empty_state (3):
+        - renderiza title (heading)
+        - renderiza description quando passada
+        - renderiza action quando passada
+      gaps:
+        - AdminHeader não tem teste unit (UserMenu tampouco) — aceitável pois
+          comportamento crítico foi validado em smoke E2E manual
+        - AdminLayout server (guard de role) sem teste unit — testar server
+          components com mocks de Clerk seria over-engineering pra MVP
+
+  acceptance_criteria_traceability:
+    score: 10/10
+    notes: |
+      13 ACs com 60+ sub-itens marcados [x]. Cada AC rastreável a código + teste
+      ou validação E2E manual.
+
+  no_regressions:
+    score: 10/10
+    evidence: |
+      68/68 tests passando (62 baseline 2.1 + 6 novos da 2.7).
+      Sheet refactor não quebra caller da 2.1 (`CondominiosListClient` não passa
+      `side`, default `right` preservado).
+
+  performance:
+    score: 9/10
+    notes: |
+      Layout server: 2 queries DB pequenas (condomínio + user) por request.
+      `getTenantContext` cached via React.cache — único auth fetch por request.
+      Sidebar usa `usePathname` (não window.location) — re-render mínimo.
+      LOW: pode paralelizar 2 queries DB (mencionado em code review).
+
+  security:
+    score: 10/10
+    findings:
+      - Guard cobre TODOS os caminhos: super_admin/admin/porteiro/pending/erro/sem-auth
+      - Smoke confirmou 307 redirect para `/admin` E `/admin/setores` sem auth
+        (consistência entre rotas filhas)
+      - Edge case explícito: condomínio do user foi arquivado/deletado entre
+        login e nav → redirect `/` (não tela quebrada)
+      - Cross-area validation: super_admin tentando `/admin/*` redireciona para
+        `/super-admin/condominios` (não vaza UI admin para super)
+      - Logger Pino estruturado já herdado da 1.9 (não precisou ser revisado aqui)
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/admin-layout.md (estrutura + permissões + como adicionar página/item + EmptyState pattern + ComingSoonPlaceholder pattern)
+      - infra/README.md atualizado com seção Admin
+      - Dev Agent Record com 6 decisões documentadas
+      - Smoke E2E 7/7 cenários validados pelo usuário (anexado na story)
+
+issues: []
+
+observations:
+  - severity: info
+    description: |
+      Reuso futuro: `EmptyState` atom será usado em todas as listas (2.2-2.4
+      sem resultados, busca vazia, etc). `ComingSoonPlaceholder` deve ser
+      removido conforme stubs forem substituídos por implementações reais.
+  - severity: info
+    description: |
+      Sheet refactor com prop `side` é exemplo de bom design não-breaking:
+      default preserva comportamento, novo valor adiciona capability. Pattern
+      a ser seguido em refatorações futuras.
+  - severity: info
+    description: |
+      Smoke E2E 7/7 cobriu UI real em browser (desktop + mobile) — incluindo
+      localStorage persistência e cross-area redirect. Nível de validação
+      acima do esperado para story de UI.
+
+recommendations:
+  before_next_story:
+    - Considerar paralelizar queries do layout (LOW) — quick win opcional
+  for_future_stories:
+    - Story 2.2-2.4: substituir stubs por CRUDs reais (deletar
+      `ComingSoonPlaceholder` quando todas as 4 telas estiverem prontas)
+    - Story 6.1: substituir stub de `/admin/pacotes` pelo painel real
+    - Story 8.1: SuperAdminLayout análogo (separado pra cross-tenant features)
+    - Story dedicada (futuro): se UserMenu `<details>` reportar problemas de
+      UX (não fechar fora), migrar pra Radix DropdownMenu
+
+next_action: |
+  Story aprovada para push. @devops Gage executa:
+    1. *pre-push (já validado)
+    2. *push origin feature/2.7-admin-layout
+    3. *create-pr → PR #11 contra main
