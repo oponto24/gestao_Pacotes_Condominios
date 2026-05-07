@@ -63,7 +63,7 @@
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
 | 3.1 | PWA: layout PortariaLayout + BottomNavBar + manifest.json | **Done** ✅ | 1.5 |
-| 3.2 | Componente PhotoCapture (câmera + preview + retake) | **Draft** 📝 | 3.1 |
+| 3.2 | Componente PhotoCapture (câmera + preview + retake) | **Ready** 🟢 | 3.1 |
 | 3.3 | Componente BarcodeScannerInput (html5-qrcode + fallback) | Draft | 3.1 |
 | 3.4 | API POST /api/pacotes (cria rascunho + salva foto + enfileira IA job) | Draft | 1.6, 1.8, 1.9 |
 | 3.5 | Worker extractLabel — Anthropic Haiku + prompt caching + JSON estruturado | Draft | 3.4 |
