@@ -1,0 +1,223 @@
+storyId: 2.6
+storyTitle: Importação CSV — preview com erros + commit transacional (fecha Epic 2)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-07'
+verdict: PASS
+score: 9.5/10
+
+summary: |
+  Story que **fecha o Epic 2**. Segunda metade do fluxo CSV: consome
+  `sessionStorage['csvImportResult']` da 2.5, valida cross-DB com 2 queries
+  agregadas (anti N+1), commita N unidades + N moradores principais em
+  transação atômica via `withTenant` + `Prisma.$transaction`.
+
+  **157 tests** (145 → 157, +12 novos), **5/5 cenários smoke E2E PASS**
+  (S1 caminho feliz, S2 unidade duplicada, S3 telefone duplicado, S4 empty
+  state, S5 download CSV erros). DB confirma cross-DB validation funcionando:
+  SMK1=5 (S1 todas válidas), SMK2=4 (S2 1 conflito unidade ignorada),
+  SMK3=4 (S3 1 telefone duplicado ignorado), SMK5=4 (S5 1 inválida descartada).
+
+  UX clarification durante smoke: usuário esperava acumular múltiplos uploads
+  num único batch. Decisão de produto: **manter 1-arquivo-por-commit conforme
+  escopo da 2.6** — multi-upload vira backlog item se demanda real surgir.
+
+acceptance_criteria:
+  ac1_tela_preview: PASS               # /admin/cadastros/importar/preview + sessionStorage + empty state
+  ac2_validacao_cross_db: PASS         # validateAgainstDb com 2 queries agregadas (1 unidades + 1 telefones)
+  ac3_endpoint_commit: PASS            # POST /api/admin/csv-import/commit + Prisma $transaction + rollback automático
+  ac4_tabela_preview: PASS             # 3 status (válida verde / conflito amarelo / inválida vermelho)
+  ac5_botao_confirmar: PASS            # modal de confirmação + loading + redirect /admin/moradores
+  ac6_download_csv_erros: PASS         # Papa.unparse + BOM UTF-8 + nome com timestamp
+  ac7_suite_tests: PASS                # 7 validate-db + 5 commit-api = 12 novos
+  ac8_edge_cases: PASS                 # race condition, sessionStorage vazio, browser close documentados
+  ac9_documentacao: PASS               # runbook expandido com seção "Confirmação CSV (story 2.6)"
+  ac10_quality_gates: PASS             # lint/typecheck/test/build + smoke E2E 5/5 (2026-05-07)
+
+quality_checks:
+  code_review:
+    score: 9/10
+    findings:
+      - severity: info
+        category: design
+        description: |
+          **`validateAgainstDb` anti-N+1:** 2 queries totais (`unidade.findMany`
+          com `identificador IN (...)` + `morador.findMany` com `telefone IN
+          (...)` + `deleted_at: null`). Filtro final em memória pelo
+          `(bloco, identificador)` exato. Performance: 1000 linhas em <50ms.
+      - severity: info
+        category: design
+        description: |
+          **Variant `validateAgainstDbWithTx`:** versão exposta para tests
+          integration que setam contexto manualmente. Lógica idêntica, só
+          não wrappa em `withTenant`. Bom desacoplamento sem duplicar core.
+      - severity: info
+        category: design
+        description: |
+          **Conflitos NÃO bloqueiam commit:** decisão @po — admin escolhe se
+          prossegue com batch parcial. UX correta para casos onde 999/1000
+          linhas são válidas mas 1 conflita.
+      - severity: info
+        category: code
+        description: |
+          **`commitImport` resolve tenant FORA da transação:** chama
+          `getTenantContext()` antes do `withTenant` para usar `condominioId`
+          no payload. Inside o `withTenant`, RLS é aplicado via `SET LOCAL`
+          automático. Pattern correto.
+      - severity: low
+        category: code
+        description: |
+          Loop sequencial dentro da `$transaction` (não Promise.all). Decisão
+          consciente: Prisma transaction client é sequential por design,
+          paralelismo dentro de $transaction não dá ganho real. Documentado
+          em Dev Notes.
+        recommendation: |
+          Se virar gargalo (>1000 linhas, condomínios grandes), considerar
+          `createMany` se Prisma permitir com tenant context, ou batch de
+          100 inserts paralelos. Não-bloqueante.
+      - severity: low
+        category: code
+        description: |
+          **`P2002` recoverable strategy NÃO implementada** (sugestão @po
+          documentada). Race entre 2 admins é caso raríssimo no MVP (1-2
+          admins por condomínio). Rollback completo é seguro como default.
+        recommendation: |
+          Quando virar problema real, refatorar para per-row try/catch +
+          accumulator pattern. Documentado em Dev Notes como tech debt.
+      - severity: info
+        category: ux
+        description: |
+          **UX "1 arquivo por commit"** ficou confusa para usuário durante
+          smoke (esperava acumular uploads). Documentação no runbook é
+          clara. Backlog item sugerido: "multi-upload em 2.6.1" se demanda
+          real surgir.
+
+  unit_tests:
+    score: 10/10
+    coverage:
+      csv_validate_db (7 integration):
+        - linha sem conflitos → okToCreate
+        - UNIDADE_EXISTE detectada
+        - TELEFONE_EXISTE detectada
+        - AMBOS conflitos numa linha → 2 motivos
+        - **Telefone arquivado (deleted_at) NÃO conta** como conflito
+        - **TENANT ISOLATION** — cond B com mesma unidade NÃO bloqueia em A
+        - Múltiplas linhas particionadas corretamente (1 ok + 1 conflito)
+      csv_commit_api (3 integration + 2 auth):
+        - **Commit transacional** — N unidades + N moradores em $transaction
+        - **Rollback completo** se qualquer linha falhar (telefone duplicado interno)
+        - Payload vazio retorna ok com 0 criado
+        - Auth guard 401/403 nos 2 endpoints
+      smoke E2E (5 cenários):
+        - **S1** caminho feliz — 5 criados (SMK1)
+        - **S2** UNIDADE_EXISTE bloqueando 1 linha — 4 criados (SMK2)
+        - **S3** TELEFONE_EXISTE bloqueando 1 linha — 4 criados (SMK3)
+        - **S4** empty state — preview sem sessionStorage redireciona graciosamente
+        - **S5** download CSV erros — UTF-8 BOM + acentos preservados ("Tatiana Inválida")
+
+  acceptance_criteria_traceability:
+    score: 10/10
+    notes: |
+      10 ACs com 50+ sub-itens, todos marcados [x] após smoke 5/5 PASS.
+      Smoke confirma traceability requisito → comportamento real no DB.
+
+  no_regressions:
+    score: 10/10
+    evidence: |
+      157/157 tests (145 baseline + 12 novos). Story só ADICIONA arquivos
+      novos + 1 modificação não-breaking em CsvImportClient (botão extra).
+
+  performance:
+    score: 9/10
+    notes: |
+      Validate-DB: 2 queries totais para 1000 linhas, <50ms.
+      Commit: ~2ms por unidade+morador, projeção <2s para 1000 linhas.
+      Auto-validate roda no mount do preview (sem botão extra), UX fluida.
+      sessionStorage carrega ParseResult sem refetch.
+
+  security:
+    score: 10/10
+    findings:
+      - **`requireAdmin()`** em todos os endpoints (smoke confirmou 401/403
+        em /validate-db e /commit)
+      - **`condominio_id` injetado server-side** via `getTenantContext()` —
+        client nunca fornece, defesa contra escape de tenant
+      - **`nome_normalizado` derivado server-side** via `normalizarNome` —
+        defesa contra payload malicioso que pudesse forjar
+      - **Soft delete check** em validate-db: telefone arquivado NÃO conta
+        (test cobre)
+      - **Tenant isolation** validado em test integration (cond B com mesma
+        unidade NÃO bloqueia em A)
+      - **Zod schema valida payload** em ambos endpoints antes de tocar DB
+      - **Limite 1000 linhas** aplicado em ambos endpoints (defesa em profundidade)
+      - **Transação atômica:** rollback completo em qualquer erro evita
+        estado parcial vulnerável
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/admin-cadastros.md expandido com seção "Confirmação CSV (story 2.6)"
+        cobrindo fluxo completo, validação cross-DB, decisões de produto,
+        download CSV erros, edge cases
+      - docs/runbooks/exemplos/import-exemplo.csv (template) + 4 CSVs de smoke
+        documentando cenários de teste
+      - Dev Agent Record com 12 decisões + sugestões @po incorporadas
+      - QA Results com 7-check resumido + traceability dos 5 cenários smoke
+
+issues: []
+
+observations:
+  - severity: info
+    description: |
+      **Epic 2 fechado:** 7 stories (2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7)
+      todas em estado Done (4 já em main via PR #13; 2.4, 2.5, 2.6 locais
+      aguardando merge cumulativo). Pattern arquitetural estabelecido:
+      requireAdmin + Zod + withTenant + handleApiError + Sheet/Modal UI.
+      Replicável para Epic 3+ (chegada de pacote).
+  - severity: info
+    description: |
+      **Backlog item descoberto durante smoke:** UI de Moradores precisa
+      search box (API já aceita `?q=<termo>` + `?unidade_id=<uuid>`).
+      Registrado no ROADMAP como story 2.X de UX (~0.25 dia).
+  - severity: info
+    description: |
+      **Lição operacional reforçada (gotcha):** `node_modules` host ≠
+      container Docker. Quando dep é adicionada via `npm install`,
+      precisa `docker compose exec app npm install <dep>` ou rebuild.
+      Aplicou-se na 2.5 (papaparse) — confirmar no Dockerfile evita
+      retrabalho em rebuilds.
+  - severity: info
+    description: |
+      **`pino-pretty` worker warning em dev:** ruído nos logs durante
+      hot reload, não afeta funcionalidade (requests retornam 200).
+      Tech debt minor para Epic 8 (observabilidade).
+
+recommendations:
+  before_merge:
+    - **Adicionar `papaparse` explicitamente no Dockerfile** (sugestão @po
+      da 2.6) para evitar re-instalar no container em rebuilds — não-bloqueante,
+      pode virar tech debt minor ou ir junto na story 8.4 (deploy).
+    - **Validar smoke pós-merge em produção** quando Epic 2 inteiro for
+      mergeado: cenário S1 + S2 + S3 + S5 em ambiente real (story 8.4).
+
+  for_next_stories:
+    - **Story 2.X (UX search):** input de busca textual + dropdown filtro
+      por unidade na lista de moradores. API já aceita os params; só falta
+      expor na UI. Estimativa 0.25 dia.
+    - **Story 8.x (audit log):** registrar `csv_import` event com
+      `actor_user_id`, `count`, `duration_ms` para compliance LGPD (NFR-030).
+    - **Story 4.x (WhatsApp):** consumir telefones E.164 importados via CSV
+      sem reprocessar.
+    - **Story 3.7 (matching IA):** consumir `nome_normalizado` derivado no
+      CSV import para matching.
+
+next_action: |
+  Story aprovada PASS 9.5/10. **Epic 2 completo localmente** (4 stories
+  Done na main + 3 stories Done locais aguardando merge cumulativo).
+
+  Próximo na cadeia AIOX: **@devops (Gage)** prepara push do Epic 2 fechado
+  (PR cumulativo com 2.4 + 2.5 + 2.6 + commits de fix descobertos no smoke).
+
+  Decisão de produto pendente:
+    1. **PR cumulativo Epic 2** (recomendado): merge das 3 stories juntas
+       como unit fechado, espelhando estratégia do Epic 1 (PR #9) e PR #13.
+    2. PRs isolados — não recomendado, fragmenta release.

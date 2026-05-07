@@ -47,7 +47,7 @@
 | 2.3 | CRUD Unidade por condomínio (admin) | **Done** ✅ | 2.2 |
 | 2.4 | CRUD Morador (principal + adicionais) por unidade (admin) | **Done** ✅ | 2.3 |
 | 2.5 | Importação CSV — upload + parser + validação | **Done** ✅ | 2.4 |
-| 2.6 | Importação CSV — preview com erros + commit transacional | **Ready for Review** 🔍 | 2.5 |
+| 2.6 | Importação CSV — preview com erros + commit transacional | **Done** ✅ | 2.5 |
 | 2.7 | Layout AdminLayout + navegação cadastros | **Done** ✅ | 1.5, 1.6, 2.1 |
 
 **Mergeadas em main via PR #13** (merge cumulativo, mesma estratégia do Epic 1 → PR #9).
