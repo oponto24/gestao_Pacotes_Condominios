@@ -1,0 +1,224 @@
+storyId: 3.4
+storyTitle: API POST /api/pacotes (rascunho + foto + IA job)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-07'
+verdict: PASS
+score: 9.5/10
+
+summary: |
+  Primeira story backend do Epic 3. Endpoint multipart `POST /api/pacotes`
+  recebendo foto JPEG/PNG (5MB max) + código de rastreio opcional. Salva
+  foto no storage com path determinístico, calcula hash SHA-256, e cria
+  3 registros em transação atômica (`pacote` + `pacote_foto` +
+  `pacote_evento`). Job `extractLabel` enfileirado FORA da transação com
+  `jobId=pacote_id` para idempotência (sugestão @po implementada).
+
+  **14 tests novos** (185 → 199): 8 unit do validator + 6 integration
+  cobrindo transação 3-tabelas + qr_token único + tenant isolation + auth
+  guards + payload sem file.
+
+  **Smoke E2E S1 PASS** confirmado via psql + container ls:
+  - DB: pacote (status=rascunho, qr_token gerado, recebido_em + funcionario_recebedor_id preenchidos — FR-019/020)
+  - DB: pacote_foto (42414 bytes + hash SHA-256 + is_principal=true)
+  - DB: pacote_evento (tipo=criado, user_id, metadata com foto_path)
+  - Storage: arquivo em `/app/storage/pacotes/{cond}/{pacote_id}/original.jpg` com 42414 bytes (bate)
+
+  Score 9.5/10: -0.5 pelos S2-S6 não testados em browser real (cobertos por
+  integration tests com mocks robustos, mas não validados visualmente).
+
+acceptance_criteria:
+  ac1_endpoint: PASS                # POST /api/pacotes multipart + auth + 5MB + jpeg/png
+  ac2_storage_helper: PASS          # savePacoteFoto + path determinístico + hash SHA-256
+  ac3_validator_zod: PASS           # codigo_rastreio opcional + regex permissiva
+  ac4_transacao: PASS               # 3 registros via withTenant + rollback completo + qr_token
+  ac5_enqueue: PASS                 # jobId=pacote_id idempotência + fora da transação
+  ac6_resposta: PASS                # 201 com pacote_id + foto_storage_path + status
+  ac7_tests: PASS                   # 8 unit + 6 integration (transação + tenant + auth)
+  ac8_documentacao: PASS            # docs/runbooks/pacotes-api.md completo
+  ac9_quality_gates: PASS           # lint/typecheck/test/build + smoke S1 PASS
+
+quality_checks:
+  code_review:
+    score: 9/10
+    findings:
+      - severity: info
+        category: design
+        description: |
+          **Cleanup best-effort de foto órfã:** se transação DB falhar
+          após `storage.put`, foto é deletada via `deletePacoteFoto`.
+          Storage e DB não são transacionais juntos — pattern arquitetural
+          correto para MVP. Job futuro detectará órfãs (story 8.x).
+      - severity: info
+        category: design
+        description: |
+          **`jobId=pacote_id` no enqueue** (sugestão @po): BullMQ não
+          duplica jobs com mesmo ID. Se UI reenviar (timeout), job não roda
+          2x. Robustez sem custo.
+      - severity: info
+        category: security
+        description: |
+          **`requirePorteiro` cobre porteiro + admin** — admin pode operar
+          a portaria como substituição. Super-admin é redirecionado.
+          Decisão @po da 3.1 reaproveitada.
+      - severity: info
+        category: design
+        description: |
+          **Hash SHA-256 antecipa NFR-033** (audit forense / retenção 12
+          meses): permite deduplicação futura ou verificação forense de
+          integridade. Custo zero (~10ms para 5MB).
+      - severity: info
+        category: design
+        description: |
+          **`recebido_em` (FR-019) + `funcionario_recebedor_id` (FR-020)**
+          preenchidos no momento do create — timestamp servidor (não
+          aceita do cliente) + user_id do tenant context. Auditoria correta.
+      - severity: info
+        category: design
+        description: |
+          **`qr_token` random URL-safe 64 chars** (`randomBytes(48)
+          .base64url`): preparado para story 4.x (geração de QR + Meta
+          Cloud API). Único por pacote (test cobre).
+      - severity: info
+        category: code
+        description: |
+          **`pacoteIdProvisorio = crypto.randomUUID()`** usado pra path do
+          storage. O pacote real recebe outro UUID do Postgres. OK porque
+          o storage_path é só uma string referencial — não precisa bater
+          com pacote.id. **Pequena divergência conceitual** mas funcional.
+        recommendation: |
+          Tech debt minor: alternativa seria pré-gerar UUID e passar pro
+          Prisma com `data: { id: pacoteIdProvisorio, ... }`. Reduz
+          divergência mas obriga schema change. Não-bloqueante.
+      - severity: low
+        category: code
+        description: |
+          **Validação de mime apenas via Content-Type** — magic bytes não
+          validados. User malicioso pode enviar `.exe` com Content-Type
+          spoofado. MVP confia em auth+role; security tech debt registrado
+          para Epic 8.
+      - severity: info
+        category: design
+        description: |
+          **Enqueue NÃO bloqueia resposta:** se Redis down, pacote ainda
+          é criado em rascunho. Logger registra falha. Admin pode
+          re-enfileirar manualmente em UI futura.
+
+  unit_tests:
+    score: 10/10
+    coverage:
+      pacote_create_validator (8):
+        - payload vazio
+        - codigo_rastreio típico Correios (AD123BR)
+        - hífen + ponto (ML-2024.1234)
+        - trim
+        - string vazia → undefined (preprocess)
+        - rejeita > 100 chars
+        - **rejeita SQL injection attempt**
+        - **rejeita emoji/unicode exótico**
+      pacote_api integration (6):
+        - **3 registros em transação** (pacote + foto + evento)
+        - codigo_rastreio undefined (bipe opcional)
+        - **qr_token único** entre pacotes
+        - **TENANT ISOLATION** (cond A não vaza para B)
+        - auth guard 401/403
+        - payload sem field "file"
+      smoke E2E (S1 PASS):
+        - Pacote criado via UI
+        - DB validado via psql (3 registros corretos)
+        - Storage validado via container ls (42414 bytes batem)
+
+  acceptance_criteria_traceability:
+    score: 10/10
+    notes: |
+      9 ACs com 50+ sub-itens, todos confirmados via tests + smoke S1
+      validado em DB + storage. AC9 marca smoke S2-S6 como cobertos por
+      tests integration (decisão pragmática).
+
+  no_regressions:
+    score: 10/10
+    evidence: |
+      199/199 tests (185 baseline + 14 novos). Story só ADICIONA arquivos
+      + atualiza ChegadaPlaygroundClient (botão "Enviar para API").
+
+  performance:
+    score: 9/10
+    notes: |
+      Smoke real: 42414 bytes JPEG processado em <500ms (storage put +
+      hash + 3 inserts + enqueue). Aceitável para 5MB de payload máximo.
+      `withTenant` mantém transação curta (sem I/O externo dentro).
+
+  security:
+    score: 9/10
+    findings:
+      - **`requirePorteiro`** server-side antes de qualquer I/O
+      - **`condominio_id` injetado do tenant context** — nunca do payload
+      - **`recebido_em` server-side** (FR-019): timestamp do Postgres,
+        não aceita do cliente
+      - **`funcionario_recebedor_id` do tenant context** (FR-020): não
+        spoofável
+      - **Limite 5MB** + mime allow-list — defesa contra DoS
+      - **`codigo_rastreio` regex restritiva** — bloqueia SQL injection
+      - **Hash SHA-256** para audit forense (NFR-033)
+      - **Cleanup best-effort de foto órfã** se DB falha
+      - ⚠️ Magic bytes NÃO validados (Content-Type spoofável) — tech debt
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/pacotes-api.md completo: endpoints, fluxo, storage
+        path, job extractLabel, limites, tech debt
+      - Dev Agent Record com decisões + sugestões @po implementadas
+      - Comentários inline explicando cleanup best-effort + jobId
+        idempotência
+
+issues: []
+
+observations:
+  - severity: info
+    description: |
+      **Pattern Epic 3 backend estabelecido:** primeira story que combina
+      DB transacional + I/O externo (storage + queue). Pattern de
+      "pré-save storage → transação DB → enqueue fora da transação"
+      replicável para próximas stories (3.8 confirmar, 3.9 organizar).
+  - severity: info
+    description: |
+      **Tech debt registrado (4 itens):**
+      - Validação magic bytes (lib `file-type`) — Epic 8 segurança
+      - Idempotency-Key header (Redis cache) — opcional
+      - Cleanup de fotos órfãs (job batch) — Epic 8.x
+      - width/height em pacote_foto.metadata — debug visual
+  - severity: info
+    description: |
+      **Bug conhecido NÃO presente:** smoke validou que o enqueue do job
+      `extractLabel` funciona mesmo sem worker registrado para esse job
+      (BullMQ aceita job sem consumer — fica esperando na fila). Não
+      bloqueia o create.
+
+recommendations:
+  before_merge:
+    - Smoke S2-S6 em browser real opcional — coberto por integration tests
+    - Adicionar `bodySizeLimit` no `next.config.ts` se Next reclamar de
+      payloads >1MB em produção (route handler tem seu próprio limit, mas
+      Next pode bloquear antes de chegar lá em alguns deploys)
+
+  for_next_stories:
+    - **Story 3.5 (worker IA):** consumir job `extractLabel`,
+      ler foto via `storage.get(storage_path)`, chamar Claude Haiku
+      vision com prompt caching, atualizar `pacote.ia_extracao_raw` +
+      `ia_confianca` + `ia_processada_em`, mover status para
+      `pendente_identificacao` se não casar OU manter `rascunho` para 3.8.
+    - **Story 3.6 (CapturaPage):** consumir esse endpoint substituindo
+      `ChegadaPlaygroundClient` por formulário polido. Redirect para
+      `/chegada/confirmar/[pacote_id]` após 201.
+    - **Story 8.x (cleanup órfãos):** job batch que detecta arquivos em
+      `storage/pacotes/` sem `pacote_foto` correspondente e remove.
+
+next_action: |
+  Story aprovada PASS 9.5/10. Smoke crítico validado via DB + storage.
+
+  Próximo na cadeia AIOX: **@devops (Gage)** prepara push + PR isolado +
+  auto-merge conforme preferência usuário.
+
+  Após merge: **@sm** cria draft 3.5 (worker IA — primeira story que
+  consome Claude API). Vai ser a story mais "wow" do Epic 3 — IA real
+  extraindo dados de etiquetas.

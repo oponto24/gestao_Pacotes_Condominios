@@ -9,7 +9,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
 
 /**
  * `<BarcodeScannerInput>` — input texto + bipe de código de barras (story 3.3).
