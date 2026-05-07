@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { PhotoCapture } from '@/components/portaria/PhotoCapture';
+import { BarcodeScannerInput } from '@/components/portaria/BarcodeScannerInput';
 
 /**
  * Playground temporário da story 3.2 — exercita PhotoCapture em browser real.
@@ -16,6 +17,7 @@ export function ChegadaPlaygroundClient() {
     sizeKb: number;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [codigo, setCodigo] = useState('');
 
   return (
     <div className="space-y-4">
@@ -39,6 +41,20 @@ export function ChegadaPlaygroundClient() {
         onError={(msg) => setError(msg)}
         debugDownload={process.env.NODE_ENV !== 'production'}
       />
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Código de barras (opcional)</label>
+        <BarcodeScannerInput
+          value={codigo}
+          onChange={setCodigo}
+          placeholder="Bipar ou digitar manualmente"
+        />
+        {codigo && (
+          <p className="text-xs text-text-secondary">
+            Código atual: <code className="rounded bg-muted px-1 py-0.5">{codigo}</code>
+          </p>
+        )}
+      </div>
 
       {error && (
         <div className="rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-danger">
