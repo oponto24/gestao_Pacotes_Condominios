@@ -1,7 +1,7 @@
 import { SignUpButton } from '@clerk/nextjs';
 import { Logo } from '@/components/brand/Logo';
 
-const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_LP_WHATSAPP ?? '5511999999999';
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_LP_WHATSAPP ?? '5511914980582';
 const WHATSAPP_MESSAGE = encodeURIComponent(
   'Olá! Quero saber mais sobre o Ponto 24 para o meu condomínio.',
 );
