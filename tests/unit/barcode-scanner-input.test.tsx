@@ -118,12 +118,13 @@ describe('BarcodeScannerInput', () => {
     // Simula detecção
     lastSuccess!('CODIGO-DETECTADO');
 
-    expect(onChange).toHaveBeenCalledWith('CODIGO-DETECTADO');
     expect(navigator.vibrate).toHaveBeenCalledWith(50);
 
+    // onChange chamado APÓS cleanup async (estado 'closing' → 'closed')
     await waitFor(() => {
-      expect(stopMock).toHaveBeenCalled();
+      expect(onChange).toHaveBeenCalledWith('CODIGO-DETECTADO');
     });
+    expect(stopMock).toHaveBeenCalled();
     expect(clearMock).toHaveBeenCalled();
   });
 
@@ -135,9 +136,12 @@ describe('BarcodeScannerInput', () => {
     await waitFor(() => expect(lastSuccess).not.toBeNull());
 
     lastSuccess!('CODIGO-1');
-    lastSuccess!('CODIGO-2'); // Deveria ser ignorada — modal já fechando
+    lastSuccess!('CODIGO-2'); // Deveria ser ignorada — flag alreadyDetected ativa
 
-    expect(onChange).toHaveBeenCalledTimes(1);
+    // onChange resolve via cleanup async — esperar
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledTimes(1);
+    });
     expect(onChange).toHaveBeenCalledWith('CODIGO-1');
   });
 

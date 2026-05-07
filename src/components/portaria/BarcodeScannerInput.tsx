@@ -36,12 +36,13 @@ type State =
   | { kind: 'closed' }
   | { kind: 'requesting' }
   | { kind: 'scanning' }
+  | { kind: 'closing' } // estado intermediário: modal visível, cleanup em curso
   | { kind: 'error'; message: string };
 
 type Action =
   | { type: 'open' }
   | { type: 'scanner_started' }
-  | { type: 'detected' }
+  | { type: 'start_close' }
   | { type: 'close' }
   | { type: 'error'; message: string };
 
@@ -51,7 +52,8 @@ function reducer(state: State, action: Action): State {
       return { kind: 'requesting' };
     case 'scanner_started':
       return { kind: 'scanning' };
-    case 'detected':
+    case 'start_close':
+      return { kind: 'closing' };
     case 'close':
       return { kind: 'closed' };
     case 'error':
@@ -146,10 +148,13 @@ export function BarcodeScannerInput({
               // ignora
             }
 
-            // Cleanup async — não aguarda pra fechar modal rapidamente
-            void cleanupScanner();
-            dispatch({ type: 'detected' });
-            onChange(decodedText);
+            // Cleanup ANTES de fechar modal: estado 'closing' mantém modal
+            // visível pra React não desmontar o div enquanto html5-qrcode limpa.
+            dispatch({ type: 'start_close' });
+            void cleanupScanner().then(() => {
+              dispatch({ type: 'close' });
+              onChange(decodedText);
+            });
           },
           () => {
             // onScanFailure — silencioso (cada frame sem detecção dispara)
@@ -197,8 +202,10 @@ export function BarcodeScannerInput({
   }, [disabled]);
 
   const handleCloseModal = useCallback(() => {
-    void cleanupScanner();
-    dispatch({ type: 'close' });
+    // Mesmo pattern da detecção: estado 'closing' mantém modal renderizado
+    // enquanto cleanup async roda, prevenindo race com React unmount.
+    dispatch({ type: 'start_close' });
+    void cleanupScanner().then(() => dispatch({ type: 'close' }));
   }, [cleanupScanner]);
 
   const handleRetry = useCallback(() => {
@@ -212,7 +219,12 @@ export function BarcodeScannerInput({
     [handleCloseModal],
   );
 
+  // Modal permanece aberto durante 'closing' para evitar race React vs html5-qrcode
   const isModalOpen = state.kind !== 'closed';
+
+  // Identifica estados onde o div do scanner ainda precisa estar renderizado
+  const isScannerDivRendered =
+    state.kind === 'requesting' || state.kind === 'scanning' || state.kind === 'closing';
 
   return (
     <>
@@ -255,7 +267,7 @@ export function BarcodeScannerInput({
           </SheetHeader>
 
           <div className="flex flex-1 flex-col gap-4 p-4">
-            {state.kind === 'error' ? (
+            {!isScannerDivRendered && state.kind === 'error' ? (
               <div
                 role="alert"
                 className="flex flex-col items-center gap-3 rounded-lg border border-danger/30 bg-danger/5 p-6 text-center"
@@ -284,7 +296,9 @@ export function BarcodeScannerInput({
                   )}
                 </div>
                 <p className="text-center text-sm text-text-secondary">
-                  Aponte para o código de barras ou QR Code do pacote.
+                  {state.kind === 'closing'
+                    ? 'Fechando…'
+                    : 'Aponte para o código de barras ou QR Code do pacote.'}
                 </p>
               </>
             )}
