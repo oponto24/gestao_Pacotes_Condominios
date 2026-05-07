@@ -100,6 +100,8 @@ services:
       ANTHROPIC_PROMPT_CACHE_ENABLED: 'true'
       STORAGE_DRIVER: local
       STORAGE_LOCAL_DIR: /app/storage
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
+      META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-placeholder}
       LOG_LEVEL: info
     volumes:
       - app_storage:/app/storage
