@@ -20,7 +20,9 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
     "prisma:reset": "prisma migrate reset --force",
-    "db:apply-rls": "./infra/scripts/apply-rls.sh"
+    "db:apply-rls": "./infra/scripts/apply-rls.sh",
+    "db:guard-not-prod": "node -e \"if(process.env.NODE_ENV==='production'){console.error('ABORT: comando destrutivo bloqueado em NODE_ENV=production');process.exit(1)}\"",
+    "db:reset-and-seed": "npm run db:guard-not-prod && prisma migrate reset --force && npm run db:apply-rls"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

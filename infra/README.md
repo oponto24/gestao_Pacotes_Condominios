@@ -263,6 +263,17 @@ um processor registrado em `src/lib/queue/jobs/index.ts`.
 - **Storage abstraction:** `src/lib/storage/` — `LocalStorageDriver` hoje (volume nomeado `storage` em compose), trocável por S3/R2 sem refactor de callers. Detalhes em `docs/runbooks/storage.md`.
 - **Endpoint admin smoke storage:** `POST /api/admin/storage/test` (super_admin only) executa put → get → delete e retorna metadata.
 
+## Seed inicial (Story 1.10)
+
+Cria super-admin + WhatsApp number placeholder. Idempotente, com reconciliação Clerk por email.
+
+```bash
+npm run prisma:seed          # primeira instalação (dev/staging/prod)
+npm run db:reset-and-seed    # DEV ONLY — drop + migrate + seed + RLS (destrutivo)
+```
+
+Detalhes (variáveis, reconciliação Clerk, recuperação): `docs/runbooks/seed.md`.
+
 ## Próximas mudanças (stories futuras)
 
 | Story | Mudança nesta infra |

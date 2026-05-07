@@ -17,7 +17,7 @@
 
 ---
 
-## Epic 1 — Fundação Técnica (P0)
+## Epic 1 — Fundação Técnica (P0) ✅ Concluído em 2026-05-06
 
 **Objetivo:** Repositório, banco, auth, multi-tenancy e deploy mínimo funcionando antes de qualquer feature de negócio.
 
@@ -31,8 +31,8 @@
 | 1.6 | Middleware de tenant + helper getTenantContext + SET LOCAL no Postgres | **Done** ✅ | 1.4, 1.5 |
 | 1.7 | Endpoint /api/health + UptimeRobot configurado | **Done** ✅ | 1.2, 1.3 |
 | 1.8 | BullMQ + Redis connection + job de teste | **Done** ✅ | 1.6, 1.7 |
-| 1.9 | Logger Pino estruturado + storage abstraction (local) | **Ready for Review** 🔍 | 1.6, 1.8 |
-| 1.10 | Seed inicial (super-admin + whatsapp_number placeholder) | Draft | 1.3 |
+| 1.9 | Logger Pino estruturado + storage abstraction (local) | **Done** ✅ | 1.6, 1.8 |
+| 1.10 | Seed inicial (super-admin + whatsapp_number placeholder) | **Ready for Review** 🔍 | 1.3, 1.5, 1.9 |
 
 ---
 

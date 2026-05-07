@@ -79,25 +79,45 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, reason: 'no_email' }, { status: 200 });
       }
 
-      // Upsert preserva condominio_id e role se já existirem (não sobrescreve com defaults).
-      await db.user.upsert({
-        where: { clerk_id: event.data.id },
-        create: {
-          clerk_id: event.data.id,
-          email,
-          nome,
-          role: 'porteiro',
-          condominio_id: null,
-          ativo: true,
-        },
-        update: {
-          email,
-          nome,
-          ativo: true,
-        },
-      });
+      // Reconciliação (story 1.10): seed pode ter criado user com clerk_id='pending_clerk_link'
+      // (ex: super-admin ainda não logou). Antes de criar, tentar match por email para
+      // adotar o registro existente — preserva role/condominio_id setados pelo seed.
+      const byClerkId = await db.user.findUnique({ where: { clerk_id: event.data.id } });
+      let reconciledFrom: 'clerk_id' | 'email' | 'new' = 'new';
 
-      log.info({ event_type: event.type, clerk_id: event.data.id, email }, 'evento processado');
+      if (byClerkId) {
+        await db.user.update({
+          where: { clerk_id: event.data.id },
+          data: { email, nome, ativo: true },
+        });
+        reconciledFrom = 'clerk_id';
+      } else {
+        const byEmail = await db.user.findUnique({ where: { email } });
+        if (byEmail) {
+          // Adopta registro existente: substitui clerk_id placeholder por real.
+          await db.user.update({
+            where: { email },
+            data: { clerk_id: event.data.id, nome, ativo: true },
+          });
+          reconciledFrom = 'email';
+        } else {
+          await db.user.create({
+            data: {
+              clerk_id: event.data.id,
+              email,
+              nome,
+              role: 'porteiro',
+              condominio_id: null,
+              ativo: true,
+            },
+          });
+        }
+      }
+
+      log.info(
+        { event_type: event.type, clerk_id: event.data.id, email, reconciled_from: reconciledFrom },
+        'evento processado',
+      );
     } else if (event.type === 'user.deleted') {
       // NÃO deletar — preserva FKs em pacotes/eventos. Marca inativo.
       await db.user.updateMany({

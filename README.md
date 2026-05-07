@@ -11,6 +11,24 @@ PWA mobile-first para gerenciar a chegada e retirada de encomendas em condomíni
 
 ---
 
+## Primeira instalação
+
+```bash
+git clone <repo-url> && cd gestao_Pacotes_Condominios
+cp .env.app.example .env.local        # ajuste DATABASE_*, CLERK_*, SUPER_ADMIN_EMAIL
+npm install
+docker compose -f infra/docker/docker-compose.yml --env-file .env.local up -d
+npm run prisma:migrate                # aplica schema
+npm run db:apply-rls                  # cria roles + policies RLS
+npm run prisma:seed                   # super-admin + WhatsApp placeholder
+```
+
+App em `http://localhost:3000`. Detalhes do seed (variáveis, idempotência, reconciliação Clerk) em [`docs/runbooks/seed.md`](docs/runbooks/seed.md).
+
+Para resetar tudo em dev: `npm run db:reset-and-seed` (destrutivo, bloqueado em prod).
+
+---
+
 ## Pré-requisitos
 
 - **Node.js ≥ 20** (recomendado: Node 22 LTS ou 25.x)
