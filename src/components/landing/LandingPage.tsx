@@ -1,4 +1,3 @@
-import { SignUpButton } from '@clerk/nextjs';
 import { Logo } from '@/components/brand/Logo';
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_LP_WHATSAPP ?? '5511914980582';
@@ -48,14 +47,6 @@ function Hero() {
           >
             Falar no WhatsApp
           </a>
-          <SignUpButton mode="modal">
-            <button
-              type="button"
-              className="inline-flex h-btn-lg items-center justify-center rounded-md border border-input bg-white px-8 text-base font-semibold text-brand-ink transition-colors hover:bg-primary-light"
-            >
-              Criar conta grátis
-            </button>
-          </SignUpButton>
         </div>
         <p className="text-sm text-brand-mid">
           Sem instalação · Funciona no celular do porteiro · Setup em minutos
@@ -179,14 +170,6 @@ function CtaFinal() {
             >
               Falar no WhatsApp agora
             </a>
-            <SignUpButton mode="modal">
-              <button
-                type="button"
-                className="inline-flex h-btn-lg items-center justify-center rounded-md bg-white px-8 text-base font-semibold text-brand-ink transition-colors hover:bg-white/90"
-              >
-                Quero testar grátis
-              </button>
-            </SignUpButton>
           </div>
         </div>
       </div>
