@@ -36,7 +36,7 @@
 
 ---
 
-## Epic 2 — Cadastros (P0) — Em progresso (4/7 Done)
+## Epic 2 — Cadastros (P0) ✅ Concluído em 2026-05-07
 
 **Objetivo:** CRUD completo de condomínios, setores, unidades, moradores. Importação CSV.
 
@@ -50,7 +50,9 @@
 | 2.6 | Importação CSV — preview com erros + commit transacional | **Done** ✅ | 2.5 |
 | 2.7 | Layout AdminLayout + navegação cadastros | **Done** ✅ | 1.5, 1.6, 2.1 |
 
-**Mergeadas em main via PR #13** (merge cumulativo, mesma estratégia do Epic 1 → PR #9).
+**Merge cumulativo:**
+- 2.1, 2.2, 2.3, 2.7 → **PR #13** (merged 2026-05-06)
+- 2.4, 2.5, 2.6 → **PR #14** (merged 2026-05-07) — fecha o Epic
 
 ---
 
