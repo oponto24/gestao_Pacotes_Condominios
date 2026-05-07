@@ -1,9 +1,15 @@
 storyId: 2.4
 storyTitle: CRUD Morador (principal + adicionais) por unidade (admin)
 reviewedBy: '@qa (Quinn)'
-reviewedAt: '2026-05-06'
-verdict: CONCERNS
-score: 8.5/10
+reviewedAt: '2026-05-07'
+verdict: PASS
+score: 9.5/10
+previousVerdict: 'CONCERNS 8.5/10 (2026-05-06) — smoke E2E parcial 1/11'
+upgradeReason: |
+  Smoke E2E completo executado em 2026-05-07 (10/10 PASS após 3 fixes
+  descobertos durante o smoke). CONCERNS original era exclusivamente
+  cobertura de UX visual; agora coberta. Lógica já estava sólida via
+  integration tests.
 
 summary: |
   Implementação substancial e bem-arquitetada — terceiro CRUD tenant-scoped
@@ -33,7 +39,7 @@ acceptance_criteria:
   ac11_morador_form: PASS           # Sheet + Select (em create only) + checkbox principal
   ac12_tests: PASS                  # 24 novos (5 normalize + 8 validator + 11 integration)
   ac13_documentation: PASS          # admin-cadastros.md expandido (nome_normalizado, soft delete LGPD, invariante)
-  ac14_quality_gates: CONCERNS      # lint/typecheck/tests OK, mas smoke E2E manual parcial (1/11)
+  ac14_quality_gates: PASS          # lint/typecheck/tests OK + smoke E2E completo 10/10 (2026-05-07)
 
 quality_checks:
   code_review:
@@ -157,20 +163,52 @@ quality_checks:
       - QA Results documenta gap do smoke E2E parcial
 
 issues:
-  - severity: high
+  - severity: resolved
     category: process
-    title: Smoke E2E manual parcial (1/11)
+    title: Smoke E2E manual parcial (1/11) — RESOLVIDO 2026-05-07
     description: |
-      Usuário optou por não fazer smoke E2E completo após o fix do bug
-      `COUNT_SELECT`. Apenas passo 1 (carregar tela) foi validado em browser
-      real. Caminhos críticos (criar morador, invariante 1-principal via UI,
-      soft delete via UI, restore, mobile drawer) NÃO foram validados visualmente.
-    fix_size: |
-      Para reduzir esse risco em produção, recomenda-se:
-      (a) Confiança: testes integration cobrem lógica de DB exaustivamente,
-          incluindo invariante e soft delete
-      (b) Mitigação: smoke E2E pós-merge em produção (story 8.4) deve incluir
-          fluxo morador completo
+      Issue HIGH original do gate CONCERNS. Resolvido com smoke E2E completo
+      executado em 2026-05-07. Os 3 caminhos críticos não validados (invariante
+      via UI, soft delete LGPD, restore) agora confirmados PASS.
+    resolution: |
+      Smoke completo S2-S11 executado pelo usuário em browser real, com
+      validação cruzada via psql. 3 bugs descobertos e fixados durante o
+      smoke (commits 8dfa876, 90c2dfe). Plano formal: docs/qa/test-designs/2.4-smoke-e2e.md.
+
+  - severity: resolved
+    category: code
+    title: Filtro `ativo: true` ignorando includeArquivados — RESOLVIDO 2026-05-07
+    description: |
+      Bug HIGH descoberto em S8 do smoke. `listMoradores` aplicava filtro
+      `ativo: true` mesmo com `includeArquivados=true`, escondendo moradores
+      arquivados (que têm `ativo=false` por design do soft delete).
+      Resultado: toggle "Mostrar arquivados" voltava lista vazia.
+    resolution: |
+      Fix em src/lib/db/morador.ts:34 (commit 8dfa876):
+      `params.includeInativos || params.includeArquivados ? {} : { ativo: true }`
+      + test integration regressão prevenindo recorrência.
+
+  - severity: resolved
+    category: code
+    title: SheetTitle ausente no drawer mobile — RESOLVIDO 2026-05-07
+    description: |
+      Console warning de a11y do Radix Dialog: "DialogContent requires a
+      DialogTitle". Descoberto em S11 do smoke (mobile/teclado).
+    resolution: |
+      Fix em src/components/admin/AdminLayoutClient.tsx (commit 8dfa876):
+      SheetTitle sr-only "Menu de navegação" no SheetContent mobile.
+
+  - severity: resolved
+    category: design
+    title: Toggle "Mostrar inativos" sem ação correspondente — RESOLVIDO 2026-05-07
+    description: |
+      UX cruft: toggle de filtro + botão "Desativar/Ativar" copiados do
+      pattern Unidade/Setor mas sem semântica útil para morador. Soft delete
+      LGPD (archive/restore) já cobre o caso.
+    resolution: |
+      Removidos toggle + botão + função toggleAtivo + searchParam ?inativos
+      (commit 8dfa876). Decisão de produto: archive é o único caminho
+      esperado para "tirar morador de circulação" (LGPD).
 
 observations:
   - severity: info
@@ -206,14 +244,9 @@ recommendations:
       para morador `is_principal` quando IA não acertar destinatário
 
 next_action: |
-  Story aprovada com CONCERNS. Decisão recomendada:
-    1. **Opção A (recomendada):** continuar para 2.5/2.6 (CSV) e fazer smoke E2E
-       completo da 2.4 + 2.5 + 2.6 juntos antes do próximo merge cumulativo
-    2. **Opção B:** parar agora, fazer smoke E2E completo da 2.4 (passos 2-11),
-       e mergear isoladamente
+  Story aprovada PASS 9.5/10. Smoke E2E completo (10/10) + 3 bugs fixados
+  durante o smoke. 122 tests passando (+1 regressão do filtro arquivados).
 
-  Em ambos os casos, integration tests cobrem lógica crítica — risco do CONCERNS
-  é UX visual, não correção da lógica.
-
-  Próximo na cadeia AIOX: @devops Gage cria PR #14 da 2.4 (cumulativa com 2.4
-  + chore roadmap fix da branch a49d541).
+  Próximo na cadeia AIOX: @devops Gage cria PR da 2.4 (cumulativa com fixes
+  do smoke). Pode mergear isoladamente ou aguardar 2.5/2.6 para merge
+  cumulativo do Epic 2 — decisão de produto.
