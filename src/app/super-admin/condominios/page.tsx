@@ -1,6 +1,3 @@
-import { redirect } from 'next/navigation';
-import { getTenantContext } from '@/server/middleware/tenant';
-import { isTenantError } from '@/server/errors';
 import { listCondominios } from '@/lib/db/condominio';
 import {
   CondominiosListClient,
@@ -14,20 +11,11 @@ interface Props {
   searchParams: Promise<{ page?: string; arquivados?: string }>;
 }
 
+// Guard centralizado em src/app/super-admin/layout.tsx (story 8.1)
 export default async function CondominiosPage({ searchParams }: Props) {
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page ?? 1) || 1);
   const includeArquivados = sp.arquivados === 'true';
-
-  let isSuperAdmin = false;
-  try {
-    const ctx = await getTenantContext();
-    isSuperAdmin = ctx.kind === 'super_admin';
-  } catch (err) {
-    if (isTenantError(err)) redirect('/');
-    throw err;
-  }
-  if (!isSuperAdmin) redirect('/');
 
   const result = await listCondominios({
     page,

@@ -73,6 +73,21 @@ export function CondominiosListClient({ rows, total, page, pageSize, includeArqu
     router.refresh();
   }
 
+  async function impersonate(id: string) {
+    const res = await fetch('/api/super-admin/impersonate/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ condominio_id: id }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(`Falha ao impersonar: ${body.message ?? res.status}`);
+      return;
+    }
+    router.push('/admin');
+    router.refresh();
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
@@ -144,6 +159,11 @@ export function CondominiosListClient({ rows, total, page, pageSize, includeArqu
                     )}
                   </TableCell>
                   <TableCell className="space-x-2 text-right">
+                    {!arquivado && c.ativo && (
+                      <Button variant="ghost" size="sm" onClick={() => impersonate(c.id)}>
+                        Impersonar
+                      </Button>
+                    )}
                     {!arquivado && (
                       <Button variant="ghost" size="sm" onClick={() => setEditTarget(c)}>
                         Editar
