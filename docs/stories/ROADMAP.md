@@ -75,7 +75,7 @@
 | 3.9 | Tela /chegada/organizar — tamanho + setor + posição | **Done** ✅ | 3.8, 2.2 |
 | 3.10 | Estado pendente_identificacao + tela /portaria/pendentes | **Done** ✅ | 3.7 |
 | 3.11 | Brand Ponto24 — paleta amarela #FDC800 + violet #7C3AED, fundo claro, identidade amigável | **Done** ✅ | 3.10 |
-| 3.12 | Deploy MVP Epic 3 na VPS — Docker + Nginx + Let's Encrypt + HTTPS | Draft | 3.11 |
+| 3.12 | Deploy MVP Epic 3 na VPS — Docker + Nginx + Let's Encrypt + HTTPS | **Done** ✅ — https://condominios.oponto24.com.br no ar (SSL válido até 2026-08-05) | 3.11 |
 
 ---
 
