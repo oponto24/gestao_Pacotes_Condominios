@@ -1,13 +1,33 @@
-import { Home } from 'lucide-react';
-import { ComingSoonPlaceholder } from '@/components/admin/ComingSoonPlaceholder';
+import { listUnidades } from '@/lib/db/unidade';
+import {
+  UnidadesListClient,
+  type UnidadeRow,
+} from '@/components/admin/UnidadesListClient';
 
-export default function UnidadesPage() {
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+interface Props {
+  searchParams: Promise<{ inativas?: string }>;
+}
+
+export default async function UnidadesPage({ searchParams }: Props) {
+  const sp = await searchParams;
+  const includeInativas = sp.inativas === 'true';
+
+  const result = await listUnidades({
+    page: 1,
+    pageSize: 100,
+    includeInativas,
+  });
+
+  const rows = result.items as unknown as UnidadeRow[];
+
   return (
-    <ComingSoonPlaceholder
-      title="Unidades"
-      storyId="2.3"
-      icon={<Home className="h-12 w-12" aria-hidden />}
-      description="O CRUD de unidades (apartamentos/casas) por setor será implementado na story 2.3."
+    <UnidadesListClient
+      rows={rows}
+      total={result.total}
+      includeInativas={includeInativas}
     />
   );
 }

@@ -67,7 +67,55 @@ explicitamente.
 
 Guard centralizado: `src/lib/api/admin-guard.ts` (`requireAdmin()`).
 
+## Unidade (Story 2.3)
+
+Unidades são apartamentos/casas do condomínio. Identificadas por `identificador`
++ `bloco` opcional (ex: "101 Bloco A", "Casa 12 sem bloco").
+
+### UI
+
+`/admin/unidades` (acessível pela sidebar do AdminLayout).
+
+### API REST
+
+| Método | Path | Propósito |
+|---|---|---|
+| `GET` | `/api/admin/unidades` | Lista paginada com `_count.{moradores, pacotes}` |
+| `GET` | `/api/admin/unidades/[id]` | Detalhe |
+| `POST` | `/api/admin/unidades` | Cria — 409 se `(identificador, bloco)` duplicado no condomínio |
+| `PATCH` | `/api/admin/unidades/[id]` | Update parcial |
+| `DELETE` | `/api/admin/unidades/[id]` | Delete físico — 409 se houver morador OU pacote vinculado |
+
+**Query params do list:** `?page=1&pageSize=20&q=<busca>&include_inativas=false`
+(busca em identificador OR bloco). `pageSize` máx = 200.
+
+### Modelo
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | UUID | gerado |
+| `condominio_id` | UUID | injetado do tenant context |
+| `identificador` | string (1-50) | ex: "101", "Apto 301-B" |
+| `bloco` | string (max 50) | opcional, ex: "A" |
+| `observacoes` | string (max 500) | opcional |
+| `ativo` | boolean | default true |
+
+### Unique composite com bloco NULL
+
+Postgres trata `(condId, '101', NULL)` como **distinto** de outro
+`(condId, '101', NULL)` em UNIQUE. Por isso `findUnidadeByIdentificador`
+faz match explícito tratando `bloco === null` (Prisma traduz para `IS NULL`).
+
+**Lição:** confiar apenas no DB constraint deixaria duplicatas-NULL
+passarem. Sempre check explícito antes do INSERT.
+
+### DELETE com 2 validações
+
+- Se `_count.moradores > 0` → 409 "remova/transfira primeiro"
+- Se `_count.pacotes > 0` → 409 "desative em vez de deletar"
+
+UI esconde botão "Excluir" quando qualquer um > 0.
+
 ## Próximas stories
 
-- **2.3 — CRUD Unidade:** apartamento/casa por setor (referencia `setor.id`)
 - **2.4 — CRUD Morador:** principal + adicionais por unidade
