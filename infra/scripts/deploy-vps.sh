@@ -43,8 +43,8 @@ if [[ "${1:-}" == "first-deploy" ]]; then
   $COMPOSE up -d postgres redis
   sleep 10
 
-  echo "2️⃣  Rodando prisma migrate deploy..."
-  $COMPOSE run --rm app sh -c 'cd /app && npx prisma migrate deploy'
+  echo "2️⃣  Rodando prisma migrate deploy (via container worker — tem CLI nos node_modules)..."
+  $COMPOSE run --rm --entrypoint "" worker sh -c 'cd /app && npx prisma migrate deploy'
 
   echo "3️⃣  Subindo Nginx em modo HTTP-only (pra Let's Encrypt validar)..."
   # Cria certificado fake temporário pra Nginx subir, depois sobrescreve com real
