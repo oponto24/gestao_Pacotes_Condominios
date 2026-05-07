@@ -13,7 +13,6 @@ export function LandingPage() {
       <Hero />
       <Problema />
       <ComoFunciona />
-      <Diferenciais />
       <CtaFinal />
       <Footer />
     </div>
@@ -159,67 +158,6 @@ function ComoFunciona() {
   );
 }
 
-function Diferenciais() {
-  const itens = [
-    {
-      titulo: 'IA que aprende sua portaria',
-      texto:
-        'Reconhecimento automático de etiquetas e casamento inteligente com unidades e moradores.',
-    },
-    {
-      titulo: 'WhatsApp nativo',
-      texto:
-        'Notificação automática de chegada e retirada via Meta Cloud API — sem bot caseiro.',
-    },
-    {
-      titulo: 'Multi-condomínio',
-      texto:
-        'Administradoras gerenciam vários condomínios em uma única conta, com isolamento total de dados.',
-    },
-    {
-      titulo: 'Auditoria completa',
-      texto:
-        'Cada chegada, retirada e exceção fica registrada com foto, hora e responsável.',
-    },
-    {
-      titulo: 'Funciona no celular',
-      texto:
-        'PWA otimizado pro porteiro: instala como app, funciona offline, sem precisar de tablet caro.',
-    },
-    {
-      titulo: 'Sem fidelidade',
-      texto:
-        'Mensalidade simples por condomínio. Cancela quando quiser, sem letra miúda.',
-    },
-  ];
-
-  return (
-    <section className="bg-surface py-16 sm:py-20">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold sm:text-4xl">
-            Feito pra quem gerencia de verdade
-          </h2>
-          <p className="mt-4 text-lg text-brand-mid">
-            Tudo que síndico e administradora precisam — sem complicação.
-          </p>
-        </div>
-        <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {itens.map((i) => (
-            <div key={i.titulo} className="rounded-lg bg-background p-6 shadow-sm">
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-md bg-accent-light text-accent-dark">
-                <CheckIcon />
-              </div>
-              <h3 className="text-lg font-semibold">{i.titulo}</h3>
-              <p className="mt-2 text-brand-mid">{i.texto}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function CtaFinal() {
   return (
     <section className="py-16 sm:py-24">
@@ -280,20 +218,3 @@ function Footer() {
   );
 }
 
-function CheckIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-5 w-5"
-      aria-hidden="true"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
