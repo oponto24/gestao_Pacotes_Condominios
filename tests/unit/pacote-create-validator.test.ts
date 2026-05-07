@@ -27,19 +27,43 @@ describe('pacoteCreateInputSchema', () => {
     expect(out.codigo_rastreio).toBeUndefined();
   });
 
-  it('rejeita > 100 chars', () => {
+  it('rejeita > 200 chars', () => {
     expect(() =>
-      pacoteCreateInputSchema.parse({ codigo_rastreio: 'A'.repeat(101) }),
+      pacoteCreateInputSchema.parse({ codigo_rastreio: 'A'.repeat(201) }),
     ).toThrow();
   });
 
-  it('rejeita caracteres especiais (SQL injection attempt)', () => {
+  it('aceita QR Code com JSON (uso real de marketplace)', () => {
+    const out = pacoteCreateInputSchema.parse({
+      codigo_rastreio: '{"id":"46972841780","t":"lm"}',
+    });
+    expect(out.codigo_rastreio).toBe('{"id":"46972841780","t":"lm"}');
+  });
+
+  it('aceita QR Code com URL', () => {
+    const out = pacoteCreateInputSchema.parse({
+      codigo_rastreio: 'https://wa.me/qr/4C5VTKUCNLZEO1',
+    });
+    expect(out.codigo_rastreio).toBe('https://wa.me/qr/4C5VTKUCNLZEO1');
+  });
+
+  it('aceita SQL injection literal (Prisma protege com prepared statements)', () => {
+    const out = pacoteCreateInputSchema.parse({
+      codigo_rastreio: "'; DROP TABLE--",
+    });
+    expect(out.codigo_rastreio).toBe("'; DROP TABLE--");
+  });
+
+  it('rejeita < e > (defesa XSS)', () => {
     expect(() =>
-      pacoteCreateInputSchema.parse({ codigo_rastreio: "'; DROP TABLE--" }),
+      pacoteCreateInputSchema.parse({ codigo_rastreio: '<script>' }),
+    ).toThrow();
+    expect(() =>
+      pacoteCreateInputSchema.parse({ codigo_rastreio: 'a<b' }),
     ).toThrow();
   });
 
-  it('rejeita emoji ou unicode exótico', () => {
+  it('rejeita emoji ou unicode não-ASCII', () => {
     expect(() => pacoteCreateInputSchema.parse({ codigo_rastreio: '📦123' })).toThrow();
   });
 });

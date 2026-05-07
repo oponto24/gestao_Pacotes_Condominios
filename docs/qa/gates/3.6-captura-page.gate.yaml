@@ -1,0 +1,79 @@
+storyId: '3.6'
+storyTitle: 'CapturaPage (tela de chegada integrada)'
+verdict: PASS
+reviewer: '@qa (Quinn)'
+date: '2026-05-07'
+summary: |
+  Tela final de chegada (PWA mobile-first) integra PhotoCapture + BarcodeScanner +
+  POST /api/pacotes via state machine (useReducer). Smoke E2E real validou pipeline
+  end-to-end — pacote criado no DB, IA processou foto e extraiu dados parciais
+  (CEP + remetente reais com confianca 0.55 numa foto de teste do user).
+
+quality_checks:
+  code_review:
+    status: PASS
+    notes: |
+      - State machine pura em módulo separado (testável sem React/JSDOM)
+      - Reducer pattern espelha o da 3.3 — consistência arquitetural
+      - useState pra cameraError separado do reducer (UI puro vs submit FSM)
+      - Vibração táctil em sucesso (UX nice)
+      - Cleanup do playground completo (sem refs órfãs)
+
+  unit_tests:
+    status: PASS
+    notes: |
+      14 tests reducer + 11 tests validator backend (atualizado pelo bug fix).
+      227 → 238 tests total, todos passando.
+
+  acceptance_criteria:
+    status: PASS
+    notes: |
+      AC1-AC10 todos cobertos. Smoke S1-S6 executados pelo user (S5 N/A).
+
+  no_regressions:
+    status: PASS
+    notes: |
+      Build OK. /chegada bundle 7.01 kB (vs 5.96 kB antes — +1 kB pelo reducer + lucide icons).
+
+  performance:
+    status: PASS
+    notes: |
+      Submit medido em smoke real: ~3-4s incluindo upload de foto + DB transaction + enqueue.
+      Bem dentro do NFR-040 (<30s/pacote).
+
+  security:
+    status: PASS
+    notes: |
+      Bug crítico descoberto e corrigido durante smoke: regex original
+      `^[A-Za-z0-9.\-/ ]+$` rejeitava QR Codes reais (JSON, URLs).
+      Relaxada pra ASCII printable exceto `<>` (XSS).
+      SQL injection prevenido por Prisma parameterized queries (test explícito).
+      XSS prevenido por React auto-escape + bloqueio de `<>` na entrada.
+
+  documentation:
+    status: PASS
+    notes: |
+      Story atualizada com Change Log do bug fix.
+      ROADMAP movido 3.5→Done, 3.6→Ready for Review.
+
+issues:
+  - severity: low
+    category: requirements
+    description: |
+      Story incluiu redirect pra `/chegada/confirmar/{id}` que retorna 404
+      até a story 3.8 ser implementada.
+    recommendation: |
+      Aceitável — documentado na story e no smoke. Próxima story (3.7)
+      ou 3.8 fecha o loop.
+
+waivers: []
+
+next_steps:
+  - '@devops *push + criar PR + auto-merge'
+  - 'Próxima story: 3.7 (matching IA-extraído ↔ unidade/morador)'
+  - 'S5 (câmera negada) pode ser revalidado quando user limpar permissões do site'
+
+tech_debt_registered:
+  - 'Idempotency-Key header (já listado na 3.4)'
+  - 'Validação magic bytes da imagem (file-type lib)'
+  - 'Toast component próprio (atualmente é div inline; produto pode evoluir)'

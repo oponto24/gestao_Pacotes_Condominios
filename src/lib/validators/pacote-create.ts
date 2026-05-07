@@ -7,7 +7,11 @@ import { z } from 'zod';
  * Outros campos do Pacote NÃO entram aqui — IA preenche depois (story 3.5).
  */
 
-const codigoRastreioRegex = /^[A-Za-z0-9.\-/ ]+$/;
+// Aceita ASCII imprimível exceto `<` e `>` (defesa XSS).
+// SQL injection já é prevenido pelas parameterized queries do Prisma.
+// QR Codes reais (JSON, URLs) precisam aceitar `{}":?=&` etc.
+const codigoRastreioRegex = /^[\x20-\x7E]+$/;
+const ANGLE_BRACKET = /[<>]/;
 
 export const pacoteCreateInputSchema = z.object({
   codigo_rastreio: z.preprocess(
@@ -15,11 +19,11 @@ export const pacoteCreateInputSchema = z.object({
     z
       .string()
       .trim()
-      .max(100, 'Código de rastreio muito longo (max 100)')
-      .regex(
-        codigoRastreioRegex,
-        'Código de rastreio aceita apenas letras, números, hífen, ponto, barra e espaço',
-      )
+      .max(200, 'Código de rastreio muito longo (max 200)')
+      .regex(codigoRastreioRegex, 'Código contém caracteres não-imprimíveis')
+      .refine((v) => !ANGLE_BRACKET.test(v), {
+        message: 'Código não pode conter < ou >',
+      })
       .optional(),
   ),
 });
