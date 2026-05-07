@@ -1,7 +1,7 @@
 # Roadmap de Stories — Gestão de Pacotes em Condomínios
 
 > **Owner:** River (AIOX Scrum Master)
-> **Última atualização:** 2026-05-06
+> **Última atualização:** 2026-05-07
 > **PRD:** `docs/prd/PRD.md` | **Architecture:** `docs/architecture/ARCHITECTURE.md` | **Schema:** `docs/architecture/database/SCHEMA.md` | **UX:** `docs/ux/UX_SPEC.md`
 
 ---
