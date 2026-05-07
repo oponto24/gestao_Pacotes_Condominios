@@ -1,0 +1,70 @@
+storyId: '3.8'
+storyTitle: 'Tela /chegada/confirmar (IAExtractionForm)'
+verdict: PASS
+reviewer: '@qa (Quinn)'
+date: '2026-05-07'
+summary: |
+  Tela de confirmação dos dados extraídos pela IA + endpoint PATCH idempotente.
+  Selectors de unidade/morador via shadcn Select (lista pré-fetched no server,
+  sem N+1). "Outra pessoa" via destinatario_id=null + manual_override
+  (sem migração de schema). 12 tests novos do validator + 284 totais passing.
+
+quality_checks:
+  code_review:
+    status: PASS
+    notes: |
+      - Server page usa `requirePorteiro` + `loadPacoteForConfirmar` em uma só leitura
+      - Idempotência via evento `confirmado` (sem novo enum status)
+      - Form client com state simples (useState) — apropriado pro tamanho
+      - "Outra pessoa" via marker constant (OUTRA_PESSOA), separado dos UUIDs reais
+      - Auto-foco no Nome quando IA confiança <0.5 (sugestão @po implementada)
+      - Banners para pendente_identificacao + cep_diverge
+
+  unit_tests:
+    status: PASS
+    notes: '12 tests novos do validator + 284/284 total. Build OK.'
+
+  acceptance_criteria:
+    status: PASS
+    notes: 'AC1-AC7 cobertos. Smoke E2E manual sob demanda do user.'
+
+  no_regressions:
+    status: PASS
+    notes: 'Lint OK, typecheck OK, build OK. /chegada/confirmar/[id] = 4.84 kB.'
+
+  performance:
+    status: PASS
+    notes: |
+      Listas pré-fetched no server component (unidades + moradores ativos).
+      Para condomínios <500 unidades, single render <1s.
+      Tech debt: paginar + busca server-side se >500.
+
+  security:
+    status: PASS
+    notes: |
+      - Validação Zod no client + server
+      - Tenant isolation: PATCH valida unidade_id + destinatario_id pertencem ao mesmo cond
+      - PATCH idempotente — evita duplo registro de confirmação
+      - Server page protegida por requirePorteiro (admin ou porteiro)
+
+  documentation:
+    status: PASS
+    notes: 'Documentação inline robusta nos arquivos novos. Runbook update segue na 3.9.'
+
+issues:
+  - severity: low
+    category: requirements
+    description: 'Foto thumbnail mostra storage_path em vez de imagem real (signed URL é tech debt 8.x)'
+    recommendation: 'Aceitável MVP — porteiro acabou de tirar a foto, não precisa rever na confirmação'
+
+waivers: []
+
+next_steps:
+  - '@devops *push + merge'
+  - 'Próxima: 3.9 (organizar tamanho/setor/posição)'
+  - 'Story de Brand Ponto24 será criada antes do deploy 3.11 (fundo claro + identidade visual)'
+
+tech_debt_registered:
+  - 'Signed URL para foto (Epic 8.x storage S3)'
+  - 'Combobox com busca server-side quando >500 unidades'
+  - 'UnidadeSelector e MoradorSelector como componentes separados (atualmente inline na 3.8)'

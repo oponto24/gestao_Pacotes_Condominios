@@ -68,8 +68,8 @@
 | 3.4 | API POST /api/pacotes (cria rascunho + salva foto + enfileira IA job) | **Done** ✅ | 1.6, 1.8, 1.9 |
 | 3.5 | Worker extractLabel — Anthropic Haiku + prompt caching + JSON estruturado | **Done** ✅ | 3.4 |
 | 3.6 | Tela /chegada (captura) integrada com 3.4 | **Done** ✅ | 3.2, 3.3, 3.4 |
-| 3.7 | Algoritmo de matching IA-extraído ↔ unidade/morador (CEP + nome normalizado) | **Ready for Review** 🔵 | 3.5, 2.4 |
-| 3.8 | Tela /chegada/confirmar — formulário IAExtractionForm (FR-014) | Draft | 3.6, 3.7 |
+| 3.7 | Algoritmo de matching IA-extraído ↔ unidade/morador (CEP + nome normalizado) | **Done** ✅ | 3.5, 2.4 |
+| 3.8 | Tela /chegada/confirmar — formulário IAExtractionForm (FR-014) | **Ready for Review** 🔵 | 3.6, 3.7 |
 | 3.9 | Tela /chegada/organizar — tamanho + setor + posição | Draft | 3.8, 2.2 |
 | 3.10 | Estado pendente_identificacao + tela /portaria/pendentes | Draft | 3.7 |
 
