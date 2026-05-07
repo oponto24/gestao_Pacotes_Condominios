@@ -1,0 +1,153 @@
+storyId: 2.3
+storyTitle: CRUD Unidade por condomínio (admin)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-06'
+verdict: PASS
+score: 9.5/10
+
+summary: |
+  Segundo CRUD tenant-scoped — espelha pattern da 2.2 com excelência.
+  Tratamento explícito de bloco NULL no `findUnidadeByIdentificador`
+  previne bug latente comum em UNIQUE composite. DELETE com 2 validações
+  (moradores + pacotes) com mensagens diferenciadas. PATCH detecta mudança
+  de chave antes de query de conflict (otimização). Smoke E2E 10/10
+  validou explicitamente cenário bloco-NULL crítico.
+
+acceptance_criteria:
+  ac1_validators: PASS       # preprocess para opcionais (lição 2.2 aplicada)
+  ac2_db_helpers: PASS       # withTenant + tratamento explícito bloco NULL
+  ac3_get_list: PASS         # paginado + _count.{moradores, pacotes} + ordenação composta
+  ac4_post_create: PASS      # 409 com mensagem diferenciada (com/sem bloco)
+  ac5_get_detail: PASS       # _count completo
+  ac6_patch_update: PASS     # detecta mudança de chave antes do conflict check (eficiente)
+  ac7_delete: PASS           # 2 validações distintas com mensagens claras
+  ac8_unidades_page: PASS    # stub 2.7 substituído por server real
+  ac9_unidade_form: PASS     # mesmo pattern do SetorForm
+  ac10_tests: PASS           # 13 novos (6 unit + 7 integration com isolation + bloco-NULL)
+  ac11_documentation: PASS   # admin-cadastros.md expandido com seção Unidade
+  ac12_quality_gates: PASS   # lint/typecheck/test + smoke E2E 10/10
+
+quality_checks:
+  code_review:
+    score: 9/10
+    findings:
+      - severity: low
+        category: code
+        description: |
+          PATCH faz 2 queries: findFirst para verificar existência + findFirst
+          para conflict (se mudou chave). Poderia ser 1 query com OR. Mas
+          separar facilita mensagens de erro distintas (404 vs 409).
+        recommendation: Manter pattern atual — clareza > 1 query a menos.
+
+      - severity: info
+        category: code
+        description: |
+          `formatUnidadeLabel` é inline no route file. Se 2.4 (Morador)
+          também precisar formatar "Apto 101 / A", extrair para helper
+          compartilhado.
+        recommendation: |
+          Refactor opcional quando 2.4 reusar a lógica. Não-bloqueante.
+
+      - severity: info
+        category: design
+        description: |
+          Lista usa `pageSize: 100` na page mas validator permite até 200.
+          Decisão consciente — UI sem paginação visual ainda. Quando
+          condomínio com 100+ unidades aparecer, adicionar paginador.
+        recommendation: |
+          Mesma observação da 2.2. Quando virar dor real (>100 unidades em
+          algum tenant), adicionar paginador igual ao da 2.1.
+
+  unit_tests:
+    score: 10/10
+    coverage:
+      validators (6):
+        - payload mínimo + completo
+        - identificador vazio rejeitado
+        - bloco vazio → undefined (preprocess)
+        - observações max 500
+        - update partial + ativo
+        - listQuery defaults + max 200
+      integration_tenant (7):
+        - **TENANT ISOLATION CRÍTICO:** unidade A não vaza em B
+        - mesmo identificador em blocos diferentes coexistem (validação UNIQUE composite)
+        - **BLOCO NULL:** findFirst com `bloco: null` detecta corretamente
+        - update preserva campos não enviados
+        - DELETE com morador vinculado retorna count > 0 (fixture real)
+        - DELETE físico quando sem vínculos
+        - inactive encontrado por findFirst sem filtro ativo
+
+  acceptance_criteria_traceability:
+    score: 10/10
+    notes: 12 ACs com 60+ sub-itens marcados [x]. Smoke E2E 10/10 cobre cada AC manualmente.
+
+  no_regressions:
+    score: 10/10
+    evidence: 97/97 tests (82 baseline + 15 novos da 2.3, ajustes baseline mantidos verdes).
+
+  performance:
+    score: 9/10
+    notes: |
+      Lista usa Promise.all para count + items paralelos.
+      `_count.{moradores, pacotes}` via Prisma — 1 query agregada (sem N+1).
+      Ordenação composta `[bloco ASC, identificador ASC]` usa índice
+      `[condominio_id]` — performance OK até ~10k unidades por tenant.
+
+  security:
+    score: 10/10
+    findings:
+      - **TENANT ISOLATION VALIDADO:** test integration explícito
+      - **BLOCO NULL HANDLING:** previne bypass de UNIQUE constraint
+        (Postgres não trata NULL = NULL; check explícito é obrigatório)
+      - `requireAdmin()` em todos os 5 endpoints (smoke confirmou 401)
+      - `condominio_id` injetado do tenant context (defesa contra escape)
+      - PATCH NÃO permite mudar `condominio_id` (campos enumerados)
+      - DELETE valida AMBOS counts (moradores + pacotes) com mensagens
+        diferenciadas — UX clara sem vazar detalhes internos
+      - Smoke E2E confirmou conflito 409 com bloco NULL (cenário crítico)
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/admin-cadastros.md (expandido com seção Unidade)
+      - Dev Agent Record com 5 decisões + correção do schema Morador
+      - Smoke E2E 10/10 com passo 5 (bloco NULL) destacado
+
+issues: []
+
+observations:
+  - severity: info
+    description: |
+      **Pattern reutilizável reforçado:** stories 2.2 + 2.3 usam pattern
+      idêntico com diferenças bem-isoladas. Story 2.4 (Morador) pode
+      espelhar igual — adicionar apenas validação de telefone (E.164)
+      e gestão de `is_principal` (apenas 1 por unidade).
+  - severity: info
+    description: |
+      **Lição importante validada em produção:** UNIQUE composite com
+      coluna NULL em Postgres permite duplicatas. Documentado em
+      Dev Notes + runbook + test explícito. Aplicável a futuros CRUDs.
+  - severity: info
+    description: |
+      Smoke E2E foi cirúrgico — passo 5 (conflito bloco NULL) prova
+      que o tratamento explícito funciona em produção, não só em test
+      isolado.
+
+recommendations:
+  before_next_story:
+    - Considerar extrair `formatUnidadeLabel` se 2.4 precisar (refactor reativo)
+  for_future_stories:
+    - Story 2.4: pattern + validação de telefone E.164 + invariante
+      "apenas 1 morador principal por unidade"
+    - Story 2.5/2.6: importação CSV com validação de unique composite
+      (challenging com bloco NULL — usar mesma estratégia)
+    - Epic 6 (admin pacotes): selector de unidade no form de criação
+      de pacote (consumir API de listUnidades)
+
+next_action: |
+  Story aprovada. Conforme decisão do usuário (opção 1 — merge cumulativo
+  como Epic 1):
+    1. @devops Gage cria PR #13 da 2.3 contra `main` direto (não stacked)
+    2. PR #13 contém commits cumulativos: 2.1 + 2.7 + 2.2 + 2.3
+    3. Mergear PR #13 → PRs #10/11/12 fecham automaticamente
+    4. main alinha com tudo entregue até agora
