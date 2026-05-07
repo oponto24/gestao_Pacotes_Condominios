@@ -5,6 +5,18 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Gestão de Pacotes',
   description: 'Sistema de gestão de pacotes em condomínios',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Pacotes',
+  },
+  icons: {
+    icon: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/icons/apple-touch-icon.png',
+  },
 };
 
 export const viewport: Viewport = {
@@ -12,6 +24,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: '#0a0a0a',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

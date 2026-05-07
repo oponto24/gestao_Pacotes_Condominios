@@ -62,7 +62,7 @@
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 3.1 | PWA: layout PortariaLayout + BottomNavBar + manifest.json | Draft | 1.5 |
+| 3.1 | PWA: layout PortariaLayout + BottomNavBar + manifest.json | **Ready for Review** 🔍 | 1.5 |
 | 3.2 | Componente PhotoCapture (câmera + preview + retake) | Draft | 3.1 |
 | 3.3 | Componente BarcodeScannerInput (html5-qrcode + fallback) | Draft | 3.1 |
 | 3.4 | API POST /api/pacotes (cria rascunho + salva foto + enfileira IA job) | Draft | 1.6, 1.8, 1.9 |
