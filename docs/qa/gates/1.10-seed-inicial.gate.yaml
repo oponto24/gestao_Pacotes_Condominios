@@ -2,8 +2,10 @@ storyId: 1.10
 storyTitle: Seed inicial completo (super-admin + whatsapp_number + reconciliação Clerk)
 reviewedBy: '@qa (Quinn)'
 reviewedAt: '2026-05-06'
-verdict: CONCERNS
-score: 8.0/10
+reReviewedAt: '2026-05-06'
+verdict: PASS
+score: 9.5/10
+priorVerdict: CONCERNS (bug HIGH fixado em commit 5d9df58)
 
 summary: |
   Implementação substancial e bem-documentada. Refactor do seed para Pino,
