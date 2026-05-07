@@ -12,14 +12,14 @@ import type { MetadataRoute } from 'next';
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Gestão de Pacotes — Condomínios',
-    short_name: 'Pacotes',
-    description: 'Sistema de gestão de pacotes para portaria de condomínios',
+    name: 'Ponto 24 — Pacotes',
+    short_name: 'Ponto 24',
+    description: 'Pacotes na portaria, sem mistério.',
     start_url: '/chegada?source=pwa',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#ffffff',
-    theme_color: '#0a0a0a',
+    background_color: '#FFFFFF',
+    theme_color: '#FDC800',
     icons: [
       {
         src: '/icons/icon-192.png',

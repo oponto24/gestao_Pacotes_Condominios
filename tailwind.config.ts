@@ -28,11 +28,24 @@ const config: Config = {
         },
         // Texto secundário (descrições, placeholders, labels muted)
         'text-secondary': '#6B7280',
-        // Brand
+        // Brand Ponto 24 (story 3.11)
         primary: {
-          DEFAULT: '#2563EB',
-          dark: '#1D4ED8',
-          light: '#DBEAFE',
+          DEFAULT: '#FDC800', // amarelo Ponto24
+          dark: '#E5B400', // hover/active
+          light: '#FFF4CC',
+          foreground: '#1A1A1A', // texto preto pra contraste AAA em amarelo
+        },
+        // Accent — violet Ponto24 (badges secundários, indicadores IA)
+        accent: {
+          DEFAULT: '#7C3AED',
+          dark: '#6D28D9',
+          light: '#EDE9FE',
+          foreground: '#FFFFFF',
+        },
+        // Brand neutros (texto, cinzas)
+        brand: {
+          ink: '#1A1A1A', // texto principal escuro
+          mid: '#6B7280', // texto secundário
         },
         // Semantic
         success: { DEFAULT: '#16A34A', light: '#DCFCE7' },
@@ -51,7 +64,7 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'Montserrat', 'system-ui', 'sans-serif'],
       },
       fontSize: {
         // base 16px enforced (legibilidade mobile)
