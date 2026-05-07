@@ -1,0 +1,72 @@
+storyId: '3.7'
+storyTitle: 'Matching IA-extraído ↔ Unidade/Morador'
+verdict: PASS
+reviewer: '@qa (Quinn)'
+date: '2026-05-07'
+summary: |
+  Algoritmo determinístico (sem IA, custo zero) que casa dados extraídos pela IA
+  com unidade + morador do tenant. 3 módulos puros + integração no worker da 3.5.
+  37 tests unit + 4 integration. Pacote vira pendente_identificacao quando
+  matching falha (FR-021).
+
+quality_checks:
+  code_review:
+    status: PASS
+    notes: |
+      - Função pura `matchUnidadeMorador` 100% testável sem DB
+      - Submódulos parse-complemento + normalize-name independentes
+      - Decisão pragmática: reusar evento `ia_processou` com `metadata.matching`
+        em vez de criar enum novo (sem migration, log unificado)
+      - Threshold Levenshtein 0.7 conservador — story 3.8 sempre confirma
+      - Identifier normalization extrai número de "Apto 101" / "Casa 5" / "1304"
+
+  unit_tests:
+    status: PASS
+    notes: |
+      37 testes unit (16 parse + 13 normalize + 8 match) + 4 integration novos.
+      272/272 total passing (de 238 baseline).
+
+  acceptance_criteria:
+    status: PASS
+    notes: 'AC1-AC10 cobertos. Smoke E2E manual sob demanda (integration cobre).'
+
+  no_regressions:
+    status: PASS
+    notes: |
+      Test antigo da 3.5 ajustado: agora espera `pendente_identificacao` quando
+      fixture não tem unidades cadastradas (comportamento correto da 3.7 + FR-021).
+      Build OK, lint OK, typecheck OK.
+
+  performance:
+    status: PASS
+    notes: |
+      Matching in-memory é O(unidades × moradores). Para <5k moradores fica <100ms.
+      Tech debt registrado: migrar pra `pg_trgm` quando >5k.
+
+  security:
+    status: PASS
+    notes: |
+      - Tenant isolation explícito: query filtra por `condominio_id` em unidades + moradores
+      - Worker bypassa RLS via super_admin (consistente com 3.5)
+      - Algoritmo não expõe dados pessoais em logs (sugestão @po preservada)
+
+  documentation:
+    status: PASS
+    notes: |
+      `docs/runbooks/pacotes-api.md` atualizado com seção "Pipeline completo
+      (3.5 IA + 3.7 matching)" + tabela de resultados.
+
+issues: []
+
+waivers: []
+
+next_steps:
+  - '@devops *push + criar PR + auto-merge'
+  - 'Próxima: 3.8 (UI de confirmação dos dados extraídos pela IA)'
+  - 'Smoke real: cadastre unidade+morador via 2.2/2.4 e mande foto de etiqueta com nome+complemento — deve fazer match'
+
+tech_debt_registered:
+  - 'Force-rematch admin endpoint quando unidade/morador é cadastrado depois'
+  - 'Migrar matching pra `pg_trgm` extension SQL quando moradores > 5k'
+  - 'Coletar complementos não-parseados pra melhorar regex'
+  - 'Aprendizado contínuo: armazenar correções manuais do admin pra ajustar threshold'

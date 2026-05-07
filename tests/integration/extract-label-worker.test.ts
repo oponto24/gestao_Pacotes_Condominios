@@ -168,8 +168,9 @@ describe.skipIf(!DB_REACHABLE)('processExtractLabel (worker)', () => {
       nome_destinatario: 'Maria Silva',
       transportadora: 'correios',
     });
-    // Status NÃO muda (story 3.7/3.8 movem)
-    expect(pacote!.status).toBe('rascunho');
+    // Story 3.7: sem unidade cadastrada no fixture, matching falha →
+    // status vira pendente_identificacao (FR-021).
+    expect(pacote!.status).toBe('pendente_identificacao');
   });
 
   it('cria evento ia_processou com telemetria de tokens', async () => {
