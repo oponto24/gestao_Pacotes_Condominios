@@ -1,6 +1,8 @@
-# Sistema de Gestão de Pacotes em Condomínios
+# Ponto 24 — Gestão de Pacotes em Condomínios
 
-PWA mobile-first para gerenciar a chegada e retirada de encomendas em condomínios, com notificação ao morador via WhatsApp e extração automática de dados de etiqueta por IA (Claude Haiku 4.5 com vision).
+PWA mobile-first **com identidade Ponto24** (amarelo `#FDC800` + violet `#7C3AED`) para gerenciar a chegada e retirada de encomendas em condomínios, com notificação ao morador via WhatsApp e extração automática de dados de etiqueta por IA (Claude Haiku 4.5 com vision).
+
+> **Status:** MVP funcional ponta-a-ponta localmente. 335/335 tests passing. Pipeline real validado: foto → IA Anthropic → matching CEP+nome+complemento → confirmação → organização → notificação (Epic 4 pendente) → scan QR → retirada com auditoria completa. Falta apenas deploy VPS (DNS pendente) e integração WhatsApp Business.
 
 **Documentação completa:**
 - 📋 PRD: [`docs/prd/PRD.md`](docs/prd/PRD.md)
@@ -70,7 +72,8 @@ Detalhes do seed (variáveis, idempotência, reconciliação Clerk) em [`docs/ru
 - **BullMQ** + **Redis 7** (jobs assíncronos)
 - **Pino** (logger estruturado JSON em prod, pretty em dev)
 - **Storage abstraction** local (volume Docker) — trocável por S3/R2 sem refactor
-- **Vitest** + **Testing Library** (41+ testes)
+- **Anthropic Claude Haiku 4.5** (vision + prompt caching) — extração estruturada de etiqueta
+- **Vitest** + **Testing Library** (335+ testes — unit + integration tenant-scoped)
 - **Docker Compose** dev: postgres + redis + app + worker
 
 ## Estrutura
@@ -117,12 +120,29 @@ Categorias: `DATABASE_*`, `REDIS_URL`, `CLERK_*`, `ANTHROPIC_*`, `META_*`, `STOR
 | Epic | Status |
 |---|---|
 | **Epic 1 — Fundação Técnica** | ✅ Concluído (2026-05-06) — 10/10 stories |
-| Epic 2 — Cadastros (CRUDs + CSV) | Próximo |
-| Epic 3 — Chegada do Pacote (PWA + IA) | Pendente |
-| Epic 4 — Notificação WhatsApp (Meta Cloud API) | Pendente |
-| Epic 5 — Retirada do Pacote | Pendente |
-| Epic 6 — Painel Administrativo | Pendente |
-| Epic 7 — Código ML via WhatsApp | Pendente |
-| Epic 8 — Operação SaaS (deploy VPS) | Pendente |
+| **Epic 2 — Cadastros** (CRUDs + CSV) | ✅ Concluído (2026-05-07) — 7/7 stories |
+| **Epic 3 — Chegada do Pacote** (PWA + IA + matching) | ✅ Funcional (11/12) — falta 3.12 deploy VPS (aguardando DNS) |
+| Epic 4 — Notificação WhatsApp (Meta Cloud API) | ⏳ Pendente — aguardando criação Meta Business Manager |
+| **Epic 5 — Retirada do Pacote** | ✅ Concluído (2026-05-07) — 4/4 stories |
+| **Epic 6 — Painel Administrativo** | ✅ 4/5 (lista, busca, detalhe, resolver pendência); 6.5 depende Epic 4 |
+| Epic 7 — Código ML via WhatsApp | ⏳ P1 — futuro |
+| Epic 8 — Operação SaaS (deploy VPS) | ⏳ P1 — VPS provisionada (`2.24.82.192`), aguarda DNS apontar `condominios.oponto24.com.br` |
 
-Detalhes em [`docs/stories/ROADMAP.md`](docs/stories/ROADMAP.md).
+**Pipeline end-to-end (local):**
+
+```
+Foto → Worker IA Haiku 4.5 → Matching auto (CEP + nome + complemento)
+  ├─ matched: rascunho → confirmar → organizar → aguardando_retirada
+  └─ pending: pendente_identificacao → /portaria/pendentes → resolver → confirmar → organizar
+                                                                                  ↓
+            scan QR (ou digita) ← /retirada ← aguardando_retirada
+                ↓
+            confirmar destinatário (próprio / terceiro) → status retirado + audit
+                ↓
+            admin lista + busca + detalhe com timeline em /admin/pacotes
+```
+
+**Custo de IA por foto:** ~R$ 0,013 (4× abaixo do NFR-041 < R$ 0,05).
+
+Detalhes completos em [`docs/stories/ROADMAP.md`](docs/stories/ROADMAP.md).
+Para retomar deploy VPS: [`docs/stories/3.12-PENDENCIAS.md`](docs/stories/3.12-PENDENCIAS.md).

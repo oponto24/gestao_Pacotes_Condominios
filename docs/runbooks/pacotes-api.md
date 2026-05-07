@@ -6,12 +6,12 @@
 
 | Método | Path | Story | Propósito |
 |---|---|---|---|
-| `POST` | `/api/pacotes` | **3.4** | Cria rascunho + salva foto + enfileira IA |
-| `PATCH` | `/api/pacotes/{id}/confirmar` | 3.8 | Admin confirma dados extraídos pela IA |
-| `PATCH` | `/api/pacotes/{id}/organizar` | 3.9 | Define tamanho + setor + posição |
-| `POST` | `/api/pacotes/{id}/retirar/iniciar` | 5.2 | Inicia retirada por QR |
-| `POST` | `/api/pacotes/{id}/retirar/confirmar` | 5.4 | Confirma entrega ao morador |
-| `GET` | `/api/admin/pacotes` | 6.1 | Lista admin com filtros |
+| `POST` | `/api/pacotes` | **3.4** ✅ | Cria rascunho + salva foto + enfileira IA |
+| `PATCH` | `/api/pacotes/{id}/confirmar` | **3.8** ✅ | Admin confirma dados extraídos pela IA |
+| `PATCH` | `/api/pacotes/{id}/organizar` | **3.9** ✅ | Define tamanho + setor + posição → status `aguardando_retirada` |
+| `POST` | `/api/pacotes/retirar/iniciar` | **5.2** ✅ | Body `{ qr_token }` — valida e retorna pacote |
+| `PATCH` | `/api/pacotes/{id}/retirar/confirmar` | **5.4** ✅ | Confirma entrega → status `retirado` + invalida QR (idempotente) |
+| Páginas admin | `/admin/pacotes` + `/admin/pacotes/[id]` | **6.1-6.4** ✅ | Lista filtrada + busca + detalhe com timeline (server-rendered, sem REST específica) |
 
 ## POST /api/pacotes (story 3.4)
 
@@ -154,3 +154,116 @@ Se IA falhar (Redis down quando criou):
 - Pacote fica em `status='rascunho'`
 - Admin pode re-enfileirar manualmente via tela admin (story futura)
 - Por ora, manualmente: `redis-cli` ou job admin via `BullBoard` UI
+
+---
+
+## PATCH /api/pacotes/{id}/confirmar (story 3.8)
+
+Valida e confirma os dados extraídos pela IA. Body Zod:
+
+```ts
+{
+  nome_destinatario: string().min(1).max(200),  // sobrescreve nome_destinatario_etiqueta
+  endereco: string().max(500).nullable(),
+  cep: string().regex(/^\d{5}-?\d{3}$/).nullable(),
+  complemento: string().max(200).nullable(),
+  remetente: string().max(200).nullable(),
+  unidade_id: uuid(),
+  destinatario_id: uuid().nullable(),  // null = "outra pessoa"
+}
+```
+
+**Comportamento:**
+- Valida tenant em `unidade_id` e `destinatario_id`
+- Sobrescreve `nome_destinatario_etiqueta` com `nome_destinatario` do payload
+- `destinatario_resolvido_via`: `'destinatario_cadastrado'` se UUID informado, `'manual_override'` se null
+- Se status era `pendente_identificacao` → volta pra `rascunho`
+- Cria evento `confirmado` (idempotente — segunda chamada retorna `already_confirmed: true`)
+
+---
+
+## PATCH /api/pacotes/{id}/organizar (story 3.9)
+
+Define classificação física (FR-016/017/018) e dispara aguardando retirada.
+
+```ts
+{
+  tamanho: 'pequeno' | 'medio' | 'grande' | 'extra_grande',
+  setor_id: uuid(),
+  posicao: string().max(50).nullable(),  // texto livre
+}
+```
+
+Pré-condições:
+- Pacote já tem `unidade_id` (passou pela 3.8)
+- `setor_id` ativo no tenant
+
+Resultado: `status = 'aguardando_retirada'` (gatilho do Epic 4 WhatsApp). Idempotente.
+
+---
+
+## POST /api/pacotes/retirar/iniciar (story 5.2)
+
+Token vai no **body** (não na URL — segurança contra leaks em logs).
+
+```ts
+{ qr_token: string().regex(/^[A-Za-z0-9_-]{16,64}$/) }
+```
+
+**Códigos:**
+- `200 OK` → `{ ok: true, pacote: {...} }` com unidade, destinatario, setor, foto_storage_path
+- `404 not_found`
+- `409 already_retirado` (qr_consumido_em not null OU status retirado)
+- `409 cancelado`
+- `409 nao_pronto` (status diferente de `aguardando_retirada`)
+
+Endpoint **não altera estado** — só lookup + validação. Estado muda no `confirmar`.
+
+---
+
+## PATCH /api/pacotes/{id}/retirar/confirmar (story 5.4)
+
+```ts
+{
+  proprio_destinatario: boolean,
+  retirado_por_terceiro: string().min(3).max(200).nullable(),
+}
+```
+
+Refinement: se `proprio_destinatario=false`, `retirado_por_terceiro` é obrigatório.
+
+**Atualização (transação):**
+- `status = 'retirado'`
+- `qr_consumido_em = now()` (FR-047 — invalida QR)
+- `retirado_em = now()` (FR-045)
+- `funcionario_entregador_id = ctx.userId`
+- `proprio=true` → `retirado_por_morador_id = pacote.destinatario_id`
+- `proprio=false` → `retirado_por_terceiro = nome_digitado`
+
+Cria evento `retirado` com metadata. **Idempotente** — segunda chamada retorna `already_retirado: true`.
+
+---
+
+## Páginas admin `/admin/pacotes` (stories 6.1-6.4)
+
+Server-rendered, sem REST endpoint específico (Next.js Server Components consultam DB direto).
+
+### Lista `/admin/pacotes` (6.1 + 6.2)
+
+Query params:
+- `status`: filtro por estado (rascunho | pendente_identificacao | aguardando_retirada | retirado | cancelado)
+- `unidade_id`: filtro UUID
+- `q`: busca textual ILIKE em `nome_destinatario_etiqueta`, `codigo_rastreio`, `unidade.identificador`, `unidade.bloco`, `destinatario.nome` (mínimo 2 chars)
+- `page` / `limit`: paginação simples (default 50/página)
+
+Tenant-scoped via `withTenantContext` + RLS.
+
+### Detalhe `/admin/pacotes/[id]` (6.3 + 6.4)
+
+Carrega pacote + foto + unidade + destinatario + setor + funcionario_recebedor + funcionario_entregador + retirado_por_morador + **eventos ordenados ASC**.
+
+- Layout 2 colunas (mobile: stacked)
+- Coluna esquerda: dados textuais + auditoria (recebido/retirado)
+- Coluna direita: foto + `<PacoteTimeline>` (eventos com ícones por tipo)
+- **Botão "Resolver pendência"** visível só se `status='pendente_identificacao'` → linka `/chegada/confirmar/[id]` (story 3.8)
+- Banner amarelo de alerta no topo se pendente

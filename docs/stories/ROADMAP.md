@@ -8,7 +8,9 @@
 
 ## Visão geral
 
-**Total estimado:** 50 stories distribuídas em 8 épicos.
+**Total estimado:** 51 stories distribuídas em 8 épicos (3.11 brand adicionada).
+**Progresso atual (2026-05-07):** ~32 stories Done · 335 tests passing · MVP funcional ponta-a-ponta localmente.
+**Bloqueios externos:** Epic 4 (criar Meta Business Manager), Story 3.12 (apontar DNS oponto24.com.br → 2.24.82.192).
 **Esforço total:** 8-12 semanas (1 dev sênior em tempo integral) ou 5-7 semanas (2 devs).
 
 **Convenção de numeração:** `{epic}.{story}` — ex: `1.1`, `3.4`.
@@ -32,7 +34,7 @@
 | 1.7 | Endpoint /api/health + UptimeRobot configurado | **Done** ✅ | 1.2, 1.3 |
 | 1.8 | BullMQ + Redis connection + job de teste | **Done** ✅ | 1.6, 1.7 |
 | 1.9 | Logger Pino estruturado + storage abstraction (local) | **Done** ✅ | 1.6, 1.8 |
-| 1.10 | Seed inicial (super-admin + whatsapp_number placeholder) | **Ready for Review** 🔍 | 1.3, 1.5, 1.9 |
+| 1.10 | Seed inicial (super-admin + whatsapp_number placeholder) | **Done** ✅ | 1.3, 1.5, 1.9 |
 
 ---
 
@@ -72,7 +74,7 @@
 | 3.8 | Tela /chegada/confirmar — formulário IAExtractionForm (FR-014) | **Done** ✅ | 3.6, 3.7 |
 | 3.9 | Tela /chegada/organizar — tamanho + setor + posição | **Done** ✅ | 3.8, 2.2 |
 | 3.10 | Estado pendente_identificacao + tela /portaria/pendentes | **Done** ✅ | 3.7 |
-| 3.11 | Brand Ponto24 — paleta amarela #FDC800 + violet #7C3AED, fundo claro, identidade amigável | **Ready for Review** 🔵 | 3.10 |
+| 3.11 | Brand Ponto24 — paleta amarela #FDC800 + violet #7C3AED, fundo claro, identidade amigável | **Done** ✅ | 3.10 |
 | 3.12 | Deploy MVP Epic 3 na VPS — Docker + Nginx + Let's Encrypt + HTTPS | Draft | 3.11 |
 
 ---
@@ -98,10 +100,10 @@
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 5.1 | Tela /retirada — scanner QR + fallback código manual | **Ready for Review** 🔵 | 3.1, 3.3 |
-| 5.2 | API POST /api/pacotes/retirar/iniciar — valida token, retorna dados | **Ready for Review** 🔵 | 1.6 |
-| 5.3 | Tela /retirada/confirmar/[token] + sheet "próprio destinatário?" (FR-042) | **Ready for Review** 🔵 | 5.1, 5.2 |
-| 5.4 | API PATCH /api/pacotes/{id}/retirar/confirmar — registra evento + invalida QR | **Ready for Review** 🔵 | 5.3 |
+| 5.1 | Tela /retirada — scanner QR + fallback código manual | **Done** ✅ | 3.1, 3.3 |
+| 5.2 | API POST /api/pacotes/retirar/iniciar — valida token, retorna dados | **Done** ✅ | 1.6 |
+| 5.3 | Tela /retirada/confirmar/[token] + sheet "próprio destinatário?" (FR-042) | **Done** ✅ | 5.1, 5.2 |
+| 5.4 | API PATCH /api/pacotes/{id}/retirar/confirmar — registra evento + invalida QR | **Done** ✅ | 5.3 |
 
 ---
 
@@ -111,10 +113,10 @@
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 6.1 | Lista /admin/pacotes — DataTable com filtros (status, unidade, período) | **Ready for Review** 🔵 | 2.7, 3.4 |
-| 6.2 | Busca textual por morador/apto/código (ILIKE) | **Ready for Review** 🔵 | 6.1 |
-| 6.3 | Página /admin/pacotes/[id] — detalhe completo + PacoteTimeline | **Ready for Review** 🔵 | 6.1 |
-| 6.4 | Ação "Resolver pendência" — link pra /chegada/confirmar/[id] (FR-064) | **Ready for Review** 🔵 | 6.3, 3.10 |
+| 6.1 | Lista /admin/pacotes — DataTable com filtros (status, unidade, período) | **Done** ✅ | 2.7, 3.4 |
+| 6.2 | Busca textual por morador/apto/código (ILIKE) | **Done** ✅ | 6.1 |
+| 6.3 | Página /admin/pacotes/[id] — detalhe completo + PacoteTimeline | **Done** ✅ | 6.1 |
+| 6.4 | Ação "Resolver pendência" — link pra /chegada/confirmar/[id] (FR-064) | **Done** ✅ | 6.3, 3.10 |
 | 6.5 | Ação "Reenviar WhatsApp" + "Cancelar pacote" no detalhe | Draft (depende Epic 4) | 6.3, 4.6 |
 
 ---
