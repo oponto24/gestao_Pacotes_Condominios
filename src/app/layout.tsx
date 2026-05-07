@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Montserrat } from 'next/font/google';
 import { ClerkProvider, SignInButton, SignUpButton, Show, UserButton } from '@clerk/nextjs';
 import { Logo } from '@/components/brand/Logo';
+import { ImpersonateBanner } from '@/components/super-admin/ImpersonateBanner';
 import './globals.css';
 
 const montserrat = Montserrat({
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </Show>
             </div>
           </header>
+          <ImpersonateBanner />
           <main>{children}</main>
         </ClerkProvider>
       </body>
