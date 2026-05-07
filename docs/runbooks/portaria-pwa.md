@@ -90,8 +90,8 @@ Ferramenta útil para validar maskable: https://maskable.app/
 
 | Story | O que adiciona |
 |---|---|
-| **3.1** ✅ | Layout shell + bottom nav + manifest (esta story) |
-| 3.2 | `<PhotoCapture>` componente — câmera + preview + retake |
+| **3.1** ✅ | Layout shell + bottom nav + manifest |
+| **3.2** ✅ | `<PhotoCapture>` componente — câmera + preview + retake (esta story) |
 | 3.3 | `<BarcodeScannerInput>` componente — html5-qrcode |
 | 3.4 | API POST /api/pacotes (rascunho + foto + IA job) |
 | 3.5 | Worker `extractLabel` — Claude Haiku vision |
@@ -101,6 +101,71 @@ Ferramenta útil para validar maskable: https://maskable.app/
 | 3.9 | `/chegada/organizar` — tamanho + setor + posição |
 | 3.10 | `/portaria/pendentes` real — pacotes não identificados |
 | 5.1 | `/retirada` real — scanner QR |
+
+## PhotoCapture (story 3.2)
+
+Componente reusável de captura de foto da etiqueta do pacote.
+
+### API
+
+```tsx
+<PhotoCapture
+  onCapture={(blob, dataUrl) => {/* upload + setState */}}
+  onError={(msg) => /* opcional */}
+  preferredFacingMode="environment"  // default
+  disabled={false}
+  debugDownload={process.env.NODE_ENV !== 'production'}
+/>
+```
+
+### State machine
+
+```
+  idle ──▶ requesting ──▶ streaming ──▶ captured
+   ▲           │              │            │
+   └───────────┼──────────────┘            │
+               ▼                            │
+             error  ◀──────────────────── retake
+               │                            │
+               └──── reset ─▶ idle          │
+                                            ▼
+                                       onCapture(blob, dataUrl)
+```
+
+### Limites técnicos
+
+| Restrição | Detalhe |
+|---|---|
+| Bound de resolução | 1280px no maior lado (mantém aspect ratio) |
+| Format/quality | JPEG quality 0.85 (~150-300KB típico) |
+| HTTPS obrigatório em produção | `getUserMedia` só em `https://` ou localhost |
+| iOS Safari `<video>` | `playsinline` + `muted` obrigatórios |
+| Vibration | `navigator.vibrate?.(50)` — ignorado se browser não suporta (iOS) |
+| Browsers suportados | Chrome 90+ Android, Safari 14+ iOS, Edge/Firefox modernos |
+
+### Cleanup de MediaStream (anti-leak)
+
+⚠️ **Crítico:** câmera deixada ligada acende LED do dispositivo + privacy concern.
+
+Cleanup garantido em:
+1. **Unmount** do componente (`useEffect` return global)
+2. **Transição para `captured`/`error`/`idle`** (não streaming/requesting)
+3. **getUserMedia** retorna mas componente já desmontou (flag `cancelled`)
+
+Tests cobrem cada path (`tests/unit/photo-capture.test.tsx`).
+
+### Privacy disclosure
+
+Durante streaming, indicador visual no canto superior direito do visor:
+- Dot vermelho pulsante
+- Texto "Câmera ligada"
+- `aria-live="polite"` para screen readers
+
+### Como testar com webcam de desktop
+
+`facingMode='environment'` falha em desktop (sem câmera traseira) →
+fallback automático para qualquer câmera disponível. Mesmo fluxo
+funciona em ambos.
 
 ## Tech debt registrado
 

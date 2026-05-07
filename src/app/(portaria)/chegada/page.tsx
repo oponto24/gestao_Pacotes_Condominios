@@ -1,18 +1,12 @@
-import { Package } from 'lucide-react';
+import { ChegadaPlaygroundClient } from '@/components/portaria/ChegadaPlaygroundClient';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+/**
+ * Playground temporário (story 3.2) — exercita o `<PhotoCapture>` em browser real.
+ * Será substituído pela tela de chegada completa na story 3.6 (formulário de captura).
+ */
 export default function ChegadaPage() {
-  return (
-    <div className="space-y-3">
-      <h1 className="text-2xl font-semibold text-foreground">Nova chegada</h1>
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border bg-background p-8 text-center">
-        <Package className="h-12 w-12 text-text-secondary" aria-hidden />
-        <p className="text-sm text-text-secondary">
-          Em breve: captura de foto + bipe de código de barras (stories 3.2 e 3.3).
-        </p>
-      </div>
-    </div>
-  );
+  return <ChegadaPlaygroundClient />;
 }
