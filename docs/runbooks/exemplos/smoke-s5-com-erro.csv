@@ -1,0 +1,6 @@
+bloco,identificador,morador_nome,morador_telefone,morador_email
+SMK5,501,Patricia Alves,(11) 93300-5001,patricia@smoke.test
+SMK5,502,Quirino Maia,(11) 93300-5002,
+SMK5,503,Renata Borges,(11) 93300-5003,renata@smoke.test
+SMK5,504,Samuel Ferreira,(11) 93300-5004,samuel@smoke.test
+SMK5,505,Tatiana Inválida,abc,tatiana@smoke.test
