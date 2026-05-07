@@ -20,14 +20,12 @@ export interface ListMoradoresParams {
   includeArquivados: boolean;
 }
 
-const COUNT_SELECT = {
-  _count: { select: { pacotes_destinatario: true } },
-} as const;
-
-const DETAIL_INCLUDE = {
+const LIST_INCLUDE = {
   _count: { select: { pacotes_destinatario: true } },
   unidade: { select: { id: true, identificador: true, bloco: true } },
 } as const;
+
+const DETAIL_INCLUDE = LIST_INCLUDE;
 
 export function listMoradores(params: ListMoradoresParams) {
   return withTenant(async (tx) => {
@@ -48,7 +46,7 @@ export function listMoradores(params: ListMoradoresParams) {
     const [items, total] = await Promise.all([
       tx.morador.findMany({
         where,
-        include: COUNT_SELECT,
+        include: LIST_INCLUDE,
         orderBy: [
           { unidade_id: 'asc' },
           { is_principal: 'desc' },
