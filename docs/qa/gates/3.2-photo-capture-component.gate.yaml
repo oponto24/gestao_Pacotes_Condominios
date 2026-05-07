@@ -1,0 +1,239 @@
+storyId: 3.2
+storyTitle: Componente PhotoCapture (câmera + preview + retake)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-07'
+verdict: PASS
+score: 9.5/10
+
+summary: |
+  Componente reusável de captura de foto. State machine via `useReducer`
+  (5 estados/6 actions) com cleanup centralizado em 3 effects, prevenindo
+  MediaStream leaks. Captura via canvas com bound 1280px + JPEG quality
+  0.85 (~150-300KB típico, otimizado para custo IA Claude vision).
+
+  **8 tests novos** (168 → 176), cobrindo state machine + 3 paths críticos
+  de cleanup (unmount, transição para captured, error após retake) — a
+  sugestão @po de "test em todos paths de unmount" foi implementada.
+
+  **Smoke E2E 5/6 PASS** em desktop com webcam: S1 init câmera, S2 captura,
+  S3 retake, S4 onCapture com Blob, S5 permissão negada com retry. **S6
+  (mobile real) não-testável** — localhost não acessível por celular sem
+  HTTPS público (mitigação: ngrok/cloudflared como tech debt, OU validar
+  no piloto/8.4 deploy).
+
+  Race condition de cleanup descoberta E corrigida durante implementação
+  (effect de request fechava stream após sucesso). Refatoração centralizou
+  ownership do stream em 3 effects coordenados.
+
+acceptance_criteria:
+  ac1_componente: PASS                  # 'use client', props completas, video+canvas, aspect 4:3
+  ac2_state_machine: PASS               # 5 kinds + useReducer + cleanup automático
+  ac3_permissao: PASS                   # getUserMedia + fallback OverconstrainedError + 5 mensagens de erro
+  ac4_captura: PASS                     # canvas.toBlob JPEG 0.85 + Vibration + flash visual
+  ac5_refazer: PASS                     # retake volta para requesting
+  ac6_idle: PASS                        # placeholder Camera + texto + botão
+  ac7_resolucao: PASS                   # videoTrack.getSettings + fallback videoElement + bound 1280px
+  ac8_tests: PASS                       # 8 tests cobrindo state machine + cleanup
+  ac9_acessibilidade: PASS              # aria-label, role="alert", aria-live="polite"
+  ac10_documentacao: PASS               # runbook expandido com API + state machine + limites + cleanup
+  ac11_quality_gates: PASS              # lint/typecheck/test/build OK + smoke 5/6 (S6 não-testável no env)
+
+quality_checks:
+  code_review:
+    score: 9/10
+    findings:
+      - severity: info
+        category: design
+        description: |
+          **Race condition de cleanup descoberta E corrigida durante
+          implementação:** o effect que pedia getUserMedia tinha cleanup
+          que parava o stream mesmo após dispatch de stream_started ter
+          sucesso. Refatoração centralizou ownership do streamRef em 3
+          effects coordenados (request, video bind, state-aware stop).
+          Test que pegou: "cleanup: para tracks no unmount" falhava porque
+          stop era chamado prematuramente em transition.
+      - severity: info
+        category: design
+        description: |
+          **Cleanup em 3 paths críticos** explicitamente testado:
+          (1) unmount durante streaming, (2) transição para captured,
+          (3) error após retake. Sugestão @po implementada.
+      - severity: info
+        category: design
+        description: |
+          **`useMemo` para `videoConstraints`** (sugestão @po): objeto
+          literal não recria a cada render. Pequena otimização que evita
+          re-execução desnecessária do effect de request.
+      - severity: info
+        category: design
+        description: |
+          **Privacy disclosure** (sugestão @po): dot vermelho pulsante +
+          "Câmera ligada" no canto superior direito durante streaming,
+          com `aria-live="polite"`. Reforço visual de que a câmera está
+          ativa — boa prática privacy + UX.
+      - severity: info
+        category: design
+        description: |
+          **`debugDownload` prop opcional** (sugestão @po): playground em
+          dev renderiza link `<a download>` no captured state. Acelera
+          troubleshooting de quality JPEG. Tech debt minor opcional bem
+          implementado.
+      - severity: info
+        category: code
+        description: |
+          **5 mensagens de erro mapeadas** por DOMException name:
+          NotAllowedError, NotFoundError, NotReadableError,
+          OverconstrainedError, SecurityError. Cobre principais cenários
+          do navegador. Fallback "Falha ao acessar a câmera" para
+          desconhecidos.
+      - severity: info
+        category: ux
+        description: |
+          **iOS Safari quirks tratados:** `playsInline` + `muted`
+          obrigatórios no `<video>`. Sem isso, iOS tenta abrir fullscreen.
+          Documentado no runbook + implementado no componente.
+      - severity: low
+        category: code
+        description: |
+          **Ícones lucide pesam ~3KB cada** quando importados sem
+          tree-shaking. PhotoCapture importa Camera, AlertCircle,
+          RefreshCcw. Total ~9KB. Aceitável; tree-shaking do Next deve
+          reduzir, mas vale monitorar bundle size em stories futuras
+          (3.3 BarcodeScanner adicionará mais).
+        recommendation: |
+          Não-bloqueante. Se bundle de portaria crescer >100KB, considerar
+          `dynamic import` dos ícones ou usar `lucide-react/icons/{name}`
+          paths específicos.
+
+  unit_tests:
+    score: 10/10
+    coverage:
+      photo_capture (8):
+        - idle render (placeholder + botão)
+        - idle → streaming (getUserMedia OK + indicador "Câmera ligada")
+        - idle → error (NotAllowedError → mensagem específica + retry)
+        - streaming → captured (Vibration + Blob + dataUrl + onCapture)
+        - captured → streaming (retake reconecta câmera)
+        - **CLEANUP: tracks param no unmount**
+        - **CLEANUP: tracks param ao mover para captured**
+        - **CLEANUP: tracks param ao entrar em error após retake**
+      smoke E2E (5 PASS):
+        - S1 init câmera desktop ✅
+        - S2 captura + flash + preview ✅
+        - S3 retake reconecta ✅
+        - S4 onCapture recebe Blob no playground ✅
+        - S5 permissão negada → estado error + retry ✅
+
+  acceptance_criteria_traceability:
+    score: 10/10
+    notes: |
+      11 ACs com 50+ sub-itens, todos confirmados via tests + smoke 5/6.
+      AC11 PASS porque S6 é "não-testável no ambiente atual" não "falhou".
+
+  no_regressions:
+    score: 10/10
+    evidence: |
+      176/176 tests (168 baseline da 3.1 + 8 novos). Não modifica
+      componentes existentes; apenas adiciona PhotoCapture e
+      ChegadaPlaygroundClient + substitui stub vazio em /chegada/page.tsx.
+
+  performance:
+    score: 9/10
+    notes: |
+      `useMemo` em videoConstraints evita re-render trigger.
+      Cleanup determinístico (3 effects coordenados) — sem leak.
+      Captura síncrona até `canvas.toBlob` (assíncrono) — Promise wrapper.
+      Bound 1280px + JPEG 0.85 mantém upload <300KB típico.
+      Bundle: rota `/chegada` cresceu de 200B para 11.6KB (esperado pelo
+      novo componente client + lucide icons). Aceitável.
+
+  security:
+    score: 10/10
+    findings:
+      - **Privacy disclosure visual** durante streaming (dot vermelho +
+        texto + aria-live)
+      - **Cleanup determinístico** previne câmera ligada após desmontar
+        (LED concern + privacy)
+      - **HTTPS-only em produção** documentado no runbook (getUserMedia
+        requirement)
+      - **Sem persistência de Blob** no localStorage/sessionStorage —
+        passado direto via callback
+      - **`onError` callback opcional** permite parent component decidir
+        UX (logar, reportar, fallback)
+      - **DOMException names mapeados** sem expor stack traces ao usuário
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/portaria-pwa.md expandido com seção PhotoCapture
+        completa: API, state machine ASCII, limites técnicos, cleanup
+        anti-leak, privacy disclosure, como testar com webcam desktop
+      - Dev Agent Record com 12 decisões + 4 sugestões @po implementadas
+      - Comentários inline explicando race condition que foi corrigida
+      - QA Results documenta gap do S6 (mobile real) com mitigação clara
+
+issues:
+  - severity: low
+    category: process
+    title: Smoke S6 (mobile real) não testado nesta sessão
+    description: |
+      Cenário "câmera traseira ativa por padrão em celular real (HTTPS)"
+      não foi validado porque localhost do dev não é acessível por celular
+      externo sem tunneling.
+    fix_size: |
+      Mitigação:
+      (a) ngrok/cloudflared como dev tool tech debt — exposição local com
+          HTTPS para testes mobile
+      (b) Validação em piloto/produção (story 8.4 deploy) cobre o caminho
+      (c) Lógica do facingMode='environment' coberta por leitura de código
+          (fallback OverconstrainedError já testado para desktop)
+
+observations:
+  - severity: info
+    description: |
+      **Pattern Epic 3 estabelecido (2/2 stories até agora):** PortariaLayout
+      (3.1) + PhotoCapture (3.2). Componentes reusáveis em
+      `src/components/portaria/`. Próximas stories (3.3 BarcodeScanner,
+      3.6 CapturaPage) seguem mesmo diretório.
+  - severity: info
+    description: |
+      **Lição arquitetural reforçada:** cleanup de side-effects
+      (MediaStream, EventListeners, intervals) é crítico em componentes
+      com state machine. Pattern de 3 effects coordenados aqui é
+      replicável para BarcodeScanner (3.3 vai precisar do mesmo cuidado
+      com html5-qrcode).
+  - severity: info
+    description: |
+      **Tech debt opcional:** ngrok/cloudflared no dev workflow facilita
+      testes mobile reais antes do deploy produção. Pode ser story de
+      DevEx/setup (Epic 8.x) se virar fricção recorrente.
+
+recommendations:
+  before_merge:
+    - **Smoke S6 em mobile real via ngrok/cloudflared** se possível antes
+      do merge — confirma facingMode='environment' funcionando. Não bloqueia.
+    - Considerar adicionar `--turbopack` no script `dev` para reduzir
+      tempo de hot reload em iterações futuras de UI.
+
+  for_next_stories:
+    - **Story 3.3 (BarcodeScanner):** mesmo cuidado com getUserMedia
+      cleanup. Considerar extrair util `useCameraStream` se padrão se
+      repetir. Avaliar se vale agora ou após 3.3 quando o pattern estiver
+      claro.
+    - **Story 3.4 (POST /api/pacotes):** vai consumir Blob do PhotoCapture
+      via FormData. Validar Content-Type `image/jpeg` no endpoint.
+    - **Story 3.5 (Worker IA):** Claude Haiku vision aceita JPEG até
+      8000x8000, mas 1280px é suficiente para texto de etiqueta. Bound já
+      aplicado no client.
+    - **Story 3.6 (CapturaPage):** consumir `<PhotoCapture>` substituindo
+      `ChegadaPlaygroundClient` (que fica como temporário). Adicionar
+      formulário de confirmação dos dados extraídos (FR-014).
+
+next_action: |
+  Story aprovada PASS 9.5/10. Limitação do S6 é ambiente, não implementação.
+
+  Próximo na cadeia AIOX: **@devops (Gage)** prepara push da branch
+  `feature/3.2-photo-capture-component` + PR isolado seguindo padrão da 3.1.
+
+  Decisão de produto: **PR isolado** mantém release reviewable e não bloqueia
+  3.3 (que pode ser feita em paralelo já que é componente independente).
