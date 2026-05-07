@@ -83,28 +83,43 @@ export function BarcodeScannerInput({
     clear: () => void;
   } | null>(null);
   const alreadyDetectedRef = useRef(false);
-  // ID único pro div do scanner — evita conflito de "instância já anexada"
-  // se modal abre/fecha rapidamente (sugestão @po).
-  const scannerDivId = useId().replace(/:/g, '_');
+  // Container vazio controlado por React. O div interno do scanner é criado
+  // imperativamente (document.createElement) e anexado a este container —
+  // assim React não tem ownership do <video> que html5-qrcode insere, e
+  // não tenta `removeChild` de nós que html5-qrcode já manipulou.
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const scannerDivRef = useRef<HTMLDivElement | null>(null);
+  const baseId = useId().replace(/:/g, '_');
 
   /**
    * Cleanup do html5-qrcode em 2 passos: stop() + clear().
-   * Idempotente — pode ser chamado múltiplas vezes.
+   * + Remove o div imperativo do container (idempotente).
    */
   const cleanupScanner = useCallback(async () => {
     const instance = scannerInstanceRef.current;
-    if (!instance) return;
-    scannerInstanceRef.current = null;
-    try {
-      await instance.stop();
-    } catch {
-      // já parado — ignora
+    if (instance) {
+      scannerInstanceRef.current = null;
+      try {
+        await instance.stop();
+      } catch {
+        // já parado — ignora
+      }
+      try {
+        instance.clear();
+      } catch {
+        // ignora
+      }
     }
-    try {
-      instance.clear();
-    } catch {
-      // ignora
+    // Remove o div imperativo do container manualmente
+    const div = scannerDivRef.current;
+    if (div?.parentElement) {
+      try {
+        div.parentElement.removeChild(div);
+      } catch {
+        // já removido — ignora
+      }
     }
+    scannerDivRef.current = null;
   }, []);
 
   // Inicia scanner quando entra em 'requesting'
@@ -122,6 +137,23 @@ export function BarcodeScannerInput({
 
         if (cancelled) return;
 
+        const container = containerRef.current;
+        if (!container) {
+          throw new Error('Container do scanner não disponível');
+        }
+
+        // Cria div filho imperativo (não controlado pelo React)
+        const scannerDiv = document.createElement('div');
+        scannerDiv.id = `scanner-${baseId}-${Date.now()}`;
+        scannerDiv.style.width = '100%';
+        scannerDiv.style.height = '100%';
+        // Limpa qualquer div órfão de uma chamada anterior antes de anexar
+        while (container.firstChild) {
+          container.removeChild(container.firstChild);
+        }
+        container.appendChild(scannerDiv);
+        scannerDivRef.current = scannerDiv;
+
         const formats = [
           Html5QrcodeSupportedFormats.QR_CODE,
           Html5QrcodeSupportedFormats.CODE_128,
@@ -131,7 +163,7 @@ export function BarcodeScannerInput({
           Html5QrcodeSupportedFormats.UPC_A,
         ];
 
-        const instance = new Html5Qrcode(scannerDivId, { formatsToSupport: formats, verbose: false });
+        const instance = new Html5Qrcode(scannerDiv.id, { formatsToSupport: formats, verbose: false });
         scannerInstanceRef.current = instance;
 
         await instance.start(
@@ -187,7 +219,7 @@ export function BarcodeScannerInput({
     return () => {
       cancelled = true;
     };
-  }, [state.kind, scannerDivId, cleanupScanner, onChange, onError]);
+  }, [state.kind, baseId, cleanupScanner, onChange, onError]);
 
   // Cleanup global no unmount
   useEffect(() => {
@@ -284,15 +316,15 @@ export function BarcodeScannerInput({
             ) : (
               <>
                 <div
-                  id={scannerDivId}
-                  className={cn(
-                    'aspect-[4/3] w-full overflow-hidden rounded-lg bg-black',
-                    state.kind === 'requesting' && 'flex items-center justify-center',
-                  )}
+                  className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-black"
                   aria-label="Visor do scanner de código de barras"
                 >
+                  {/* Container puro — controlado imperativamente, sem children React */}
+                  <div ref={containerRef} className="absolute inset-0" />
                   {state.kind === 'requesting' && (
-                    <p className="text-sm text-white/70">Solicitando acesso à câmera…</p>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <p className="text-sm text-white/70">Solicitando acesso à câmera…</p>
+                    </div>
                   )}
                 </div>
                 <p className="text-center text-sm text-text-secondary">
