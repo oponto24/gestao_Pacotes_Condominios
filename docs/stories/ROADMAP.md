@@ -1,7 +1,7 @@
 # Roadmap de Stories — Gestão de Pacotes em Condomínios
 
 > **Owner:** River (AIOX Scrum Master)
-> **Última atualização:** 2026-05-06
+> **Última atualização:** 2026-05-07
 > **PRD:** `docs/prd/PRD.md` | **Architecture:** `docs/architecture/ARCHITECTURE.md` | **Schema:** `docs/architecture/database/SCHEMA.md` | **UX:** `docs/ux/UX_SPEC.md`
 
 ---
@@ -36,19 +36,21 @@
 
 ---
 
-## Epic 2 — Cadastros (P0)
+## Epic 2 — Cadastros (P0) — Em progresso (4/7 Done)
 
 **Objetivo:** CRUD completo de condomínios, setores, unidades, moradores. Importação CSV.
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 2.1 | CRUD Condominio (super-admin only) | **Ready for Review** 🔍 | 1.6, 1.10 |
-| 2.2 | CRUD Setor por condomínio (admin) | **Ready for Review** 🔍 | 1.6, 2.1, 2.7 |
-| 2.3 | CRUD Unidade por condomínio (admin) | **Ready for Review** 🔍 | 2.2 |
-| 2.4 | CRUD Morador (principal + adicionais) por unidade (admin) | Draft | 2.3 |
-| 2.5 | Importação CSV — upload + parser + validação | Draft | 2.4 |
-| 2.6 | Importação CSV — preview com erros + commit transacional | Draft | 2.5 |
-| 2.7 | Layout AdminLayout + navegação cadastros | **Ready for Review** 🔍 | 1.5, 1.6, 2.1 |
+| 2.1 | CRUD Condominio (super-admin only) | **Done** ✅ | 1.6, 1.10 |
+| 2.2 | CRUD Setor por condomínio (admin) | **Done** ✅ | 1.6, 2.1, 2.7 |
+| 2.3 | CRUD Unidade por condomínio (admin) | **Done** ✅ | 2.2 |
+| 2.4 | CRUD Morador (principal + adicionais) por unidade (admin) | **Done** ✅ | 2.3 |
+| 2.5 | Importação CSV — upload + parser + validação | **Done** ✅ | 2.4 |
+| 2.6 | Importação CSV — preview com erros + commit transacional | **Done** ✅ | 2.5 |
+| 2.7 | Layout AdminLayout + navegação cadastros | **Done** ✅ | 1.5, 1.6, 2.1 |
+
+**Mergeadas em main via PR #13** (merge cumulativo, mesma estratégia do Epic 1 → PR #9).
 
 ---
 
@@ -158,3 +160,7 @@
 1. **@po (Pax):** validar story 1.1 (10-point checklist) — quando criada.
 2. **@dev (Dex):** começar implementação da story 1.1 após validação.
 3. **Eu (River):** criar próxima story conforme stories anteriores fecham (modelo "create-next-story").
+
+### Backlog UX (descoberto durante smoke 2.6 — 2026-05-07)
+
+- **2.X — Search/filtros em /admin/moradores:** API já aceita `?q=<termo>` (busca em nome OR telefone), `?unidade_id=<uuid>` (filtro por unidade). UI atualmente só tem toggle de arquivados. Adicionar: input de busca textual, dropdown de filtro por unidade (+bloco). Reusa pattern dos toggles existentes. Sugestão @user durante smoke. Estimativa: 0.25 dia.

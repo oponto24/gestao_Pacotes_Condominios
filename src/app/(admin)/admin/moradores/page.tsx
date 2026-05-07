@@ -1,13 +1,46 @@
-import { Users } from 'lucide-react';
-import { ComingSoonPlaceholder } from '@/components/admin/ComingSoonPlaceholder';
+import { listMoradores } from '@/lib/db/morador';
+import { listUnidades } from '@/lib/db/unidade';
+import {
+  MoradoresListClient,
+  type MoradorRow,
+} from '@/components/admin/MoradoresListClient';
+import type { UnidadeOption } from '@/components/admin/MoradorForm';
 
-export default function MoradoresPage() {
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+interface Props {
+  searchParams: Promise<{ arquivados?: string }>;
+}
+
+export default async function MoradoresPage({ searchParams }: Props) {
+  const sp = await searchParams;
+  const includeArquivados = sp.arquivados === 'true';
+
+  // Lista moradores + unidades ativas (para dropdown do form)
+  const [moradoresResult, unidadesResult] = await Promise.all([
+    listMoradores({
+      page: 1,
+      pageSize: 200,
+      includeInativos: false,
+      includeArquivados,
+    }),
+    listUnidades({ page: 1, pageSize: 500, includeInativas: false }),
+  ]);
+
+  const rows = moradoresResult.items as unknown as MoradorRow[];
+  const unidades: UnidadeOption[] = unidadesResult.items.map((u) => ({
+    id: u.id,
+    identificador: u.identificador,
+    bloco: u.bloco,
+  }));
+
   return (
-    <ComingSoonPlaceholder
-      title="Moradores"
-      storyId="2.4"
-      icon={<Users className="h-12 w-12" aria-hidden />}
-      description="O CRUD de moradores (principal + adicionais) por unidade será implementado na story 2.4."
+    <MoradoresListClient
+      rows={rows}
+      total={moradoresResult.total}
+      unidades={unidades}
+      includeArquivados={includeArquivados}
     />
   );
 }

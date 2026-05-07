@@ -1,0 +1,252 @@
+storyId: 2.4
+storyTitle: CRUD Morador (principal + adicionais) por unidade (admin)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-07'
+verdict: PASS
+score: 9.5/10
+previousVerdict: 'CONCERNS 8.5/10 (2026-05-06) — smoke E2E parcial 1/11'
+upgradeReason: |
+  Smoke E2E completo executado em 2026-05-07 (10/10 PASS após 3 fixes
+  descobertos durante o smoke). CONCERNS original era exclusivamente
+  cobertura de UX visual; agora coberta. Lógica já estava sólida via
+  integration tests.
+
+summary: |
+  Implementação substancial e bem-arquitetada — terceiro CRUD tenant-scoped
+  com 3 dores novas (nome_normalizado para matching IA, telefone E.164
+  UNIQUE composite, invariante 1-principal em transação) + soft delete LGPD.
+  Refactor `_shared.ts` extrai helpers de telefone da 2.1 para reuso, sem
+  quebra. 24 testes novos (121 total).
+
+  **CONCERNS:** smoke E2E manual foi parcial (1/11 cenários) — apenas o passo 1
+  validou o fix do bug HIGH descoberto durante smoke (`COUNT_SELECT` stale).
+  Cobertura via testes integration é forte (tenant isolation + invariante +
+  soft delete + UNIQUE telefone + nome_normalizado), mas caminhos da UI
+  (criar/editar/marcar principal/arquivar/restaurar via Sheet) NÃO foram
+  validados em browser real. Risco médio de bug visual ou UX quebrada.
+
+acceptance_criteria:
+  ac1_helpers_compartilhados: PASS  # _shared.ts + normalize.ts + condominio refactor
+  ac2_validators: PASS              # Zod com preprocess + UUID v4 + telefone E.164
+  ac3_db_helpers: PASS              # withTenant + transação para invariante + soft delete
+  ac4_get_list: PASS                # paginado + _count + filtro unidade_id + include_arquivados
+  ac5_post_create: PASS             # invariante aplicada + 404 se unidade não existe + 409 telefone
+  ac6_get_detail: PASS              # _count + unidade incluída
+  ac7_patch_update: PASS            # NÃO aceita unidade_id (test confirma) + invariante reaplicada
+  ac8_delete_soft_lgpd: PASS        # deleted_at + ativo=false + is_principal=false (NUNCA físico)
+  ac9_select_component: PASS        # Radix Select novo, tokens Tailwind aplicados
+  ac10_moradores_page: PASS         # stub substituído + 2 toggles + dropdown unidade
+  ac11_morador_form: PASS           # Sheet + Select (em create only) + checkbox principal
+  ac12_tests: PASS                  # 24 novos (5 normalize + 8 validator + 11 integration)
+  ac13_documentation: PASS          # admin-cadastros.md expandido (nome_normalizado, soft delete LGPD, invariante)
+  ac14_quality_gates: PASS          # lint/typecheck/tests OK + smoke E2E completo 10/10 (2026-05-07)
+
+quality_checks:
+  code_review:
+    score: 8/10
+    findings:
+      - severity: high
+        category: code
+        description: |
+          **Bug fixado durante smoke (commit a55d45d):** `listMoradores` usava
+          `COUNT_SELECT` (constante removida no refactor). UI da lista quebrava
+          com `Cannot read properties of undefined (reading 'bloco')`.
+          Tests integration NÃO pegaram porque usam queries custom via
+          `withTenantContext`, não chamam o helper público `listMoradores`.
+        recommendation: |
+          ✅ Já corrigido (commit a55d45d). Lição documentada em Dev Notes:
+          "quando refactor toca shape de retorno do helper DB, validar via
+          smoke E2E manual antes de commitar — ou adicionar test que chama
+          o helper público diretamente."
+          **Ação para futuras stories:** considerar test integration que
+          chame `listMoradores` diretamente (não query Prisma raw) para
+          pegar regressões no shape do return.
+
+      - severity: low
+        category: code
+        description: |
+          `MoradorForm` em modo edit constrói schema dinamicamente com
+          `moradorCreateSchema.omit({ unidade_id: true }).partial()`. Isso
+          re-cria o schema a cada render. Pequena perda de performance
+          (irrelevante em prática).
+        recommendation: |
+          Memoizar via `useMemo` se profiler indicar gargalo (improvável).
+          Ou exportar `moradorEditFromCreateSchema` no validator. Não-bloqueante.
+
+      - severity: info
+        category: code
+        description: |
+          `archiveMorador` e `restoreMorador` não verificam `is_principal`
+          do registro existente — apenas força `is_principal: false` no
+          archive. Idempotente, OK.
+        recommendation: nenhuma
+
+      - severity: info
+        category: design
+        description: |
+          UNIQUE composite `(condominio_id, telefone)` no schema combinado
+          com check explícito em `findMoradorByTelefone` — defesa em
+          profundidade contra race condition. Boa prática.
+
+  unit_tests:
+    score: 9/10
+    coverage:
+      normalize (5):
+        - lowercase
+        - remove acentos comuns BR (incluindo decompostos)
+        - trim + colapsa espaços
+        - string vazia
+        - mantém dígitos e hífen
+      morador_validator (8):
+        - payload mínimo + normalização telefone E.164
+        - is_principal opcional
+        - email vazio → undefined
+        - rejeita telefone inválido
+        - rejeita unidade_id não-UUID v4
+        - rejeita nome curto
+        - update partial OK
+        - update strip silencioso de unidade_id (defesa contra escape)
+        - listQuery defaults
+      integration (11):
+        - **TENANT ISOLATION** (morador A não vaza para B)
+        - UNIQUE telefone por condomínio (mesmo tel em A e B coexistem)
+        - UNIQUE telefone bloqueia duplicata no mesmo condomínio
+        - **INVARIANTE 1-principal** (criar 2º principal desativa o 1º)
+        - principal pode coexistir em unidades diferentes (mesma cond)
+        - **nome_normalizado** calculado (lowercase + sem acento)
+        - **SOFT DELETE** (deleted_at + ativo=false + is_principal=false)
+        - **RESTORE** zera deleted_at + ativo (NÃO restaura is_principal)
+        - lista filtra arquivados por padrão
+      gaps:
+        - Test que chama helper público `listMoradores` (não query raw) —
+          teria pego o bug HIGH do `COUNT_SELECT`
+        - Test do shape exato retornado (com `unidade.{identificador, bloco}`)
+
+  acceptance_criteria_traceability:
+    score: 9/10
+    notes: |
+      14 ACs com 70+ sub-itens marcados [x]. Smoke E2E ficou em 1/11 — o restante
+      depende de fé na cobertura dos integration tests (que é forte mas não
+      cobre UX visual da UI).
+
+  no_regressions:
+    score: 10/10
+    evidence: |
+      121/121 tests passando (97 baseline + 24 novos).
+      Refactor `_shared.ts` validado: stories 2.1 (condominio) continuam funcionais.
+
+  performance:
+    score: 9/10
+    notes: |
+      Lista paginada com Promise.all (count + items + unidade) — 1 query agregada
+      Prisma. Invariante em transação adiciona 1 UPDATE extra apenas se
+      `is_principal=true` (raro). pageSize cap 200.
+
+  security:
+    score: 10/10
+    findings:
+      - **TENANT ISOLATION** validado (test integration explícito)
+      - **PATCH NÃO aceita `unidade_id` ou `condominio_id`** — Zod schema sem
+        esses campos + test confirma strip silencioso
+      - **`condominio_id` injetado do tenant context** — payload nunca fornece
+      - **Soft delete LGPD** preserva FKs históricos (NFR-031)
+      - **`requireAdmin()`** em todos os 5 endpoints (smoke confirmou 401)
+      - UNIQUE telefone em camada DB + check explícito (defesa em profundidade)
+      - Restore NÃO restaura `is_principal` — evita conflito silencioso
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/admin-cadastros.md expandido com seção Morador completa
+        (modelo, invariante, soft delete LGPD, nome_normalizado, telefone E.164)
+      - Dev Agent Record com 9 decisões + bug fix documentado com lição
+      - QA Results documenta gap do smoke E2E parcial
+
+issues:
+  - severity: resolved
+    category: process
+    title: Smoke E2E manual parcial (1/11) — RESOLVIDO 2026-05-07
+    description: |
+      Issue HIGH original do gate CONCERNS. Resolvido com smoke E2E completo
+      executado em 2026-05-07. Os 3 caminhos críticos não validados (invariante
+      via UI, soft delete LGPD, restore) agora confirmados PASS.
+    resolution: |
+      Smoke completo S2-S11 executado pelo usuário em browser real, com
+      validação cruzada via psql. 3 bugs descobertos e fixados durante o
+      smoke (commits 8dfa876, 90c2dfe). Plano formal: docs/qa/test-designs/2.4-smoke-e2e.md.
+
+  - severity: resolved
+    category: code
+    title: Filtro `ativo: true` ignorando includeArquivados — RESOLVIDO 2026-05-07
+    description: |
+      Bug HIGH descoberto em S8 do smoke. `listMoradores` aplicava filtro
+      `ativo: true` mesmo com `includeArquivados=true`, escondendo moradores
+      arquivados (que têm `ativo=false` por design do soft delete).
+      Resultado: toggle "Mostrar arquivados" voltava lista vazia.
+    resolution: |
+      Fix em src/lib/db/morador.ts:34 (commit 8dfa876):
+      `params.includeInativos || params.includeArquivados ? {} : { ativo: true }`
+      + test integration regressão prevenindo recorrência.
+
+  - severity: resolved
+    category: code
+    title: SheetTitle ausente no drawer mobile — RESOLVIDO 2026-05-07
+    description: |
+      Console warning de a11y do Radix Dialog: "DialogContent requires a
+      DialogTitle". Descoberto em S11 do smoke (mobile/teclado).
+    resolution: |
+      Fix em src/components/admin/AdminLayoutClient.tsx (commit 8dfa876):
+      SheetTitle sr-only "Menu de navegação" no SheetContent mobile.
+
+  - severity: resolved
+    category: design
+    title: Toggle "Mostrar inativos" sem ação correspondente — RESOLVIDO 2026-05-07
+    description: |
+      UX cruft: toggle de filtro + botão "Desativar/Ativar" copiados do
+      pattern Unidade/Setor mas sem semântica útil para morador. Soft delete
+      LGPD (archive/restore) já cobre o caso.
+    resolution: |
+      Removidos toggle + botão + função toggleAtivo + searchParam ?inativos
+      (commit 8dfa876). Decisão de produto: archive é o único caminho
+      esperado para "tirar morador de circulação" (LGPD).
+
+observations:
+  - severity: info
+    description: |
+      **Pattern Epic 2 estabelecido (3/3 CRUDs concluídos):** Setor (2.2),
+      Unidade (2.3), Morador (2.4) — todos seguem `requireAdmin` + `withTenant`
+      + handleApiError + Validators Zod + Sheet form + List client. Stories
+      futuras de cadastro (2.5/2.6 CSV) podem se basear neste pattern.
+  - severity: info
+    description: |
+      **Refactor `_shared.ts` foi exemplar:** extração não-breaking, sem
+      mudança comportamental, beneficia stories futuras (4.x, 6.x, 7.x) que
+      vão consumir telefone E.164.
+  - severity: info
+    description: |
+      **`normalizarNome` reusável:** será consumido pela story 3.7 (matching IA).
+      Investimento em util geral paga dividendos no Epic 3.
+
+recommendations:
+  before_merge:
+    - **Considerar smoke E2E completo da 2.4** antes do merge cumulativo final
+      do Epic 2 (junto com 2.5/2.6) — invariante 1-principal e soft delete
+      são caminhos críticos que merecem validação visual
+    - Adicionar test integration que chame `listMoradores` diretamente
+      (preveniria regressão como o `COUNT_SELECT`) — opcional, ~30min de trabalho
+  for_next_stories:
+    - **Story 2.5/2.6 (CSV import):** validar `nome_normalizado` calculado em
+      bulk (performance com 1000+ moradores), mesma estratégia de invariante
+      1-principal aplicada por unidade no batch
+    - **Story 3.7 (matching IA):** consumir `nome_normalizado` indexado para
+      query rápida de matching morador↔pacote
+    - **Story 4.x (WhatsApp):** consumir `telefone` E.164 normalizado, fallback
+      para morador `is_principal` quando IA não acertar destinatário
+
+next_action: |
+  Story aprovada PASS 9.5/10. Smoke E2E completo (10/10) + 3 bugs fixados
+  durante o smoke. 122 tests passando (+1 regressão do filtro arquivados).
+
+  Próximo na cadeia AIOX: @devops Gage cria PR da 2.4 (cumulativa com fixes
+  do smoke). Pode mergear isoladamente ou aguardar 2.5/2.6 para merge
+  cumulativo do Epic 2 — decisão de produto.

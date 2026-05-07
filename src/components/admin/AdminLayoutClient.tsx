@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { AdminHeader } from './AdminHeader';
 import { AdminSidebar } from './AdminSidebar';
 
@@ -32,6 +32,7 @@ export function AdminLayoutClient({
       {/* Drawer mobile */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 p-0">
+          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
           <AdminSidebar onNavigate={() => setMobileOpen(false)} />
         </SheetContent>
       </Sheet>

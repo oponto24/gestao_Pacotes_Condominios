@@ -1,0 +1,196 @@
+storyId: 2.5
+storyTitle: Importação CSV — upload + parser + validação (sem commit)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-07'
+verdict: PASS
+score: 9.5/10
+
+summary: |
+  Quarto entregável do Epic 2 — primeira metade do fluxo CSV. Reuso exemplar do
+  `_shared.ts` da 2.4 (PHONE_REGEX, normalizePhone) sem duplicação. Parser
+  síncrono com papaparse + cross-row dedup em 2 passos (Map<key, linhas[]>
+  cruzando referências). Endpoint estritamente read-only (decisão arquitetural
+  da @po preservando 2.6 para commit transacional).
+
+  **23 tests novos** (122 → 145), 4/4 cenários smoke E2E PASS, lint/typecheck/build
+  OK. Decisão notável: usuário descobriu durante smoke que `node_modules` do
+  container Docker é separado do host — fix aplicado in-place no container,
+  documentado em Dev Notes (gotcha relevante para próximas stories).
+
+acceptance_criteria:
+  ac1_schema_documentado: PASS         # runbook expandido + import-exemplo.csv (10 linhas)
+  ac2_validator_zod: PASS              # csv-import.ts reusa _shared.ts (PHONE_REGEX + normalizePhone)
+  ac3_parser_csv: PASS                 # papaparse + strip BOM + tolera ordem + linhas vazias + 1000 linhas cap
+  ac4_validacao_cross_row: PASS        # DUPLICATE_UNIDADE + DUPLICATE_TELEFONE marcam AMBAS as linhas
+  ac5_resultado_estruturado: PASS      # ParseResult discriminated union {fatal | parsed} + ordem preservada
+  ac6_endpoint_api: PASS               # multipart, requireAdmin, 256KB cap, content-type fallback p/ Excel
+  ac7_tela_importar: PASS              # /admin/cadastros/importar + sessionStorage['csvImportResult']
+  ac8_suite_tests: PASS                # 9 validator + 12 parser + 2 integration auth = 23 novos
+  ac9_documentacao: PASS               # runbook seção CSV + exemplos/import-exemplo.csv
+  ac10_quality_gates: PASS             # lint/typecheck/test/build/docker + smoke E2E 4/4 (2026-05-07)
+
+quality_checks:
+  code_review:
+    score: 9/10
+    findings:
+      - severity: info
+        category: design
+        description: |
+          **Cross-row dedup em 2 passos é elegante:** primeiro Zod por linha →
+          depois Map<key, linhas[]> identifica duplicatas → migração de `valid`
+          para `invalid` preservando `raw` original e listando linhas
+          conflitantes ("também aparece em linha(s) X, Y"). Boa UX para admin
+          corrigir o arquivo.
+      - severity: info
+        category: design
+        description: |
+          **Limite duplo (256KB no endpoint + 1000 rows no parser):** defesa
+          em profundidade contra DoS. file.size barra cedo (sem consumir
+          memória parseando), parser barra tarde (caso conteúdo escape).
+      - severity: low
+        category: code
+        description: |
+          `parse-import.ts` linhas 100-170 reorganizam `valid` e `invalid`
+          mutando arrays existentes (`valid.length = 0; valid.push(...)`).
+          Funcional mas mutação implícita. Refatorar para criar arrays novos
+          melhoraria legibilidade — não-bloqueante.
+        recommendation: |
+          Em iteração futura, considerar:
+          ```ts
+          const finalValid = valid.filter(r => !dupSet.has(r.linha));
+          const dupInvalid = valid.filter(r => dupSet.has(r.linha)).map(toInvalid);
+          ```
+      - severity: info
+        category: security
+        description: |
+          Content-Type fallback aceita arquivo sem MIME se nome termina em
+          `.csv` ou `.txt`. Risco baixo: o parser valida estrutura, e o
+          endpoint não persiste. Se quisesse, poderia ser removido — mas
+          a UX de Excel/Windows justifica manter.
+
+  unit_tests:
+    score: 10/10
+    coverage:
+      csv_row_validator (9):
+        - payload mínimo + E.164 normalizado
+        - bloco vazio → undefined
+        - email vazio → undefined
+        - telefone inválido rejeitado
+        - nome curto rejeitado
+        - identificador vazio rejeitado
+        - email malformado rejeitado
+        - E.164 já normalizado preservado
+        - trim em strings
+      csv_parse (12):
+        - mínimo OK
+        - **strip BOM**
+        - ordem das colunas trocada
+        - cabeçalho ausente → MISSING_HEADER
+        - colunas faltando → MISSING_COLUMN com nomes
+        - linhas em branco ignoradas
+        - **aspas escapando vírgula** ("Silva, João")
+        - separação valid/invalid + múltiplos erros por linha
+        - **DUPLICATE_UNIDADE cruzada** (referência mútua entre linhas)
+        - bloco vazio NÃO conflita com bloco preenchido
+        - **DUPLICATE_TELEFONE cruzada**
+        - **TOO_MANY_ROWS** (>1000)
+      integration (2):
+        - auth guard 401/403
+        - sem field "file"
+    gaps:
+      - Test para arquivo > 256KB no endpoint — coberto via smoke E2E manual
+      - Test do caminho autenticado (admin com session) — over-engineering
+        para MVP, mock de Clerk não vale o custo
+
+  acceptance_criteria_traceability:
+    score: 10/10
+    notes: |
+      10 ACs com 60+ sub-itens, todos marcados [x] após smoke 4/4 PASS.
+
+  no_regressions:
+    score: 10/10
+    evidence: |
+      145/145 tests passando. Refactor zero — story só adiciona arquivos novos
+      + 1 link no AdminSidebar.
+
+  performance:
+    score: 9/10
+    notes: |
+      Parser síncrono <50ms para 1000 linhas (papaparse otimizado).
+      Endpoint validate file.size ANTES de parsear (fail-fast).
+      sessionStorage do client evita refetch quando 2.6 consumir.
+
+  security:
+    score: 10/10
+    findings:
+      - **requireAdmin()** em todos os endpoints (smoke confirmou via 401/403)
+      - **Limite 256KB / 1000 linhas:** defesa em profundidade contra DoS
+      - **`condominio_id` NÃO entra no flow** — endpoint não persiste, story 2.6
+        injetará via tenant context na hora do commit
+      - **Telefone normalizado para E.164** antes do save (consistência
+        com 2.4 que tem UNIQUE composite)
+      - **Validação client-side (Zod):** schema declarativo, sem regex
+        custom — reusa `_shared.ts` validado pela 2.4
+      - **Content-Type fallback é seguro:** parser não executa código,
+        só lê texto
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/admin-cadastros.md expandido com seção CSV completa
+        (schema, limites, validações, comportamento, LGPD)
+      - docs/runbooks/exemplos/import-exemplo.csv como template baixável
+      - Dev Agent Record com 12 decisões + lição do node_modules host vs container
+      - QA Results inline com 7-check resumido
+
+issues: []
+
+observations:
+  - severity: info
+    description: |
+      **Pattern Epic 2 estabelecido (4/4 stories):** Setor, Unidade, Morador,
+      CSV Upload — todos seguem `requireAdmin` + Zod validators + handle-error.
+      A 2.6 deve seguir o mesmo padrão para o commit transacional.
+  - severity: info
+    description: |
+      **Lição operacional:** `node_modules` do container Docker é separado
+      do host. Quando uma dep nova é adicionada via `npm install`, precisa
+      rodar dentro do container vivo OU rebuildar a imagem. Já documentado
+      em Dev Notes da story.
+  - severity: info
+    description: |
+      **`bloco` opcional inteligente:** decisão de tratar string vazia ≠ valor
+      preenchido para mesmo identificador é correta — preserva semântica de
+      condomínios sem bloco (casas) coexistindo com numeração de blocos.
+
+recommendations:
+  before_merge:
+    - **Considerar restaurar template `import-exemplo.csv`** ao formato original
+      de 10 linhas — usuário expandiu durante smoke do TOO_MANY_ROWS, mas o
+      arquivo é referência da documentação para admins finais. Não-bloqueante
+      (smoke passou; arquivo pode ser limpo antes do merge).
+    - Adicionar `papaparse` ao Dockerfile para evitar a divergência host/container
+      em rebuilds futuros — story 2.6 ou tech debt.
+
+  for_next_stories:
+    - **Story 2.6 (preview + commit):** consumir `sessionStorage['csvImportResult']`,
+      validar contra DB (unidade JÁ existente no condomínio?, telefone já
+      cadastrado?), e fazer commit transacional via `withTenant` em batch
+      (1 query por unidade + 1 por morador, ou usar `createMany` se Prisma
+      permitir com tenant context).
+    - **Story 8.x (audit log):** registrar `csv_import` event com user, count,
+      timestamp para compliance LGPD (NFR-030).
+    - **Story 4.x (WhatsApp):** consumir telefones E.164 importados da 2.5/2.6
+      sem reprocessar.
+
+next_action: |
+  Story aprovada PASS 9.5/10. 23 tests novos, 4/4 smoke E2E, zero regressões.
+
+  Próximo na cadeia AIOX: @sm (River) cria draft da 2.6 (preview + commit
+  transacional). 2.5 fica em Ready for Review até merge cumulativo Epic 2 com
+  2.4 + 2.6.
+
+  Decisão de produto pendente: opção de mergear 2.4 + 2.5 em PR isolado agora
+  vs aguardar 2.6 para PR cumulativo único do Epic 2. Recomendação: **aguardar
+  2.6** — fluxo CSV completo (parse + commit) faz mais sentido como unit de
+  release.

@@ -42,3 +42,9 @@ next-env.d.ts
 # Editor caches
 .vscode/
 *.swo
+
+# clerk configuration (can include secrets)
+/.clerk/
+
+# Claude Code per-project memory
+.claude/projects/
