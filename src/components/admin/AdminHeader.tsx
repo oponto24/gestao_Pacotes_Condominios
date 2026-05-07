@@ -1,0 +1,49 @@
+'use client';
+
+import { Building2, Menu } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { UserMenu } from './UserMenu';
+
+interface AdminHeaderProps {
+  condominioNome: string;
+  condominioCidadeUf: string;
+  userNome: string;
+  userEmail?: string | null;
+  onOpenMobileNav: () => void;
+}
+
+export function AdminHeader({
+  condominioNome,
+  condominioCidadeUf,
+  userNome,
+  userEmail,
+  onOpenMobileNav,
+}: AdminHeaderProps) {
+  return (
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background px-4">
+      <button
+        type="button"
+        onClick={onOpenMobileNav}
+        aria-label="Abrir menu de navegação"
+        className="rounded-md p-2 text-foreground hover:bg-primary-light/40 md:hidden"
+      >
+        <Menu className="h-5 w-5" aria-hidden />
+      </button>
+
+      <div className="flex items-center gap-2">
+        <Building2 className="h-5 w-5 text-primary" aria-hidden />
+        <div className="leading-tight">
+          <div className="text-sm font-semibold text-foreground">{condominioNome}</div>
+          <div className="text-xs text-text-secondary">{condominioCidadeUf}</div>
+        </div>
+        <Badge variant="muted" className="ml-2 hidden sm:inline-flex">
+          Admin
+        </Badge>
+      </div>
+
+      <div className="ml-auto">
+        <UserMenu nome={userNome} email={userEmail} />
+      </div>
+    </header>
+  );
+}

@@ -48,7 +48,7 @@
 | 2.4 | CRUD Morador (principal + adicionais) por unidade (admin) | Draft | 2.3 |
 | 2.5 | Importação CSV — upload + parser + validação | Draft | 2.4 |
 | 2.6 | Importação CSV — preview com erros + commit transacional | Draft | 2.5 |
-| 2.7 | Layout AdminLayout + navegação cadastros | Draft | 1.5 |
+| 2.7 | Layout AdminLayout + navegação cadastros | **Ready for Review** 🔍 | 1.5, 1.6, 2.1 |
 
 ---
 

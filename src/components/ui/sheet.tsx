@@ -26,18 +26,33 @@ export const SheetOverlay = React.forwardRef<
 ));
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+type SheetSide = 'left' | 'right';
+
+const SIDE_STYLES: Record<SheetSide, string> = {
+  right:
+    'right-0 border-l data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right',
+  left:
+    'left-0 border-r data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left',
+};
+
+export interface SheetContentProps
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  side?: SheetSide;
+}
+
 export const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  SheetContentProps
+>(({ className, children, side = 'right', ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col gap-4 border-l bg-background p-6 shadow-lg',
-        'data-[state=open]:animate-in data-[state=open]:slide-in-from-right',
-        'data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right',
+        'fixed inset-y-0 z-50 flex w-full max-w-lg flex-col gap-4 bg-background p-6 shadow-lg',
+        'data-[state=open]:animate-in',
+        'data-[state=closed]:animate-out',
+        SIDE_STYLES[side],
         className,
       )}
       {...props}
