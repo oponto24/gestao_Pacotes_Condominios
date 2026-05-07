@@ -1,0 +1,23 @@
+# Bootstrap Nginx config — story 3.12
+# Usado APENAS na primeira inicialização para Let's Encrypt validar o domínio.
+# Depois é substituído por nginx.conf.template (com SSL).
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    # Path de validação Let's Encrypt
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Resto: proxy pro app (sem HTTPS ainda)
+    location / {
+        proxy_pass http://app:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto http;
+    }
+}

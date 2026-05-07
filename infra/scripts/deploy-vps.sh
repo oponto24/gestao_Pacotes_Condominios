@@ -46,12 +46,16 @@ if [[ "${1:-}" == "first-deploy" ]]; then
   echo "2️⃣  Rodando prisma migrate deploy (via container worker — tem CLI nos node_modules)..."
   $COMPOSE run --rm --entrypoint "" worker sh -c 'cd /app && npx prisma migrate deploy'
 
-  echo "3️⃣  Subindo Nginx em modo HTTP-only (pra Let's Encrypt validar)..."
-  # Cria certificado fake temporário pra Nginx subir, depois sobrescreve com real
-  mkdir -p ./certbot-tmp/conf/live/$DOMAIN
+  echo "3️⃣  Subindo app + worker..."
   $COMPOSE up -d app worker
+  sleep 5
 
-  echo "4️⃣  Iniciando Nginx (HTTP)..."
+  echo "4️⃣  Subindo Nginx em modo BOOTSTRAP (HTTP-only, sem SSL ainda)..."
+  # Bootstrap: configuração sem SSL para Let's Encrypt validar o /.well-known/acme-challenge/
+  # Depois substituímos pelo template com SSL completo
+  cp infra/nginx/nginx.bootstrap.conf.template /tmp/nginx-active.conf.template
+  cp infra/nginx/nginx.conf.template /tmp/nginx-final.conf.template
+  cp /tmp/nginx-active.conf.template infra/nginx/nginx.conf.template
   $COMPOSE up -d nginx
   sleep 5
 
@@ -59,11 +63,13 @@ if [[ "${1:-}" == "first-deploy" ]]; then
   $COMPOSE run --rm --entrypoint "" certbot \
     certbot certonly --webroot -w /var/www/certbot \
     -d "$DOMAIN" \
-    --email admin@"$DOMAIN" \
+    --email "admin@oponto24.com.br" \
     --agree-tos --no-eff-email --non-interactive
 
-  echo "6️⃣  Reload Nginx com SSL..."
-  $COMPOSE exec nginx nginx -s reload
+  echo "6️⃣  Substituindo Nginx config para versão final com SSL..."
+  cp /tmp/nginx-final.conf.template infra/nginx/nginx.conf.template
+  $COMPOSE restart nginx
+  sleep 3
 
   echo "7️⃣  Subindo certbot pra renovação automática..."
   $COMPOSE up -d certbot
