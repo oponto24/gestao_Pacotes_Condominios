@@ -12,9 +12,10 @@ const globalForAnthropic = globalThis as unknown as { anthropic?: Anthropic };
 function buildClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || apiKey === '' || apiKey === 'sk-ant-') {
-    throw new Error(
-      'ANTHROPIC_API_KEY não configurada. Defina em .env.local (formato sk-ant-api03-...).',
-    );
+    // Build-time fallback: Next.js 15 page data collection instancia clients
+    // mesmo de routes dynamic. Erro real só aparece em runtime quando worker
+    // ou rota tenta usar o client de verdade — Anthropic SDK valida na call.
+    return new Anthropic({ apiKey: 'sk-ant-buildtime-placeholder' });
   }
   return new Anthropic({ apiKey });
 }
