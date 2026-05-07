@@ -1,5 +1,6 @@
 import type { Job } from 'bullmq';
 import { processPing, PING_JOB_NAME } from './ping';
+import { processExtractLabel, EXTRACT_LABEL_JOB_NAME } from './extract-label';
 
 /**
  * Registro central de processadores de jobs.
@@ -16,9 +17,10 @@ type AnyProcessor = (job: Job<any>) => Promise<any>;
 
 export const JOB_PROCESSORS: Record<string, AnyProcessor> = {
   [PING_JOB_NAME]: processPing,
-  // [EXTRACT_LABEL_JOB_NAME]: processExtractLabel,  // story 3.5
+  [EXTRACT_LABEL_JOB_NAME]: processExtractLabel,
   // [SEND_WHATSAPP_JOB_NAME]: processSendWhatsApp,  // story 4.3
 };
 
-export { PING_JOB_NAME };
+export { PING_JOB_NAME, EXTRACT_LABEL_JOB_NAME };
 export type { PingPayload, PingResult } from './ping';
+export type { ExtractLabelPayload, ExtractLabelResult } from './extract-label';

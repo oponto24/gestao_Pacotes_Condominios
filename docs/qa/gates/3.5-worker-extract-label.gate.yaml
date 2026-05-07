@@ -1,0 +1,72 @@
+storyId: '3.5'
+storyTitle: 'Worker extractLabel (Anthropic Haiku 4.5 + prompt caching)'
+verdict: PASS
+reviewer: '@qa (Quinn)'
+date: '2026-05-07'
+summary: |
+  Primeira story IA real do projeto. Worker BullMQ consome job extractLabel,
+  baixa foto via storage abstraction, chama Claude Haiku 4.5 vision com prompt
+  caching ephemeral, valida JSON estruturado via Zod e atualiza pacote +
+  registra evento ia_processou com telemetria completa de tokens.
+  Smoke E2E real disparado com sucesso (job processado em 1.6s, payload completo).
+
+quality_checks:
+  code_review:
+    status: PASS
+    notes: |
+      - Singleton client via globalThis (evita múltiplas instâncias em dev hot reload)
+      - Defesa contra prompt injection no system prompt
+      - Schema Zod robusto: normalização CEP, strings vazias→null, enum estrito
+      - Fallback graceful: schema falha ou IA crasha → confianca=0 + raw_text preservado
+      - Telemetria de tokens em pacote_evento.metadata (input, output, cache_creation, cache_read)
+      - Tenant isolation via filtro condominio_id no payload (worker_role bypassa RLS mas filtra explicito)
+
+  unit_tests:
+    status: PASS
+    notes: |
+      214/214 tests passing (199 baseline + 15 novos):
+      - 10 unit tests do schema (label-extraction-schema.test.ts)
+      - 5 integration tests do worker com mock do SDK Anthropic
+
+  acceptance_criteria:
+    status: PASS
+    notes: 'AC1-AC10 todos cobertos. Smoke E2E manual (S1) executado real.'
+
+  no_regressions:
+    status: PASS
+    notes: 'Baseline 199 tests passando. Build OK, lint OK, typecheck OK.'
+
+  performance:
+    status: PASS
+    notes: |
+      Smoke real: 1672ms para 1853 input + 76 output tokens.
+      Bem abaixo do timeout 30s.
+      Custo: ~$0.0026/foto (sem cache hit) → ~R$0.013 → 4× abaixo do NFR-041 (<R$0.05).
+
+  security:
+    status: PASS
+    notes: |
+      - API key em .env.local gitignored
+      - Defesa contra prompt injection no system prompt
+      - Allow-list de mime_type validada antes do envio
+      - Logger não imprime API key
+      - Schema rejeita transportadoras desconhecidas
+
+  documentation:
+    status: PASS
+    notes: |
+      docs/runbooks/pacotes-api.md atualizado com seção "IA pipeline":
+      modelo, custo, telemetria, fallback, retry, reprocessamento manual.
+
+issues: []
+
+waivers: []
+
+next_steps:
+  - '@devops *push + criar PR + auto-merge'
+  - 'Próxima story: 3.6 (CapturaPage — UI integrando 3.2 + 3.3 + POST /api/pacotes)'
+
+tech_debt_registered:
+  - 'Validação magic bytes da imagem (lib file-type) antes do envio (3.4 + 3.5)'
+  - 'Rate limit por tenant em Epic 8'
+  - 'Alerta orçamentário Anthropic (Epic 8)'
