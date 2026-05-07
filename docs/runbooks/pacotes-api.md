@@ -62,11 +62,46 @@
 - Path: `pacotes/{condominio_id}/{pacote_id}/original.{jpg|png}`
 - Permite cleanup fácil (admin deleta pacote → deleta dir)
 
-### Job extractLabel (story 3.5)
+### Job extractLabel (story 3.5 ✅ implementada)
 
 Payload: `{ pacote_id, condominio_id }`
-jobId: `pacote_id` (idempotência)
-Worker (story 3.5) lê foto → Claude Haiku vision → preenche `pacote.ia_extracao_raw` + `ia_confianca` + move status para `pendente_identificacao` ou outro.
+jobId: `pacote_id` (idempotência via 3.4)
+
+**Worker** lê foto via `storage.get`, chama **Claude Haiku 4.5 vision** com prompt caching ephemeral, valida JSON com Zod, e atualiza:
+- `pacote.ia_extracao_raw` (JSON com 6 campos: nome, endereço, CEP, complemento, transportadora, remetente)
+- `pacote.ia_confianca` (0.0 a 1.0)
+- `pacote.ia_processada_em` (timestamp)
+
+Status do pacote **permanece `rascunho`** (story 3.7/3.8 movem para `pendente_identificacao` ou outro depois do matching/confirmação).
+
+**Custo medido:** ~$0.003/foto sem cache hit, ~$0.001/foto com cache hit. Atinge NFR-041 (<R$0.05) com folga.
+
+**Telemetria de tokens** registrada em `pacote_evento.metadata`:
+```json
+{
+  "model": "claude-haiku-4-5-20251001",
+  "confianca": 0.35,
+  "duration_ms": 1672,
+  "input_tokens": 1853,
+  "output_tokens": 76,
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0
+}
+```
+
+**Em caso de falha da IA** (rate limit, network, schema inválido):
+- Erro de API → `throw` → BullMQ retry 3x com backoff
+- JSON inválido → fallback graceful: `ia_confianca = 0` + `ia_extracao_raw = { error: ... }`
+- Schema falha → mesmo fallback
+- Pacote permanece em `rascunho` em qualquer caso
+
+**Como reprocessar manualmente:** enfileirar via Redis CLI ou script direto:
+```bash
+docker compose exec worker npx tsx -e "
+import { enqueue } from '@/lib/queue/queues';
+await enqueue('extractLabel', { pacote_id: 'UUID', condominio_id: 'UUID' });
+"
+```
 
 ### Limites
 
