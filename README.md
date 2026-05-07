@@ -8,6 +8,7 @@ PWA mobile-first para gerenciar a chegada e retirada de encomendas em condomíni
 - 🗄️ Schema do banco: [`docs/architecture/database/SCHEMA.md`](docs/architecture/database/SCHEMA.md)
 - 🎨 UX Spec: [`docs/ux/UX_SPEC.md`](docs/ux/UX_SPEC.md)
 - 🌊 Roadmap de stories: [`docs/stories/ROADMAP.md`](docs/stories/ROADMAP.md)
+- 🛠️ Runbooks operacionais: [`docs/runbooks/`](docs/runbooks/)
 
 ---
 
@@ -15,82 +16,113 @@ PWA mobile-first para gerenciar a chegada e retirada de encomendas em condomíni
 
 - **Node.js ≥ 20** (recomendado: Node 22 LTS ou 25.x)
 - **npm 10+** (vem com Node)
+- **Docker** + **Docker Compose v2** (postgres, redis, app, worker)
 - **git** 2.40+
 - macOS, Linux ou WSL2
 
-> **Próximas stories** trarão dependências adicionais: Docker (1.2), Postgres + Prisma (1.3), Redis (1.8), Clerk (1.5).
-
-## Setup
+## Primeira instalação
 
 ```bash
-# Clone (se ainda não clonou)
-git clone <repo-url>
-cd gestao_Pacotes_Condominios
-
-# Instalar dependências
+git clone <repo-url> && cd gestao_Pacotes_Condominios
+cp .env.app.example .env.local        # ajuste DATABASE_*, CLERK_*, SUPER_ADMIN_EMAIL
 npm install
-
-# Rodar dev server
-npm run dev
+docker compose -f infra/docker/docker-compose.yml --env-file .env.local up -d
+npm run prisma:migrate                # aplica schema
+npm run db:apply-rls                  # cria roles app_runtime/webhook_worker + policies RLS
+npm run prisma:seed                   # super-admin + WhatsApp placeholder
 ```
 
-O app sobe em `http://localhost:3000`.
+App em `http://localhost:3000`. Verificar saúde:
+
+```bash
+curl http://localhost:3000/api/health    # agregado db + redis + uptime
+```
+
+Para resetar tudo em dev: `npm run db:reset-and-seed` (destrutivo, bloqueado em prod).
+
+Detalhes do seed (variáveis, idempotência, reconciliação Clerk) em [`docs/runbooks/seed.md`](docs/runbooks/seed.md).
 
 ## Scripts npm
 
 | Script | Descrição |
-|--------|-----------|
-| `npm run dev` | Sobe servidor de desenvolvimento (porta 3000) |
+|---|---|
+| `npm run dev` | Servidor de desenvolvimento Next.js (porta 3000) |
 | `npm run build` | Build de produção otimizado |
 | `npm run start` | Roda o build de produção |
 | `npm run lint` | ESLint (Next.js + Prettier) |
 | `npm run format` | Formata código com Prettier |
-| `npm run typecheck` | Verificação TypeScript estrita (sem emitir JS) |
+| `npm run typecheck` | Verificação TypeScript estrita |
 | `npm test` | Vitest run-once |
 | `npm run test:watch` | Vitest em watch mode |
+| `npm run worker:dev` | Worker BullMQ em modo dev (tsx) |
+| `npm run prisma:migrate` | Aplica migrations Prisma |
+| `npm run prisma:seed` | Seed inicial idempotente |
+| `npm run prisma:studio` | UI do Prisma para inspecionar dados |
+| `npm run db:apply-rls` | Aplica roles + policies RLS |
+| `npm run db:reset-and-seed` | DEV: drop + migrate + seed + RLS (destrutivo) |
 
-## Stack (atual no MVP)
+## Stack atual
 
 - **Next.js 15.1** (App Router) + **React 19** + **TypeScript estrito**
-- **Tailwind CSS 3.4** + **shadcn/ui** (componentes acessíveis)
-- **Vitest** + **Testing Library** (testes unitários)
-- **Prisma** + **PostgreSQL** (próximas stories)
+- **Tailwind CSS 3.4** + **shadcn/ui**
+- **Prisma 6** + **PostgreSQL 16** com **RLS (Row-Level Security)** — 3 roles (`app`, `app_runtime`, `webhook_worker`)
+- **Clerk** (auth) + webhook user provisioning
+- **BullMQ** + **Redis 7** (jobs assíncronos)
+- **Pino** (logger estruturado JSON em prod, pretty em dev)
+- **Storage abstraction** local (volume Docker) — trocável por S3/R2 sem refactor
+- **Vitest** + **Testing Library** (41+ testes)
+- **Docker Compose** dev: postgres + redis + app + worker
 
 ## Estrutura
 
 ```
 src/
-├── app/            # Next.js App Router (rotas, layouts)
-├── components/     # Componentes React
-│   └── ui/         # Atomic design (shadcn base)
-└── lib/            # Helpers e utilitários (ex: cn())
+├── app/            # Next.js App Router (rotas, layouts, API routes)
+├── components/     # Componentes React (ui/ = shadcn base)
+├── lib/            # logger, db, redis, storage, queue helpers
+├── server/         # tenant context, errors, db-tenant (RLS-aware)
+└── middleware.ts   # Clerk auth middleware
 
-tests/              # Testes (Vitest)
-docs/               # Toda documentação do projeto
-prisma/             # Schema, migrations, seed (story 1.3+)
-modelos_de_etiquetas/  # Etiquetas reais para benchmark IA
+workers/            # BullMQ worker (entry point)
+prisma/             # schema, migrations, seed
+tests/              # Vitest (unit + integration)
+infra/
+├── docker/         # docker-compose.yml + Dockerfile
+└── scripts/        # apply-rls.sh, promote-user.sh
+docs/
+├── prd/            # PRD do produto
+├── architecture/   # ARCHITECTURE, SCHEMA
+├── ux/             # UX spec
+├── stories/        # Stories AIOX (1.1 .. 8.4)
+├── qa/             # QA gates
+└── runbooks/       # observability, storage, seed, jobs, uptimerobot
 ```
 
 ## Variáveis de ambiente
 
-Variáveis específicas da aplicação estão em [`.env.app.example`](.env.app.example).
-Variáveis do framework AIOX estão em [`.env.example`](.env.example).
+Variáveis específicas da aplicação: [`.env.app.example`](.env.app.example) → copiar para `.env.local`.
 
-Para começar:
-```bash
-cp .env.app.example .env.local
-# preencha os valores conforme as stories progridem
-```
+Categorias: `DATABASE_*`, `REDIS_URL`, `CLERK_*`, `ANTHROPIC_*`, `META_*`, `STORAGE_*`, `LOG_LEVEL`, `SUPER_ADMIN_EMAIL`.
 
 ## Convenções
 
 - **Conventional Commits:** `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`
-- **Branches:** `feature/{epic}.{story}-slug` (ex: `feature/1.1-init-monorepo`)
+- **Branches:** `feature/{epic}.{story}-slug` (ex: `feature/1.10-seed-inicial`)
 - **Stories:** `docs/stories/{epic}.{story}.{slug}.story.md`
 - **Push:** delegado ao `@devops` (Gage) — devs fazem `git commit` local apenas
+- **Pendências de cliente:** nunca commitar — sempre via story workflow AIOX
 
-## Status atual
+## Status do roadmap
 
-✅ **Story 1.1 — Init monorepo concluída** (2026-05-06)
+| Epic | Status |
+|---|---|
+| **Epic 1 — Fundação Técnica** | ✅ Concluído (2026-05-06) — 10/10 stories |
+| Epic 2 — Cadastros (CRUDs + CSV) | Próximo |
+| Epic 3 — Chegada do Pacote (PWA + IA) | Pendente |
+| Epic 4 — Notificação WhatsApp (Meta Cloud API) | Pendente |
+| Epic 5 — Retirada do Pacote | Pendente |
+| Epic 6 — Painel Administrativo | Pendente |
+| Epic 7 — Código ML via WhatsApp | Pendente |
+| Epic 8 — Operação SaaS (deploy VPS) | Pendente |
 
-Próximo: Story 1.2 — Docker Compose dev.
+Detalhes em [`docs/stories/ROADMAP.md`](docs/stories/ROADMAP.md).

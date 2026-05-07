@@ -17,22 +17,22 @@
 
 ---
 
-## Epic 1 — Fundação Técnica (P0)
+## Epic 1 — Fundação Técnica (P0) ✅ Concluído em 2026-05-06
 
 **Objetivo:** Repositório, banco, auth, multi-tenancy e deploy mínimo funcionando antes de qualquer feature de negócio.
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 1.1 | Inicializar monorepo Next.js + git + lint/typecheck/test | **Ready** ✅ | — |
-| 1.2 | Setup Docker Compose dev (postgres + redis + app + worker) | Draft | 1.1 |
-| 1.3 | Prisma schema + primeira migration aplicada localmente | Draft | 1.2 |
-| 1.4 | RLS policies aplicadas + role webhook_worker criada | Draft | 1.3 |
-| 1.5 | Integração Clerk (sign-in/sign-up + webhook user provisioning) | Draft | 1.1 |
-| 1.6 | Middleware de tenant + helper getTenantContext + SET LOCAL no Postgres | Draft | 1.4, 1.5 |
-| 1.7 | Endpoint /api/health + UptimeRobot configurado | Draft | 1.2 |
-| 1.8 | BullMQ + Redis connection + job de teste | Draft | 1.2 |
-| 1.9 | Logger Pino estruturado + storage abstraction (local) | Draft | 1.1 |
-| 1.10 | Seed inicial (super-admin + whatsapp_number placeholder) | Draft | 1.3 |
+| 1.1 | Inicializar monorepo Next.js + git + lint/typecheck/test | **Done** ✅ | — |
+| 1.2 | Setup Docker Compose dev (postgres + redis + app + worker) | **Done** ✅ | 1.1 |
+| 1.3 | Prisma schema + primeira migration aplicada localmente | **Done** ✅ | 1.2 |
+| 1.4 | RLS policies aplicadas + role webhook_worker criada | **Done** ✅ | 1.3 |
+| 1.5 | Integração Clerk (sign-in/sign-up + webhook user provisioning) | **Done** ✅ | 1.3, 1.4 |
+| 1.6 | Middleware de tenant + helper getTenantContext + SET LOCAL no Postgres | **Done** ✅ | 1.4, 1.5 |
+| 1.7 | Endpoint /api/health + UptimeRobot configurado | **Done** ✅ | 1.2, 1.3 |
+| 1.8 | BullMQ + Redis connection + job de teste | **Done** ✅ | 1.6, 1.7 |
+| 1.9 | Logger Pino estruturado + storage abstraction (local) | **Done** ✅ | 1.6, 1.8 |
+| 1.10 | Seed inicial (super-admin + whatsapp_number placeholder) | **Ready for Review** 🔍 | 1.3, 1.5, 1.9 |
 
 ---
 

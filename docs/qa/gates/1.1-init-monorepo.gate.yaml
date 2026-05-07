@@ -1,0 +1,82 @@
+storyId: 1.1-init-monorepo
+storyTitle: Inicializar monorepo Next.js + git + lint/typecheck/test
+reviewedBy: '@qa (Quinn)'
+reviewedAt: 2026-05-06
+verdict: PASS
+score: 9.5/10
+commit: c8552a3
+
+summary: |
+  Bootstrap executado com qualidade acima da média. Stack montada de forma
+  pragmática (Next.js 15.1 + Tailwind v3 em vez do 16/v4 da spec original),
+  com decisões justificadas em Dev Notes. Quality gates verdes na verificação
+  independente. Único ponto de atenção: 2 vulnerabilidades moderate transitivas
+  via postcss/Next.js (build-time only, sem exposição runtime) — registradas
+  como debt observável, não bloqueiam.
+
+issues:
+  - severity: medium
+    category: security
+    description: |
+      2 vulnerabilidades moderate em postcss (transitive via Next.js).
+      CVE relacionada a XSS por unescaped </style> em CSS stringify output.
+    impact: |
+      Build-time only — postcss roda apenas durante `next build` e dev server.
+      Sem exposição em produção (não processamos CSS user-supplied).
+    recommendation: |
+      Monitorar releases Next.js. Quando 15.x deduplicar postcss para versão
+      patched, atualizar via `npm update next`. Não força fix agora porque
+      `npm audit fix --force` quer downgrade pra Next.js 9 (breaking).
+    blocking: false
+
+  - severity: low
+    category: docs
+    description: |
+      ESLint warning não-bloqueante: `next lint` será removido em Next.js 16.
+    impact: |
+      Cosmético no momento. Migração para ESLint CLI direto será necessária
+      quando upgrade pra Next.js 16 acontecer.
+    recommendation: |
+      Criar story futura "Migrar de next lint para ESLint CLI" quando
+      atualizar Next.js. Para o MVP, ignorar.
+    blocking: false
+
+  - severity: low
+    category: tests
+    description: |
+      Test coverage limitado a 1 atom (Button). Não há teste de smoke da
+      home page nem teste de configuração (ex: cn() utility).
+    impact: |
+      Para uma story de bootstrap, cobertura é proporcional. Seria over-engineering
+      adicionar agora.
+    recommendation: |
+      Próximas stories devem manter padrão: cada componente/util criado tem
+      pelo menos 1 teste. cn() pode ganhar teste em story 1.5+ quando começar
+      a ser usado de verdade.
+    blocking: false
+
+quality_attributes:
+  performance: PASS    # 102KB First Load JS, build 5s
+  security: CONCERNS   # vulns moderate transitivas (não bloqueia)
+  reliability: PASS    # quality gates idempotentes, todos verdes
+  maintainability: PASS # estrutura clara, decisões documentadas
+  testability: PASS    # vitest configurado, jsdom funciona
+
+acceptance_criteria_validation:
+  total: 9
+  passed: 9
+  with_notes: 1   # AC5 (shadcn CLI manual)
+  failed: 0
+
+next_actions:
+  - Story 1.1 está aprovada para próxima fase do fluxo (push delegado a @devops quando remote estiver configurado)
+  - @sm pode criar story 1.2 (Docker Compose dev) imediatamente
+  - Vulnerabilidades moderate registradas como debt observável — adicionar à `*backlog-add` se @po quiser rastrear formalmente
+
+waivers: []
+
+reviewer_notes: |
+  CodeRabbit não foi executado neste review (CLI é WSL-only, ambiente do
+  usuário é macOS). Validação manual + re-execução dos gates é suficiente
+  para uma story de bootstrap. Quando QA do app for crítico, instalar
+  CodeRabbit ou alternativa Linux/macOS-compatível.

@@ -1,0 +1,136 @@
+storyId: 1.9
+storyTitle: Logger estruturado Pino + storage abstraction (local)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-06'
+verdict: PASS
+score: 9.5/10
+
+summary: |
+  Implementação sólida e cirúrgica. Pino logger raiz com helpers compostos
+  (request/job/tenant), redact defensivo de secrets, e storage abstraction
+  com 2 camadas de defesa contra path traversal (regex + path.relative).
+  Refactor de 10 console.* mantém semântica de log levels. Bug "logs vazios"
+  da 1.2/1.8 resolvido naturalmente como esperado. 11 testes novos cobrem
+  caminhos críticos. Quality gates verdes.
+
+acceptance_criteria:
+  ac1_pino_packages: PASS  # pino@10.3, pino-http@11, pino-pretty@13 (dev)
+  ac2_logger_root: PASS    # singleton, redact, transport pretty/JSON, LOG_LEVEL
+  ac3_helpers: PASS        # loggerForRequest/Job/Tenant + composability
+  ac4_console_refactor: PASS  # 10 ocorrências em 6 arquivos
+  ac5_pino_http: PASS      # decisão correta de não usar — App Router não tem hook ideal
+  ac6_storage_abstraction: PASS  # types + LocalStorageDriver + factory por env
+  ac7_smoke_endpoint: PASS # POST /api/admin/storage/test (super_admin)
+  ac8_gitignore_volume: PASS  # /storage/ path-anchored + volume nomeado em compose
+  ac9_tests: PASS          # 11 novos (5 logger + 6 storage), 37/37 total
+  ac10_documentation: PASS # observability.md + storage.md + infra/README.md
+  ac11_quality_gates: PASS # lint ✅ typecheck ✅ test ✅ stack healthy
+
+quality_checks:
+  code_review:
+    score: 9/10
+    findings:
+      - severity: low
+        category: code
+        description: |
+          `LocalStorageDriver.publicUrl()` retorna `/api/storage/local/<key>`
+          mas o handler pra servir essa rota ainda não existe. Caller que
+          chamar `publicUrl()` hoje recebe URL quebrada.
+        recommendation: |
+          OK pra MVP — única call hoje é o smoke endpoint que não usa a URL.
+          Story 3.4 (POST /api/pacotes) ou 4.2 (QR Code) deve criar
+          `/api/storage/local/[...path]/route.ts` antes de servir fotos
+          reais ao frontend.
+      - severity: info
+        category: code
+        description: |
+          Driver não computa hash (SHA256) no `put()`. Story original mencionava.
+        recommendation: |
+          Justificativa do dev é razoável (acopla driver a hash específico).
+          Quando 3.5 (extractLabel) precisar de dedupe, adicionar `Hash`
+          opcional via stream — `crypto.createHash('sha256').update(buf)`.
+
+  unit_tests:
+    score: 10/10
+    coverage:
+      logger:
+        - singleton e métodos exportados
+        - request_id propagado de header x-request-id
+        - request_id gerado quando ausente
+        - job_id e job_name em loggerForJob
+        - condominio_id em loggerForTenant
+      storage:
+        - put → exists → get → delete roundtrip
+        - rejeita ../escape (path traversal)
+        - rejeita key absoluta
+        - rejeita caracteres proibidos
+        - delete em chave inexistente é idempotente
+        - publicUrl determinístico
+
+  acceptance_criteria_traceability:
+    score: 10/10
+    notes: 11 ACs com 68 sub-itens — todos marcados [x] e validados em código.
+
+  no_regressions:
+    score: 10/10
+    evidence: |
+      37/37 tests passando incluindo 26 baseline (RLS, queue, tenant,
+      health, clerk-webhook, button, db, redis). Stack docker healthy.
+      Endpoint /api/health/redis funcional com Pino loggando (regressão
+      direta seria 500).
+
+  performance:
+    score: 10/10
+    notes: |
+      Pino é o logger Node mais rápido (benchmark de referência).
+      LocalStorageDriver usa fs.promises (não-bloqueante). put faz mkdir
+      recursive on-demand — overhead aceitável pra MVP.
+
+  security:
+    score: 10/10
+    findings:
+      - Pino redact aplicado em paths comuns (password/secret/token/authorization
+        + headers.authorization/cookie) — defesa contra leak
+      - Storage path traversal: 2 camadas (regex `/^(?!\/)(?!.*\.\.)[a-zA-Z0-9._/-]+$/`
+        + `path.relative` checa que resolve dentro do rootDir)
+      - Smoke endpoint protegido por super_admin guard
+      - .gitignore atualizado pra path-anchored `/storage/` (evita ignore acidental
+        de `src/lib/storage/`)
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/observability.md (uso, env vars, redact, troubleshooting)
+      - docs/runbooks/storage.md (uso, convenção de keys, layout, backup, migração futura)
+      - infra/README.md atualizado com seção Logger + Storage
+      - Story Dev Notes documenta decisões e desvios do plano
+
+issues: []
+
+observations:
+  - severity: info
+    description: |
+      Recovery de branch (criada de main por erro) foi documentada em Dev Notes.
+      Lição apropriada para futuras stories.
+  - severity: info
+    description: |
+      Volume `node_modules` em compose ficou stale após adicionar pino — dev
+      executou `npm install` dentro do container. Padrão conhecido do projeto.
+
+recommendations:
+  before_next_story:
+    - Considerar adicionar regra ESLint `no-console: warn` (mencionado no AC11
+      como cogitação) — preveniria regressão futura. Não-bloqueante.
+  for_future_stories:
+    - Story 3.4: criar `/api/storage/local/[...path]/route.ts` antes de servir
+      fotos reais ao frontend (caso continue usando LocalStorageDriver em prod).
+    - Story 4.2: adicionar SHA256/dedupe no put quando QR Codes começarem a ser
+      gerados em volume.
+    - Story 8.4: adicionar Sentry/Loki integration aproveitando o redact já
+      configurado no logger raiz.
+
+next_action: |
+  Story aprovada para push. @devops Gage pode executar:
+    1. *pre-push (já validado nos quality gates locais)
+    2. *push origin feature/1.9-pino-storage
+    3. *create-pr → PR #8 contra main

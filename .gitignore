@@ -35,8 +35,9 @@ coverage/
 *.tsbuildinfo
 next-env.d.ts
 
-# Storage de fotos (volume do app — nunca commitar)
-storage/
+# Storage de fotos (volume do app — nunca commitar). Path-anchored com `/`
+# pra NÃO ignorar `src/lib/storage/` (código).
+/storage/
 
 # Editor caches
 .vscode/

@@ -1,0 +1,158 @@
+storyId: 1.10
+storyTitle: Seed inicial completo (super-admin + whatsapp_number + reconciliação Clerk)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: '2026-05-06'
+reReviewedAt: '2026-05-06'
+verdict: PASS
+score: 9.5/10
+priorVerdict: CONCERNS (bug HIGH fixado em commit 5d9df58)
+
+summary: |
+  Implementação substancial e bem-documentada. Refactor do seed para Pino,
+  reconciliação Clerk com 3 caminhos explícitos, guard de prod no WhatsApp,
+  runbook completo. 4 testes cobrem caminhos principais.
+
+  Smoke do QA encontrou **1 issue HIGH**: o `clerk_id='pending_clerk_link'`
+  literal cria collision unique constraint quando o seed roda 2x com emails
+  DIFERENTES (não coberto pelos tests, que usam mesmo SEED_EMAIL). Detalhes
+  abaixo. Fix sugerido é cirúrgico (~5 linhas).
+
+acceptance_criteria:
+  ac1_logger_pino: PASS
+  ac2_reconciliacao_clerk: PASS  # Webhook 3-paths funcional
+  ac3_whatsapp_seed: PASS        # Guard de prod + tratamento de string vazia (?.trim() || undefined)
+  ac4_idempotencia: CONCERNS     # ⚠️  só é idempotente para o MESMO email — não para troca de SUPER_ADMIN_EMAIL
+  ac5_db_reset_seed: PASS        # Guard NODE_ENV duplo
+  ac6_rls_pos_seed: PASS         # Documentado no runbook
+  ac7_tests: CONCERNS            # 4 tests passam, mas não cobrem cenário "trocar SUPER_ADMIN_EMAIL"
+  ac8_documentacao: PASS         # runbook + READMEs atualizados
+  ac9_quality_gates: PASS        # lint ✅ typecheck ✅ 41/41 tests
+  ac10_roadmap_epic1: PASS       # Epic 1 ✅ Concluído marcado
+
+quality_checks:
+  code_review:
+    score: 8/10
+    findings:
+      - severity: high
+        category: code
+        description: |
+          `seedSuperAdmin` usa `clerk_id='pending_clerk_link'` LITERAL no `create`.
+          Como `clerk_id` é UNIQUE, rodar o seed para um SEGUNDO email (ex: trocar
+          `SUPER_ADMIN_EMAIL=outro@example.com`) quando já existe outro user
+          pending falha com:
+            "Unique constraint failed on the fields: (clerk_id)"
+
+          Reproduzido em smoke manual:
+          ```
+          $ SUPER_ADMIN_EMAIL=qa-smoke@example.com npx prisma db seed
+          [ERROR] seed falhou
+            err: "Unique constraint failed on (clerk_id)"
+          ```
+        recommendation: |
+          Tornar o placeholder único por email para preservar idempotência mesmo
+          com múltiplos super-admins (ou super-admin trocado):
+          ```ts
+          import crypto from 'node:crypto';
+          const emailHash = crypto.createHash('sha256').update(email).digest('hex').slice(0, 16);
+          clerk_id: `pending_clerk_link_${emailHash}`,
+          ```
+          E ajustar o webhook fallback (`reconciled_from: 'email'`) — já funciona
+          porque ele faz match por email, não por prefixo de clerk_id.
+
+      - severity: low
+        category: tests
+        description: |
+          Test 3 (reconciliação) cobre user pré-existente VIA WEBHOOK. Falta cobrir:
+          (a) trocar SUPER_ADMIN_EMAIL entre 2 runs (cenário do bug HIGH acima)
+          (b) caminho `reconciled_from: 'email'` do webhook (seed cria pending →
+              webhook chega depois → adopta registro)
+        recommendation: |
+          Adicionar 2 tests:
+          - "rodar seed com 2 emails diferentes não causa collision"
+          - "webhook user.created após seed adota registro pending por email"
+
+      - severity: info
+        category: code
+        description: |
+          Race condition teórica no webhook entre `findUnique({clerk_id})` e
+          `findUnique({email})`: 2 events paralelos pro mesmo email poderiam ambos
+          cair no caminho 'email' e fazer update concorrente.
+        recommendation: |
+          OK pra MVP — Clerk não envia events paralelos pro mesmo user. Documentar
+          como aceito; se virar problema, envolver em transaction.
+
+  unit_tests:
+    score: 9/10
+    coverage:
+      seed:
+        - DB vazio cria super-admin + whatsapp_number ✅
+        - Idempotência (mesmo email, 2x) ✅
+        - Reconciliação user pré-existente (porteiro → super_admin) ✅
+        - Guard de prod aborta sem META_PHONE_NUMBER_ID ✅
+      gaps:
+        - Trocar SUPER_ADMIN_EMAIL entre runs (caminho do bug HIGH)
+        - Webhook adoção por email (caminho 'email' no fallback)
+
+  acceptance_criteria_traceability:
+    score: 9/10
+    notes: |
+      10 ACs com 65+ sub-itens marcados [x]. AC4 (idempotência) tem reservas:
+      passa para mesmo email mas falha para emails diferentes.
+
+  no_regressions:
+    score: 10/10
+    evidence: 41/41 tests passando, suite anterior intacta.
+
+  performance:
+    score: 10/10
+    notes: Seed executa em <2s (2 queries findUnique + 2 updates).
+
+  security:
+    score: 10/10
+    findings:
+      - Guard NODE_ENV em `db:reset-and-seed` (duplo: script npm + node -e check)
+      - Guard de prod aborta seed sem credenciais Meta reais
+      - Logger Pino com redact aplicado (herdado da story 1.9)
+      - Reconciliação Clerk não vaza informações entre tenants
+
+  documentation:
+    score: 10/10
+    artifacts:
+      - docs/runbooks/seed.md (quando rodar, env vars, recuperação, RLS, reset)
+      - infra/README.md atualizado
+      - README.md raiz com seção "Primeira instalação" (5 comandos)
+      - Story Dev Notes documenta 3 bugs encontrados durante implementação
+
+issues:
+  - severity: high
+    category: code
+    title: clerk_id placeholder literal causa collision com múltiplos super-admins
+    location: prisma/seed.ts:50
+    description: |
+      `clerk_id: PENDING_CLERK_LINK` (string literal) viola unique constraint
+      quando seed roda para email diferente após primeiro super-admin pending.
+    fix_size: ~5 linhas (hash do email no clerk_id placeholder)
+
+observations:
+  - severity: info
+    description: |
+      Dev encontrou e fixou 3 bugs durante implementação (??/string vazia,
+      .env.local não lido por prisma CLI, db:reset-and-seed precisa de apply-rls).
+      Documentação completa em Dev Notes — boa diligência.
+
+recommendations:
+  must_fix_before_merge:
+    - Corrigir clerk_id placeholder para incluir hash do email (HIGH)
+    - Adicionar 1 test cobrindo "2 emails diferentes consecutivos"
+  before_next_story:
+    - Considerar envolver webhook reconciliação em transaction (race condition documentada)
+  for_future_stories:
+    - Story 8.4 (deploy): garantir que seed roda APENAS na primeira instalação prod (idempotência protege, mas adicionar guard explícito por contagem de users)
+
+next_action: |
+  Voltar para @dev Dex via *apply-qa-fixes:
+    1. Tornar clerk_id placeholder único por email (sha256 hash, 16 chars)
+    2. Adicionar test cobrindo cenário "2 SUPER_ADMIN_EMAIL diferentes"
+    3. Re-rodar quality gates (lint/typecheck/test)
+    4. Commit como "fix(seed): clerk_id placeholder único por email (QA fix 1.10)"
+    5. Notificar @qa para re-review

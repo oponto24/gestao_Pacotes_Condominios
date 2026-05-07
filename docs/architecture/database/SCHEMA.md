@@ -270,6 +270,109 @@ Conforme NFR-011: cron diário 03:00 BRT executa `pg_dump`, retenção 30 dias l
 
 ---
 
+## 9.5. Migration aplicada (story 1.3)
+
+**Data:** 2026-05-06
+**Comando:** `npx prisma migrate dev --name initial_schema`
+**Migration gerada:** `prisma/migrations/20260506200212_initial_schema/migration.sql`
+**RLS file (não aplicado ainda):** `prisma/migrations/20260506200212_initial_schema/rls_policies.sql` — será aplicado em **story 1.4**
+
+**Resultado validado:**
+- 12 tabelas criadas + 1 (`_prisma_migrations`) = 13 total
+- 8 enums Postgres criados (UserRole, TamanhoPacote, PacoteStatus, PacoteEventoTipo, WhatsAppMessageStatus, WhatsAppMessageDirection, CodigoMlStatus, Transportadora)
+- Índices, FKs e constraints todos presentes
+- Seed (`prisma/seed.ts`) executado com sucesso: 1 super-admin + 1 WhatsApp number placeholder
+
+**Pequena correção no schema durante a story 1.3:**
+A relação `Morador → Condominio` (via `condominio_id`) precisava de inversa explícita em `model Condominio`. Adicionados `moradores: Morador[]`, `pacote_fotos: PacoteFoto[]` e `pacote_eventos: PacoteEvento[]` por exigência do Prisma 6 (toda `@relation` precisa de inversa). Não muda a estrutura — apenas explicita as relações reversas que o Prisma usa pra gerar tipos TypeScript completos.
+
+## 11. RLS aplicado em 1.4 + estratégia de roles
+
+**Data:** 2026-05-06
+**Comando:** `npm run db:apply-rls`
+**Validado por:** suite de testes integration em `tests/integration/rls.test.ts` (6 cenários)
+
+### Roles Postgres em uso
+
+| Role | Privilégios | Quem usa | Notas |
+|------|-------------|----------|-------|
+| `app` | SUPERUSER, BYPASSRLS | Prisma CLI (migrations, seed) | Default do POSTGRES_USER. SUPERUSER ignora RLS. |
+| `app_runtime` | LOGIN, NOSUPERUSER, NOBYPASSRLS, DML em todas tabelas | App Next.js + workers + tests RLS | **SUJEITO A RLS** — defesa em profundidade real. |
+| `webhook_worker` | LOGIN, BYPASSRLS, SELECT em morador + INSERT/UPDATE em msg/codigo | Handler webhook Meta | Cross-tenant lookup por telefone. Princípio do menor privilégio. |
+
+### Por que `app_runtime` é necessário
+
+O Postgres SUPERUSER **bypassa RLS sempre**, mesmo com `FORCE ROW LEVEL SECURITY`. O image `postgres:16-alpine` cria `POSTGRES_USER=app` como SUPERUSER por default. Por isso:
+- `DATABASE_URL` (= `app`) = só pra Prisma migrations (precisa SUPERUSER)
+- `DATABASE_RUNTIME_URL` (= `app_runtime`) = pra runtime do app (sujeito a RLS)
+- `DATABASE_WEBHOOK_URL` (= `webhook_worker`) = pra handler de webhook Meta
+
+### Validações aplicadas
+
+- ✅ 8 tabelas com RLS habilitado (`relrowsecurity=true`) e FORCE (`relforcerowsecurity=true`)
+- ✅ Helpers `app_current_condominio()` e `app_is_super_admin()` retornam valores corretos
+- ✅ Sem context, query retorna 0 (RLS bloqueia)
+- ✅ Com context = Cond A, vê só dados de A
+- ✅ Tentativa de INSERT cross-tenant levanta erro `new row violates row-level security policy`
+- ✅ Com `is_super_admin = 'true'`, vê tudo
+- ✅ `webhook_worker` SELECT em `morador` OK; SELECT em `condominio` BLOQUEADO; DELETE em `morador` BLOQUEADO
+
+### Issues encontrados e fixados durante 1.4
+
+1. **`GRANT CONNECT ON DATABASE CURRENT_DATABASE()`** falha sintaxe — substituído por nome literal `gestao_pacotes` no SQL.
+2. **Adicionado `FORCE ROW LEVEL SECURITY`** em todas as 8 tabelas (sem isso, owner bypassa RLS).
+3. **Criada role `app_runtime`** porque o `app` user é SUPERUSER (bypassa RLS independentemente de FORCE).
+
+## 12. Middleware tenant em runtime (story 1.6)
+
+**Implementado:** 2026-05-06.
+
+### Fluxo Clerk → RLS automático
+
+```
+Request HTTP
+  ↓
+Clerk middleware (src/middleware.ts) — autentica
+  ↓
+Route handler chama withTenant(callback) ou getTenantContext()
+  ↓
+getTenantContext() — cached por request via React.cache()
+  - chama getCurrentUser() (Clerk auth + lookup user no DB)
+  - Resolve para: { kind: 'tenant'|'super_admin', userId, condominioId, role }
+  - Lança UnauthorizedError | PendingProvisioningError | NoCondominioAssignedError
+  ↓
+withTenantContext(ctx, callback) wrappa em db.$transaction:
+  - Para super_admin: SET LOCAL app.is_super_admin = 'true'
+  - Para tenant: SET LOCAL app.current_condominio = '<uuid>'
+  ↓
+callback(tx) — Prisma queries dentro da transação são automaticamente
+  filtradas pelo RLS (camada 1.4)
+```
+
+### Pontos de atenção
+
+- **`SET LOCAL` exige transação ativa** — fora dela é silenciosamente ignorado.
+  `withTenantContext` força `$transaction` por isso.
+- **Postgres não aceita placeholder em `SET LOCAL`** — precisa interpolar string.
+  Validamos formato UUID via regex ANTES de interpolar (defesa contra injection).
+- **Webhook handlers (Clerk, Meta) NÃO usam middleware tenant** — são cross-tenant
+  por design e usam `db` direto (`@/lib/db`). Ver `src/app/api/webhooks/clerk/route.ts`.
+- **Cache via `React.cache()`** — múltiplas chamadas a `getTenantContext()` no mesmo
+  request server retornam o mesmo resultado (sem re-fetch do user no DB).
+
+### Endpoints smoke permanentes
+
+- `GET /api/me` — retorna o `TenantContext` resolvido (sem dados do banco)
+- `GET /api/me/data` — exemplo de query usando `withTenant` (lista unidades visíveis)
+
+### Erros HTTP mapeados
+
+| Erro | Status | Cenário |
+|------|--------|---------|
+| `UnauthorizedError` | 401 | Não logado |
+| `PendingProvisioningError` | 503 | Logado mas webhook Clerk ainda não criou linha no DB |
+| `NoCondominioAssignedError` | 403 | Logado mas user.condominio_id é NULL e role != super_admin |
+
 ## 10. Backlog de melhorias pós-MVP
 
 - Particionamento `audit_log` e `pacote_evento` por mês (volume).

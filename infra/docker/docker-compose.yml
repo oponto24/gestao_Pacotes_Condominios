@@ -1,0 +1,136 @@
+# =====================================================================
+# Docker Compose — Desenvolvimento local
+# =====================================================================
+# Sobe stack completo (postgres + redis + app + worker) com 1 comando.
+# Carregado a partir da raiz do projeto:
+#   docker compose -f infra/docker/docker-compose.yml --env-file .env.local up -d
+#
+# `--env-file .env.local` é usado para INTERPOLAÇÃO de ${VAR} no YAML
+# abaixo (ex: senhas). NÃO injeta vars direto no container.
+#
+# IMPORTANTE: NÃO usar `env_file:` em app/worker. Em Compose v2 ele tem
+# precedência maior em alguns casos sutis e acaba injetando URLs com
+# `localhost` (válidas só pra Prisma CLI no host). Por isso o
+# `environment:` lista tudo explicit, com interpolação das senhas.
+# =====================================================================
+
+name: gestao-pacotes-dev
+
+# Bloco compartilhado de env do app (DRY com YAML anchor)
+x-app-env: &app-env
+  NODE_ENV: development
+  APP_URL: http://localhost:3000
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  # DATABASE_URL = SUPERUSER (Prisma CLI). DATABASE_RUNTIME_URL = app_runtime (sujeito a RLS).
+  DATABASE_URL: postgresql://app:dev_secret@postgres:5432/gestao_pacotes
+  DATABASE_RUNTIME_URL: postgresql://app_runtime:${APP_RUNTIME_DB_PASSWORD:-unset}@postgres:5432/gestao_pacotes
+  DATABASE_WEBHOOK_URL: postgresql://webhook_worker:${WEBHOOK_WORKER_DB_PASSWORD:-unset}@postgres:5432/gestao_pacotes
+  REDIS_URL: redis://redis:6379
+  # Clerk (story 1.5) — credenciais reais via .env.local
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+  CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+  CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET:-whsec_PENDING_DASHBOARD_CONFIG}
+  NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${NEXT_PUBLIC_CLERK_SIGN_IN_URL:-/sign-in}
+  NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${NEXT_PUBLIC_CLERK_SIGN_UP_URL:-/sign-up}
+  NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: ${NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL:-/}
+  NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: ${NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL:-/}
+  # Storage abstraction (story 1.9)
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+  STORAGE_LOCAL_ROOT: /app/storage
+  # Stories futuras
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gestao_pacotes
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: dev_secret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U app -d gestao_pacotes']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+      target: development
+    restart: unless-stopped
+    command: npm run dev
+    ports:
+      - '3000:3000'
+    environment: *app-env
+    volumes:
+      - ../..:/app
+      - node_modules:/app/node_modules
+      - next_cache:/app/.next
+      - storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # alpine tem BusyBox wget por default. --spider faz HEAD-like sem baixar body.
+      test: ['CMD', 'wget', '--quiet', '--spider', '--tries=1', '--timeout=5', 'http://localhost:3000/api/health']
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      # start_period generoso pra Next.js compilar JIT na primeira request
+      start_period: 60s
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile
+      target: development
+    restart: unless-stopped
+    command: npm run worker:dev
+    environment: *app-env
+    volumes:
+      - ../..:/app
+      - node_modules:/app/node_modules
+      - storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # Worker não tem porta HTTP — checa se processo tá vivo via pgrep.
+      # `pgrep -f` busca pelo padrão na linha de comando completa.
+      # Padrão genérico "workers/index" casa tanto node (1.2) quanto tsx (1.8).
+      test: ['CMD', 'pgrep', '-f', 'workers/index']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  pgdata:
+  redisdata:
+  node_modules:
+  next_cache:
+  storage:

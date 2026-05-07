@@ -1,0 +1,136 @@
+storyId: 1.7-health-uptimerobot
+storyTitle: Endpoint /api/health expandido + UptimeRobot configurado
+reviewedBy: '@qa (Quinn)'
+reviewedAt: 2026-05-06
+verdict: PASS
+score: 9.5/10
+commit: 2be7f2c
+branch: feature/1.7-health-uptimerobot
+
+summary: |
+  Story de observabilidade executada com qualidade alta. Endpoint /api/health
+  agregado funciona em 3 estados (ok/degraded/down), retorna 503 em falha
+  parcial (UptimeRobot interpreta corretamente como DOWN).
+
+  Failure scenario reproduzido independentemente: ao pausar Redis com
+  `docker compose pause redis`, endpoint reportou `status: degraded`,
+  `redis.status: down, error: "timeout, latency_ms: 3006"` em HTTP 503
+  enquanto `db.status: ok` continuou reportado corretamente. Granularidade
+  de check funcionando.
+
+  Categorização de erro (`categorizeError`) NÃO vaza connection string —
+  apenas categoria pública (timeout, connection_refused, dns_error,
+  auth_failed). Defesa adequada em endpoint público.
+
+  ioredis instalado com config correta pra BullMQ (story 1.8) — preparação
+  antecipada que evita refatoração futura.
+
+issues:
+  - severity: low
+    category: code-style
+    description: |
+      Endpoints usam `next/server` NextResponse. Em Next.js 15+, `Response`
+      nativo do Web API funciona igualmente e remove dependência implícita
+      do framework.
+    impact: |
+      Funcional. Padrão amplamente usado em Next App Router.
+    recommendation: |
+      Não mudar agora — consistência com webhook/me endpoints existentes
+      é mais importante que minimizar import.
+    blocking: false
+
+  - severity: low
+    category: composability
+    description: |
+      Timeout de 3s no `withTimeout` é independente de timeouts internos
+      do Prisma client (poderia ter `connectionTimeout` no datasource).
+      Em cenário patológico, dois timeouts encadeados podem confundir
+      debug.
+    impact: |
+      Marginal. Em prática, withTimeout cobre a maioria dos casos.
+    recommendation: |
+      Documentar em comentário que health checks têm timeout próprio
+      independente das libs subjacentes. Pós-MVP considerar ajustar
+      Prisma `connectionLimit` e `pool_timeout`.
+    blocking: false
+
+  - severity: low
+    category: monitoring
+    description: |
+      Endpoints `/api/health` permitem cache HTTP por padrão. UptimeRobot
+      não cachea (sempre faz request fresca), mas proxy/CDN intermediário
+      poderia.
+    impact: |
+      Em produção, Caddy não cacheia /api/* por default. Risco zero
+      pra arquitetura atual.
+    recommendation: |
+      Quando configurar Caddy (story 8.4), garantir `Cache-Control: no-store`
+      em /api/health* via header ou Caddyfile.
+    blocking: false
+
+  - severity: medium
+    category: security
+    description: |
+      Mesmas 2 vulns moderate em postcss (recorrente desde 1.1).
+    impact: build-time only.
+    recommendation: já documentado.
+    blocking: false
+
+quality_attributes:
+  performance: PASS    # checks paralelos via Promise.all, latência total <50ms
+  security: PASS       # categorizeError não vaza secrets, endpoint sem auth correto pra monitor
+  reliability: PASS    # withTimeout impede travamento, clearTimeout sem leak
+  maintainability: PASS  # helpers nomeados em src/lib/health.ts (DRY), Dev Notes 10 decisões
+  testability: PASS    # 3 testes integration + smoke real validado
+
+acceptance_criteria_validation:
+  total: 10
+  passed: 9
+  with_notes: 0
+  failed: 0
+  pending_user_action: 1   # AC10 (UptimeRobot setup) — runbook completo, fundador faz ~5min
+  smoke_test_reproduced: true
+  failure_scenario_validated: true
+  failure_evidence:
+    redis_paused_response: |
+      {"status":"degraded","uptime_s":319,"version":"0.1.0",
+       "checks":{"db":{"status":"ok","latency_ms":1},
+                 "redis":{"status":"down","latency_ms":3006,"error":"timeout"}},
+       "timestamp":"..."}
+      HTTP 503
+    db_remained_ok: true   # granularidade correta — só Redis foi reportado down
+    categorize_error_no_leak: true   # apenas "timeout", não vazou connection string
+    recovery: 'Redis unpaused → status=ok HTTP 200 instantâneo'
+
+next_actions:
+  - Story 1.7 aprovada. Padrão de health endpoints estabelecido pra próximas integrações
+  - @sm pode criar story 1.8 (BullMQ + Redis queue) — ioredis client já reusável
+  - Backlog: quando configurar Caddy (8.4), adicionar Cache-Control: no-store em /api/health*
+  - Backlog: documentar timeout layered (withTimeout + Prisma) em ADR
+
+waivers: []
+
+reviewer_notes: |
+  Excelente story. O failure scenario test (pause/unpause Redis) foi a
+  validação mais valiosa — provou que monitor externo vai detectar
+  degradação parcial, não apenas DOWN total.
+
+  Decisão de retornar 503 pra `degraded` (não 200 com flag) é correta —
+  UptimeRobot interpreta 5xx como DOWN, então alerta é disparado mesmo
+  quando só 1 componente caiu. Granularidade no payload permite
+  distinguir "qual" caiu via dashboard.
+
+  Padrões reusáveis estabelecidos:
+  - `withTimeout` → vai ser reutilizado em checks Anthropic (3.5),
+    Meta (4.4), etc.
+  - `categorizeError` → mesmo padrão pra outros endpoints públicos
+    (webhooks, etc.)
+  - `aggregateStatus` 3-state → expansível pra adicionar checks
+    de Anthropic, Meta API quando essas integrações chegarem
+
+  ioredis + BullMQ-ready foi excelente foresight da Dex. Evita
+  refatoração na 1.8.
+
+  CodeRabbit não foi executado (CLI WSL-only, ambiente macOS). Validação
+  manual + reprodução de failure + suite integration foi mais que
+  suficiente pra story de severidade média.

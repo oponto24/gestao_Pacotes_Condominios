@@ -1,0 +1,111 @@
+storyId: 1.6-tenant-middleware
+storyTitle: Middleware tenant context (Clerk → RLS automático)
+reviewedBy: '@qa (Quinn)'
+reviewedAt: 2026-05-06
+verdict: PASS
+score: 9.5/10
+commit: 7b7b325
+branch: feature/1.6-tenant-middleware
+
+summary: |
+  Story crítica de segurança em runtime. Conecta auth Clerk (1.5) ao RLS
+  Postgres (1.4) via middleware aplicacional com `withTenantContext`.
+
+  Defesa em profundidade agora funciona em produção, não só nos testes.
+  Quando rota usa `withTenant(callback)`, queries Prisma dentro são
+  AUTOMATICAMENTE filtradas pelo condominio_id do user logado.
+
+  Decisão arquitetural T5 (Opção B — withTenant callback) foi correta:
+  $extends do Prisma exigiria hacks pra wrappar transação. Opção B é
+  explícita e funciona com API natural de $transaction.
+
+  Workarounds bem feitos:
+  - SET LOCAL não aceita placeholder Postgres → $executeRawUnsafe + UUID regex
+  - Transação forçada (sem ela SET LOCAL é noop, vazaria dados)
+  - super_admin limpa current_condominio (e vice-versa) — evita vazamento
+    de pool de conexão
+
+issues:
+  - severity: low
+    category: design
+    description: |
+      `withTenantContext` aceita `TenantContext` como argumento,
+      facilita testar mas em route handlers normais (que usam `withTenant`)
+      o context vem de `getTenantContext` cached. Não há proteção contra
+      passagem maliciosa de context inventado para `withTenantContext`.
+    impact: |
+      Função é usada apenas internamente (não exposta a request). Caller
+      malicioso já teria comprometido o servidor.
+    recommendation: |
+      Aceitável. Padrão "trust internal API" comum em Next.js server code.
+      Documentar em comentário JSDoc que `withTenantContext` é INTERNAL.
+    blocking: false
+
+  - severity: low
+    category: ergonomia
+    description: |
+      Call-sites usando `withTenant(async (tx) => tx.unidade.findMany())`
+      são levemente mais verbosos que se fosse $extends transparente
+      (`db.unidade.findMany()`).
+    impact: |
+      Trade-off intencional documentado em Dev Notes (T5). Aceitável pra MVP.
+    recommendation: |
+      Quando virar dor real (10+ stories de feature usando withTenant),
+      considerar refatorar pra Prisma extension. Pós-MVP.
+    blocking: false
+
+  - severity: medium
+    category: security
+    description: |
+      Mesmas 2 vulns moderate em postcss (recorrente desde 1.1).
+    impact: build-time only.
+    recommendation: já documentado.
+    blocking: false
+
+quality_attributes:
+  performance: PASS    # React.cache dedupe; transação ~5ms overhead
+  security: PASS       # UUID regex + tx forçada + super_admin clear contexto
+  reliability: PASS    # Sem vazamento entre requests (testado)
+  maintainability: PASS  # Tipo discriminado, helpers nomeados, Dev Notes ricas
+  testability: PASS    # 6 cenários integration cobrindo isolamento + regressão
+
+acceptance_criteria_validation:
+  total: 9
+  passed: 9
+  with_notes: 0
+  failed: 0
+  smoke_test_reproduced: true
+  e2e_evidence:
+    api_me_no_auth: 'HTTP 401 unauthorized'
+    api_me_data_no_auth: 'HTTP 401 unauthorized'
+    promote_user_script: 'oponto24@gmail.com promovido a admin do "Edifício Teste 1.6"'
+    test_suite: '20/20 (3 unit + 6 RLS + 5 clerk-webhook + 6 tenant-middleware)'
+    isolation_no_leak: 'Cond A → Cond B → Cond A retorna conjuntos diferentes (sem vazamento de pool)'
+
+next_actions:
+  - Story 1.6 aprovada — defesa em profundidade completa em runtime
+  - Marco do projeto: middleware tenant funcional + 3 roles Postgres + RLS + auth Clerk = stack de segurança production-ready
+  - @sm pode criar story 1.7 (health endpoint expandido)
+  - Smoke E2E manual no browser opcional (suite integration cobre programaticamente)
+
+waivers: []
+
+reviewer_notes: |
+  Excelente execução. A escolha da Opção B sobre $extends foi pragmática
+  e bem documentada. As 9 decisões em Dev Notes são referência pra
+  futuros middleware/integration work.
+
+  O detalhe de "super_admin precisa LIMPAR current_condominio (e vice-versa)"
+  é o tipo de bug sutil que só aparece em produção sob carga (pool de
+  conexões reusa conexão entre requests). Bem identificado e tratado.
+
+  Para próximas stories:
+  - Story 1.7 deve manter padrão de smoke endpoint permanente
+  - Story 1.8 (BullMQ) precisa decidir como worker lida com tenant context
+    — workers não tem auth context Clerk. Provavelmente passa
+    `condominioId` no payload do job e usa `withTenantContext(...)` direto.
+  - Story 1.9 (logger) deve incluir `condominio_id` em todos os logs
+    estruturados pra rastreabilidade.
+
+  CodeRabbit não foi executado (CLI WSL-only, ambiente macOS). Validação
+  manual + suite integration completa foi suficiente pra story crítica.
