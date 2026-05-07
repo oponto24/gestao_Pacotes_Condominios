@@ -42,7 +42,7 @@
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 2.1 | CRUD Condominio (super-admin only) | Draft | 1.6 |
+| 2.1 | CRUD Condominio (super-admin only) | **Ready for Review** 🔍 | 1.6, 1.10 |
 | 2.2 | CRUD Setor por condomínio (admin) | Draft | 2.1 |
 | 2.3 | CRUD Unidade por condomínio (admin) | Draft | 2.1 |
 | 2.4 | CRUD Morador (principal + adicionais) por unidade (admin) | Draft | 2.3 |

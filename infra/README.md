@@ -263,6 +263,12 @@ um processor registrado em `src/lib/queue/jobs/index.ts`.
 - **Storage abstraction:** `src/lib/storage/` — `LocalStorageDriver` hoje (volume nomeado `storage` em compose), trocável por S3/R2 sem refactor de callers. Detalhes em `docs/runbooks/storage.md`.
 - **Endpoint admin smoke storage:** `POST /api/admin/storage/test` (super_admin only) executa put → get → delete e retorna metadata.
 
+## Super-admin (Story 2.1)
+
+UI de gestão de condomínios em `/super-admin/condominios` (apenas role
+`super_admin`). Detalhes (API REST, validação Zod, soft delete, permissões):
+[`docs/runbooks/super-admin.md`](../docs/runbooks/super-admin.md).
+
 ## Seed inicial (Story 1.10)
 
 Cria super-admin + WhatsApp number placeholder. Idempotente, com reconciliação Clerk por email.
