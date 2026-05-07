@@ -144,7 +144,13 @@
 | 8.1 | Layout SuperAdminLayout + lista /super-admin/condominios | Draft | 2.1 |
 | 8.2 | Ação "Impersonar condomínio" + banner persistente (FR-071) | Draft | 8.1, 1.6 |
 | 8.3 | Audit log de ações sensíveis (impersonate, criação cond., delete) | Draft | 8.2 |
-| 8.4 | Setup VPS Hostinger + Caddy + GitHub Actions deploy + backup script (delegado @devops) | Draft | 1.2 |
+| 8.4 | Setup VPS Hostinger + Caddy + GitHub Actions deploy + backup script (delegado @devops) | **Done** ✅ — coberto pela story 3.12 (Docker + Nginx + Let's Encrypt). CI/CD GitHub Actions e backup automatizado postgres ficam como tech debt da Epic 8.4-extended | 1.2 |
+| 8.5 | Tela super-admin cadastrar admin de cond (cadastro direto) | Draft | 8.1 |
+| 8.6 | Tela admin /admin/equipe — admin cadastra outros admins do mesmo cond | Draft | 8.5 |
+| 8.7 | Tela admin /admin/funcionarios — admin cadastra porteiros do cond | Draft | 8.6 |
+| 8.8 | Distinção admin master vs admin comum — **adiado, pendente decisão produto** | Backlog | 8.5 |
+
+> **Epic 9 — Cobrança/Billing**: backlog não-iniciado. Decisões pendentes (gateway, preço, trial). Adiado deliberadamente até MVP estar 100% funcional + primeiros clientes manuais validarem produto.
 
 ---
 
