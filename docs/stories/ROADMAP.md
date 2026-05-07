@@ -71,8 +71,8 @@
 | 3.7 | Algoritmo de matching IA-extraído ↔ unidade/morador (CEP + nome normalizado) | **Done** ✅ | 3.5, 2.4 |
 | 3.8 | Tela /chegada/confirmar — formulário IAExtractionForm (FR-014) | **Done** ✅ | 3.6, 3.7 |
 | 3.9 | Tela /chegada/organizar — tamanho + setor + posição | **Done** ✅ | 3.8, 2.2 |
-| 3.10 | Estado pendente_identificacao + tela /portaria/pendentes | **Ready for Review** 🔵 | 3.7 |
-| 3.11 | Brand Ponto24 — paleta amarela #FDC800 + violet #7C3AED, fundo claro, identidade amigável | Draft | 3.10 |
+| 3.10 | Estado pendente_identificacao + tela /portaria/pendentes | **Done** ✅ | 3.7 |
+| 3.11 | Brand Ponto24 — paleta amarela #FDC800 + violet #7C3AED, fundo claro, identidade amigável | **Ready for Review** 🔵 | 3.10 |
 | 3.12 | Deploy MVP Epic 3 na VPS — Docker + Nginx + Let's Encrypt + HTTPS | Draft | 3.11 |
 
 ---

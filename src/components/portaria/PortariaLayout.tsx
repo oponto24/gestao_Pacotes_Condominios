@@ -42,7 +42,7 @@ export function PortariaLayout({ condominioNome, userNome, children }: PortariaL
         <div className="flex shrink-0 items-center gap-2">
           <span
             aria-hidden
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent"
           >
             {iniciais}
           </span>
