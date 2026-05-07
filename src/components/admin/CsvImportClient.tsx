@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, CheckCircle2, FileUp } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, FileUp } from 'lucide-react';
 
 /**
  * Cliente da tela /admin/cadastros/importar (story 2.5).
@@ -35,6 +36,7 @@ type ParseResult =
 const SESSION_KEY = 'csvImportResult';
 
 export function CsvImportClient() {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ParseResult | null>(null);
@@ -155,13 +157,18 @@ export function CsvImportClient() {
             </div>
           )}
 
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-            <p className="text-sm text-amber-900 dark:text-amber-200">
-              <strong>Próximo passo (story 2.6):</strong> preview detalhado +{' '}
-              <em>commit transacional</em>. O resultado da análise está salvo na sessão e será
-              consumido pela próxima tela.
-            </p>
-          </div>
+          {result.valid.length > 0 && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <p className="text-sm">
+                Pronto para revisar e confirmar a importação das{' '}
+                <strong>{result.valid.length} linhas válidas</strong>.
+              </p>
+              <Button onClick={() => router.push('/admin/cadastros/importar/preview')}>
+                Ir para preview
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

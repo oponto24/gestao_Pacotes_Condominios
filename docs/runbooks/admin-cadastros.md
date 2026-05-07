@@ -1,6 +1,6 @@
 # Runbook — Cadastros Admin (tenant-scoped)
 
-> **Stories:** 2.2 (Setor), 2.3 (Unidade), 2.4 (Morador), 2.5 (CSV upload+parse) — em progresso
+> **Stories:** 2.2 (Setor), 2.3 (Unidade), 2.4 (Morador), 2.5 (CSV upload+parse), 2.6 (CSV preview+commit) — fecha Epic 2
 > **Owner:** Dev (Dex) | **Última atualização:** 2026-05-07
 
 ## Visão geral
@@ -237,7 +237,89 @@ A tela registrará `audit_log` com `actor_user_id`, `count`, `timestamp` (story 
 
 ---
 
+## Confirmação CSV (story 2.6 — preview + commit transacional)
+
+Tela: **Cadastros → Importar CSV → preview** (`/admin/cadastros/importar/preview`)
+
+### Fluxo completo
+
+```
+1. Upload (2.5)
+   POST /api/admin/csv-import/parse
+   → ParseResult { valid, invalid, totalRows }
+   → sessionStorage['csvImportResult']
+
+2. Preview (2.6)
+   Lê sessionStorage no mount
+   → POST /api/admin/csv-import/validate-db { rows: valid }
+   → DbValidationResult { okToCreate, conflicting }
+   → renderiza tabela com 3 status (válida / conflito / inválida)
+
+3. Commit (2.6)
+   Botão "Confirmar importação"
+   → POST /api/admin/csv-import/commit { rows: okToCreate }
+   → Prisma $transaction: cria N unidades + N moradores principais
+   → toast sucesso + redirect /admin/moradores
+```
+
+### Validação cross-DB
+
+`validateAgainstDb` faz **2 queries totais** (não N+1):
+
+| Conflito | Detecção | Comportamento |
+|---|---|---|
+| `UNIDADE_EXISTE` | `(condominio_id, bloco, identificador)` já existe (qualquer estado) | Linha vai para `conflicting`, NÃO bloqueia o batch |
+| `TELEFONE_EXISTE` | `(condominio_id, telefone, deleted_at IS NULL)` já existe | Linha vai para `conflicting`. **Soft-deleted NÃO conta** (admin pode reciclar telefone) |
+
+Linhas com qualquer conflito são exibidas mas **não enviadas no commit**. Admin
+pode prosseguir com o batch parcial OU baixar CSV de erros para corrigir.
+
+### Commit transacional
+
+`Prisma.$transaction` (via `withTenant`):
+- Cria todas as Unidades novas
+- Cria todos os Moradores principais (1 por unidade, `is_principal=true`)
+- `nome_normalizado` derivado server-side via `normalizarNome`
+- Qualquer erro → **rollback completo** (zero gravado)
+
+### Decisões de produto
+
+| Decisão | Motivo |
+|---|---|
+| Conflitos NÃO bloqueiam | Admin não perde 999 linhas válidas por causa de 1 conflito |
+| Sem update via CSV | Linha existente é pulada — edits via UI manual |
+| `is_principal=true` para todos | Decisão @po — 1 unidade nova = 1 morador novo principal. Adicionais via UI |
+| 2 endpoints (validate-db + commit) | Reduz risco de double-commit. Admin pode re-validar várias vezes |
+
+### Download CSV de erros
+
+Botão "Baixar CSV de erros" (visível se há linhas inválidas OU conflitantes):
+- Gera client-side com `Papa.unparse` (sem ida ao server)
+- Coluna extra `erro` com motivo
+- UTF-8 com BOM (Excel BR abre acentos certos)
+- Nome: `import-erros-YYYYMMDDTHH.csv`
+
+### Edge cases
+
+- **sessionStorage vazio** (admin abre nova aba) → preview mostra empty state com CTA "Subir CSV"
+- **Browser fecha durante commit** → transação Prisma rolla back automaticamente, nada persiste
+- **Race condition** entre 2 admins → `UNIQUE` constraint do DB barra, transação reverte
+- **Performance:** 1000 linhas comitam em <2s (medido via tests)
+
+### Endpoints REST
+
+| Método | Path | Propósito |
+|---|---|---|
+| `POST` | `/api/admin/csv-import/parse` | Parse + validação intra-arquivo (2.5) |
+| `POST` | `/api/admin/csv-import/validate-db` | Cross-DB check, retorna split (2.6) |
+| `POST` | `/api/admin/csv-import/commit` | Transação atômica (2.6) |
+
+Todos com `requireAdmin()` + `withTenant`.
+
+---
+
 ## Próximas stories
 
-- **2.6** — Preview detalhado + commit transacional
 - **3.7** — Algoritmo de matching IA usando `nome_normalizado`
+- **4.x** — WhatsApp consumindo telefones E.164 importados via CSV
+- **8.x** — Audit log do `csv_import` para compliance LGPD
