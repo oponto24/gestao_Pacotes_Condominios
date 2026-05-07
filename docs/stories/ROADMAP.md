@@ -160,3 +160,7 @@
 1. **@po (Pax):** validar story 1.1 (10-point checklist) — quando criada.
 2. **@dev (Dex):** começar implementação da story 1.1 após validação.
 3. **Eu (River):** criar próxima story conforme stories anteriores fecham (modelo "create-next-story").
+
+### Backlog UX (descoberto durante smoke 2.6 — 2026-05-07)
+
+- **2.X — Search/filtros em /admin/moradores:** API já aceita `?q=<termo>` (busca em nome OR telefone), `?unidade_id=<uuid>` (filtro por unidade). UI atualmente só tem toggle de arquivados. Adicionar: input de busca textual, dropdown de filtro por unidade (+bloco). Reusa pattern dos toggles existentes. Sugestão @user durante smoke. Estimativa: 0.25 dia.
