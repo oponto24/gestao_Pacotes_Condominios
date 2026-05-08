@@ -1,9 +1,11 @@
 # Setup Meta WhatsApp Business — Pré-requisitos Epic 4
 
 > **Owner:** Gustavo Silva (oponto24@gmail.com)
-> **Última atualização:** 2026-05-07
+> **Última atualização:** 2026-05-08
 > **Bloqueia:** Epic 4 (Notificação WhatsApp), Story 6.5 (Reenviar/Cancelar), Epic 7 (Códigos ML)
 > **Tempo total estimado:** 1-2 dias úteis (com janelas de espera Meta)
+>
+> **Estado atual:** Etapas 1-5 ✅ (template `pacote_chegou` submetido 2026-05-08 16h25, em análise). Falta só Etapa 6 (após deploy story 4.4) + chip dedicado pra produção.
 
 ---
 
@@ -127,11 +129,12 @@ O Epic 4 do MVP depende de uma integração com a **Meta Cloud API for WhatsApp 
    - **Idioma:** Português (Brasil)
 4. **Corpo da mensagem:**
    ```
-   Olá {{1}}! Chegou um pacote pra você no {{2}}.
-   Apresente este QR Code na portaria pra retirar.
+   Olá {{1}}! Sua encomenda chegou no {{2}} e já está disponível na portaria.
+   Mostre a imagem em anexo ao porteiro para a retirada.
    ```
    - `{{1}}` = nome do morador
    - `{{2}}` = nome do condomínio
+   - **Por que essa redação?** A primeira tentativa ("Apresente este QR Code...") foi auto-classificada pela Meta como Autenticação (gatilho: "QR Code" + "Apresente"). A redação acima evita os gatilhos e mantém Utility, que é mais barato e aprova mais rápido.
 5. **Cabeçalho com mídia:** marcar **Imagem** — vamos enviar o QR Code como imagem anexa
 6. **Submeter para aprovação**
 
@@ -161,30 +164,32 @@ O Epic 4 do MVP depende de uma integração com a **Meta Cloud API for WhatsApp 
 
 ---
 
-## Resumo: variáveis de ambiente para o `.env.prod`
+## Resumo: variáveis de ambiente
 
-Quando todas as etapas (1-5) estiverem prontas, me passe esses valores e eu adiciono ao deploy:
+> **Estado em 2026-05-08:** Etapas 1-5 concluídas. Variáveis abaixo já preenchidas em `.env.local` (sandbox). Pra `.env.prod` real, falta chip dedicado + WABA não-sandbox + Etapa 6.
 
 ```bash
 # === Meta WhatsApp Business ===
-META_APP_SECRET=<da Etapa 2>
-META_PHONE_NUMBER_ID=<da Etapa 3>
-META_WHATSAPP_BUSINESS_ACCOUNT_ID=<da Etapa 3>
-META_ACCESS_TOKEN=<da Etapa 4 — segredo crítico>
-META_TEMPLATE_NAME=pacote_chegou
-META_API_VERSION=v21.0
+META_APP_ID=2194393834738443                              # Etapa 2 — público
+META_APP_SECRET=<rotacionar>                              # Etapa 2 — segredo
+META_PHONE_NUMBER_ID=1138774412646193                     # Etapa 3 — sandbox (trocar pra chip prod depois)
+META_WABA_ID=1446111150585784                             # Etapa 3 — sandbox (trocar depois)
+META_ACCESS_TOKEN=<rotacionar>                            # Etapa 4 — segredo crítico, permanente
+META_TEMPLATE_NAME=pacote_chegou                          # Etapa 5 — em análise Meta
+META_API_VERSION=v25.0                                    # versão atual da Cloud API
 META_WEBHOOK_VERIFY_TOKEN=<da Etapa 6, depois de 4.4 deployado>
 ```
 
-| Variável | Onde obtém | Tipo | Quando precisa |
-|----------|-----------|------|----------------|
-| `META_APP_SECRET` | Etapa 2 | Segredo | Antes do dev real |
-| `META_PHONE_NUMBER_ID` | Etapa 3 | ID público | Antes do dev real |
-| `META_WHATSAPP_BUSINESS_ACCOUNT_ID` | Etapa 3 | ID público | Antes do dev real |
-| `META_ACCESS_TOKEN` | Etapa 4 | Segredo crítico | Antes do dev real |
-| `META_TEMPLATE_NAME` | Etapa 5 | Nome (público) | Antes do dev real |
-| `META_API_VERSION` | Constante | Versão fixa | Já conhecida (`v21.0`) |
-| `META_WEBHOOK_VERIFY_TOKEN` | Etapa 6 | Segredo | Só após 4.4 deployada |
+| Variável | Onde obtém | Tipo | Status |
+|----------|-----------|------|--------|
+| `META_APP_ID` | Etapa 2 | ID público | ✅ |
+| `META_APP_SECRET` | Etapa 2 | Segredo | ✅ (rotacionar antes prod) |
+| `META_PHONE_NUMBER_ID` | Etapa 3 | ID público | ✅ sandbox |
+| `META_WABA_ID` | Etapa 3 | ID público | ✅ sandbox |
+| `META_ACCESS_TOKEN` | Etapa 4 | Segredo crítico | ✅ (rotacionar antes prod) |
+| `META_TEMPLATE_NAME` | Etapa 5 | Nome (público) | ⏳ em análise |
+| `META_API_VERSION` | Constante | Versão fixa | ✅ `v25.0` |
+| `META_WEBHOOK_VERIFY_TOKEN` | Etapa 6 | Segredo | ⏳ pós-4.4 |
 
 ---
 

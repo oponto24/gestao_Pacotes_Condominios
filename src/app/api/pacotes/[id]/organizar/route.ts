@@ -5,6 +5,7 @@ import { handleApiError } from '@/lib/api/handle-error';
 import { ValidationError, NotFoundError } from '@/server/errors';
 import { pacoteOrganizarInputSchema } from '@/lib/validators/pacote-organizar';
 import { organizarPacote } from '@/lib/db/pacote-organizar';
+import { enqueueSendWhatsApp } from '@/lib/queue/enqueue-send-whatsapp';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,6 +43,20 @@ export async function PATCH(
       { pacote_id: pacoteId, already_organized: result.already_organized },
       'Pacote organizado',
     );
+
+    // Story 4.3 — enfileira notificação WhatsApp pra primeira organização.
+    // Idempotência via jobId determinístico (sendWhatsApp:{pacote_id}) — re-organização
+    // não dispara novo envio. Falha de enfileiramento não bloqueia resposta da API.
+    if (!result.already_organized) {
+      try {
+        await enqueueSendWhatsApp({
+          pacote_id: pacoteId,
+          condominio_id: ctx.condominioId,
+        });
+      } catch (enqueueErr) {
+        log.error({ pacote_id: pacoteId, err: enqueueErr }, 'Falha ao enfileirar sendWhatsApp');
+      }
+    }
 
     return NextResponse.json({ ok: true, ...result }, { status: 200 });
   } catch (err) {

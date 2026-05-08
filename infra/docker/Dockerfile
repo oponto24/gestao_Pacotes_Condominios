@@ -21,7 +21,11 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 # Schema Prisma precisa estar presente no `npm ci` por causa do postinstall (prisma generate)
 COPY prisma ./prisma
-RUN npm ci --no-audit --no-fund
+# Sharp (story 4.2) precisa do binário linux-musl. Sharp v0.34+ baixa automaticamente
+# durante install; falha aqui (early) é melhor que crash em runtime no worker.
+# `--include=optional` garante que optionalDependencies (binários prebuilt) sejam baixados.
+RUN npm ci --no-audit --no-fund --include=optional && \
+    node -e "require('sharp'); console.log('sharp OK:', require('sharp').versions)"
 
 # ---------- Stage: development ----------
 FROM base AS development

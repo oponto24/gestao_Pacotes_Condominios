@@ -1,17 +1,19 @@
 # Roadmap de Stories — Gestão de Pacotes em Condomínios
 
 > **Owner:** River (AIOX Scrum Master)
-> **Última atualização:** 2026-05-07
+> **Última atualização:** 2026-05-08
 > **PRD:** `docs/prd/PRD.md` | **Architecture:** `docs/architecture/ARCHITECTURE.md` | **Schema:** `docs/architecture/database/SCHEMA.md` | **UX:** `docs/ux/UX_SPEC.md`
 
 ---
 
 ## Visão geral
 
-**Total estimado:** 51 stories distribuídas em 8 épicos (3.11 brand adicionada).
-**Progresso atual (2026-05-07):** ~32 stories Done · 335 tests passing · MVP funcional ponta-a-ponta localmente.
-**Bloqueios externos:** Epic 4 (criar Meta Business Manager), Story 3.12 (apontar DNS oponto24.com.br → 2.24.82.192).
-**Esforço total:** 8-12 semanas (1 dev sênior em tempo integral) ou 5-7 semanas (2 devs).
+**Total:** 52 stories distribuídas em 8 épicos (3.11 brand + 4.6b UI bloco notificações adicionadas).
+**Progresso atual (2026-05-08):** **~39 stories Done** · **401 tests passing** · MVP funcional ponta-a-ponta + Epic 4 completo · em produção em https://condominios.oponto24.com.br
+**Bloqueios externos restantes:**
+- Aprovação Meta do template `pacote_chegou` (smoke real do envio WhatsApp)
+- Compra de chip dedicado WhatsApp pra produção (sandbox = 90d/5 destinatários)
+- Etapa 6 do runbook setup-meta-whatsapp (configurar webhook URL no painel Meta) — só pós-deploy
 
 **Convenção de numeração:** `{epic}.{story}` — ex: `1.1`, `3.4`.
 **Convenção de branch:** `feature/{epic}.{story}-slug` — ex: `feature/1.1-init-monorepo`.
@@ -79,18 +81,30 @@
 
 ---
 
-## Epic 4 — Notificação WhatsApp (P0)
+## Epic 4 — Notificação WhatsApp (P0) ✅ Concluído em 2026-05-08
 
-**Objetivo:** Geração de QR + integração Meta Cloud API + tracking de entrega.
+**Objetivo:** Geração de QR + integração Meta Cloud API + tracking de entrega + reenvio manual.
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 4.1 | Cliente Meta Cloud API + função sendTemplate | Draft | 1.6 |
-| 4.2 | Geração de QR Code PNG (lib qrcode) + storage temporário | Draft | 1.9 |
-| 4.3 | Worker sendWhatsApp — fluxo completo (carrega pacote, gera QR, envia, salva message) | Draft | 4.1, 4.2 |
-| 4.4 | Webhook /api/webhooks/meta-whatsapp — verificação HMAC + handler de status updates | Draft | 4.1 |
-| 4.5 | Lógica de fallback destinatário cadastrado → condômino principal (FR-031/032) | Draft | 3.7, 4.3 |
-| 4.6 | Retry automático BullMQ (3 tentativas backoff exponencial) + tela "reenviar" no admin | Draft | 4.3 |
+| 4.1 | Cliente Meta Cloud API + helper sendTemplate + MetaApiError tipada + modo mock | **Done** ✅ | 1.6 |
+| 4.2 | Gerador QR Code PNG 1200×628 (sharp + qrcode + canvas) + ensureQrForPacote idempotente + migration `qr_image_path` | **Done** ✅ | 1.9 |
+| 4.3 | Worker BullMQ sendWhatsApp — orquestra recipient + QR + sendTemplate + WhatsAppMessage + retry exponencial. Trigger no organizar (3.9) | **Done** ✅ | 4.1, 4.2 |
+| 4.4 | Webhook `/api/webhooks/meta-whatsapp` — GET verify_token + POST HMAC + processador async com idempotência por meta_message_id | **Done** ✅ | 4.1 |
+| 4.5 | chooseRecipient com matching nome (exato → fuzzy ≥0.7 → primeiro+último) → principal → adicional. matched_by registrado em template_params | **Done** ✅ | 3.7, 4.3 |
+| 4.6 | Endpoint `POST /api/pacotes/{id}/reenviar-whatsapp` (rate limit 3/h) + retry config validation tests | **Done** ✅ | 4.3 |
+| 4.6b | UI bloco "Notificações WhatsApp" no `PacoteDetalheView` — timeline com badges status + botão Reenviar com loading + telefone mascarado + 8 unit tests | **Done** ✅ | 4.6, 6.3 |
+
+**Bundle:** PR #59 (`feature/epic-4-whatsapp`) — 7 stories, 47 unit tests novos, 401/401 suite verde.
+
+**Pendências externas (não bloqueiam merge):**
+- ⏳ Aprovação Meta do template `pacote_chegou` (submetido 2026-05-08 16h25)
+- ⏳ Pós-deploy: configurar webhook URL no painel Meta (Etapa 6 do runbook)
+- ⏳ Chip dedicado WhatsApp pra produção real
+
+**Débitos LOW (registrados nos QA Results das stories):**
+- E2E Playwright reenviar fluxo (spec documentado em `docs/qa/e2e-specs/reenviar-whatsapp.md`, falta install Playwright)
+- `PacoteEvento.notificacao_fallback` enum sem entrada — `matched_by` registrado em `template_params` da WhatsAppMessage como alternativa
 
 ---
 
@@ -117,7 +131,7 @@
 | 6.2 | Busca textual por morador/apto/código (ILIKE) | **Done** ✅ | 6.1 |
 | 6.3 | Página /admin/pacotes/[id] — detalhe completo + PacoteTimeline | **Done** ✅ | 6.1 |
 | 6.4 | Ação "Resolver pendência" — link pra /chegada/confirmar/[id] (FR-064) | **Done** ✅ | 6.3, 3.10 |
-| 6.5 | Ação "Reenviar WhatsApp" + "Cancelar pacote" no detalhe | Draft (depende Epic 4) | 6.3, 4.6 |
+| 6.5 | Ação "Reenviar WhatsApp" + "Cancelar pacote" no detalhe | **Done** ✅ (parcial) — Reenviar coberto pelo bloco UI da 4.6b. Cancelar pacote pendente (decisão de produto: reabrir cancelados? UX?) | 6.3, 4.6 |
 
 ---
 
@@ -167,12 +181,28 @@
 
 ---
 
-## Próximas ações
+## Próximas ações (2026-05-08)
 
-1. **@po (Pax):** validar story 1.1 (10-point checklist) — quando criada.
-2. **@dev (Dex):** começar implementação da story 1.1 após validação.
-3. **Eu (River):** criar próxima story conforme stories anteriores fecham (modelo "create-next-story").
+1. **User:** revisar PR #59 (Epic 4 + débitos LOW + 4.6b UI) e mergear quando confortável
+2. **@devops (Gage):** após merge, rodar `prisma migrate deploy` em prod (aplica `qr_image_path`) e verificar workers reiniciam
+3. **User:** aguardar e-mail Meta com aprovação do template `pacote_chegou`
+4. **User + @devops:** Etapa 6 do runbook setup-meta-whatsapp — configurar webhook URL `https://condominios.oponto24.com.br/api/webhooks/meta-whatsapp` + verify_token no painel Meta
+5. **User:** comprar chip dedicado WhatsApp Business + criar nova WABA produção (não-sandbox)
+6. **Pré-prod:** rotacionar 6 secrets vazados em chat (Anthropic key, Google key, senha VPS, Clerk dev→prod, Meta App Secret, Meta Access Token)
+
+### Próximas frentes possíveis (priorizar com user)
+
+- **Epic 7 — Código ML via WhatsApp:** webhook handler 4.4 já registra mensagens inbound; falta parser regex+LLM de código ML + UI banner amarelo na tela organizar
+- **Epic 8 — Cadastros hierárquicos** (8.5-8.7): super-admin → admin de cond → admins/porteiros do mesmo cond
+- **Pós-MVP:** decisões de produto (admin master vs comum, billing/Asaas, trial)
 
 ### Backlog UX (descoberto durante smoke 2.6 — 2026-05-07)
 
 - **2.X — Search/filtros em /admin/moradores:** API já aceita `?q=<termo>` (busca em nome OR telefone), `?unidade_id=<uuid>` (filtro por unidade). UI atualmente só tem toggle de arquivados. Adicionar: input de busca textual, dropdown de filtro por unidade (+bloco). Reusa pattern dos toggles existentes. Sugestão @user durante smoke. Estimativa: 0.25 dia.
+
+### Débitos técnicos rastreados
+
+- **Cancelar pacote** (parte da 6.5) — decisão de produto + UX
+- **E2E Playwright** (4.6b) — install + transcrever spec de `docs/qa/e2e-specs/reenviar-whatsapp.md`
+- **PacoteEvento enum** — adicionar `notificacao_fallback` se admin precisar de log dedicado (atualmente em `template_params.matched_by`)
+- **CI/CD GitHub Actions + backup automático Postgres** (Epic 8.4-extended)

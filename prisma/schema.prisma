@@ -295,6 +295,7 @@ model Pacote {
 
   // QR Code
   qr_token        String    @unique @db.VarChar(64) // token random p/ assinar QR
+  qr_image_path   String?   @db.VarChar(500) // path no storage da imagem 1200x628 (story 4.2)
   qr_consumido_em DateTime?
 
   // Recebimento
