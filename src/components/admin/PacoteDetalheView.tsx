@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, Package, QrCode } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { PacoteStatusBadge } from '@/components/admin/PacoteStatusBadge';
 import { PacoteTimeline } from '@/components/admin/PacoteTimeline';
+import { WhatsAppNotificationsBlock } from '@/components/admin/WhatsAppNotificationsBlock';
 import type { PacoteDetail } from '@/lib/db/pacote-admin-detail';
 
 interface Props {
@@ -175,6 +176,12 @@ export function PacoteDetalheView({ pacote }: Props) {
               <p className="text-sm text-text-secondary">Sem foto.</p>
             )}
           </div>
+
+          <WhatsAppNotificationsBlock
+            pacoteId={pacote.id}
+            pacoteStatus={pacote.status}
+            messages={pacote.whatsapp_messages}
+          />
 
           <div className="rounded-lg border border-border bg-background p-4">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">

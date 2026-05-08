@@ -20,6 +20,21 @@ export interface PacoteDetailEvento {
   metadata: unknown;
 }
 
+export interface PacoteDetailWhatsAppMessage {
+  id: string;
+  status: string;
+  to_phone: string;
+  template_name: string | null;
+  failure_reason: string | null;
+  retry_count: number;
+  matched_by: string | null;
+  created_at: Date;
+  sent_at: Date | null;
+  delivered_at: Date | null;
+  read_at: Date | null;
+  failed_at: Date | null;
+}
+
 export interface PacoteDetail {
   id: string;
   status: string;
@@ -47,6 +62,7 @@ export interface PacoteDetail {
   retirado_por_morador: { id: string; nome: string } | null;
   foto_storage_path: string | null;
   eventos: PacoteDetailEvento[];
+  whatsapp_messages: PacoteDetailWhatsAppMessage[];
 }
 
 export async function loadPacoteDetail(
@@ -121,11 +137,51 @@ export async function loadPacoteDetail(
       metadata: e.metadata,
     }));
 
+    // WhatsApp messages outbound do pacote (story 4.6b)
+    const messagesRaw = await tx.whatsAppMessage.findMany({
+      where: { pacote_id: pacoteId, direction: 'outbound' },
+      select: {
+        id: true,
+        status: true,
+        to_phone: true,
+        template_name: true,
+        template_params: true,
+        failure_reason: true,
+        retry_count: true,
+        created_at: true,
+        sent_at: true,
+        delivered_at: true,
+        read_at: true,
+        failed_at: true,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    const whatsapp_messages: PacoteDetailWhatsAppMessage[] = messagesRaw.map((m) => {
+      const params = m.template_params as Record<string, unknown> | null;
+      const matchedBy = params && typeof params.matched_by === 'string' ? params.matched_by : null;
+      return {
+        id: m.id,
+        status: m.status,
+        to_phone: m.to_phone,
+        template_name: m.template_name,
+        failure_reason: m.failure_reason,
+        retry_count: m.retry_count,
+        matched_by: matchedBy,
+        created_at: m.created_at,
+        sent_at: m.sent_at,
+        delivered_at: m.delivered_at,
+        read_at: m.read_at,
+        failed_at: m.failed_at,
+      };
+    });
+
     return {
       ...pacote,
       ia_confianca: pacote.ia_confianca ? Number(pacote.ia_confianca) : null,
       foto_storage_path: foto?.storage_path ?? null,
       eventos,
+      whatsapp_messages,
     };
   });
 }

@@ -34,11 +34,24 @@ function runSeed(env: Record<string, string> = {}): string {
   // stderr é capturado junto pra que assertions de erro batam no .toThrow().
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) throw new Error('DATABASE_URL não setada — verificar setup.ts');
+
+  // Isolation: removemos vars Meta do parent env por padrão pra que testes
+  // assumam placeholder behavior. Caller pode reintroduzir via `env` override.
+  // Antes: `.env.local` com `META_PHONE_NUMBER_ID=` vazio funcionava por coincidência;
+  // após Story 4.1 popular esses campos, herança via `...process.env` quebrava
+  // os testes que esperam `PLACEHOLDER_META_PHONE_NUMBER_ID`.
+  const cleanedEnv = { ...process.env };
+  delete cleanedEnv.META_PHONE_NUMBER_ID;
+  delete cleanedEnv.META_WABA_ID;
+  delete cleanedEnv.META_APP_ID;
+  delete cleanedEnv.META_APP_SECRET;
+  delete cleanedEnv.META_ACCESS_TOKEN;
+
   try {
     return execSync('npx prisma db seed', {
       cwd: projectRoot,
       env: {
-        ...process.env,
+        ...cleanedEnv,
         SUPER_ADMIN_EMAIL: SEED_EMAIL,
         DATABASE_URL: dbUrl,
         ...env,

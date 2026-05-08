@@ -126,12 +126,40 @@ Sistema **multi-tenant SaaS** para gestão de pacotes em condomínios, com 3 sup
 | Hostinger KVM 2 | — | VPS (2 vCPU, 8GB RAM, 100GB NVMe) |
 
 ### 2.4 Integrações externas
-| Serviço | Propósito | Custo MVP |
-|---------|-----------|-----------|
-| Clerk | Autenticação | R$ 0 (free tier ≤10k MAU) |
-| Anthropic API | Extração de etiqueta com vision | ~R$ 2/condomínio/mês |
-| Meta WhatsApp Cloud API | Envio de notificações | ~R$ 4/condomínio/mês |
-| Hostinger | Hospedagem | ~R$ 60/mês total |
+| Serviço | Propósito | Módulo no código | Custo MVP |
+|---------|-----------|------------------|-----------|
+| Clerk | Autenticação | `@clerk/nextjs` direto | R$ 0 (free tier ≤10k MAU) |
+| Anthropic API | Extração de etiqueta com vision (fallback) | `src/lib/ai/providers/anthropic.ts` | ~R$ 2/condomínio/mês |
+| Google Gemini | Extração de etiqueta com vision (default) | `src/lib/ai/providers/gemini.ts` | ~R$ 0,15/condomínio/mês |
+| Meta WhatsApp Cloud API | Envio de notificações + webhook status | `src/lib/meta-whatsapp/` (story 4.1+4.4) | ~R$ 4/condomínio/mês |
+| Hostinger | Hospedagem VPS | `infra/docker/Dockerfile` | ~R$ 60/mês total |
+
+### 2.4.1 Módulo `meta-whatsapp` (Epic 4)
+
+Estrutura:
+```
+src/lib/meta-whatsapp/
+├── client.ts          # Singleton MetaWhatsAppClient + sendTemplate (story 4.1)
+├── errors.ts          # MetaApiError tipada com mapping de error codes
+├── types.ts           # Request/Response types da Cloud API
+├── webhook.ts         # verifyMetaSignature HMAC-SHA256 (story 4.4)
+└── index.ts           # Re-exports
+
+src/lib/qr/            # Geração QR Code 1200×628 (story 4.2)
+src/lib/whatsapp/      # chooseRecipient com matching de nome (story 4.5)
+src/lib/queue/jobs/
+├── send-whatsapp.ts             # Worker BullMQ envia template (story 4.3)
+└── process-whatsapp-webhook.ts  # Worker async processa status updates (story 4.4)
+```
+
+**Variáveis de ambiente:**
+- `META_APP_ID`, `META_PHONE_NUMBER_ID`, `META_WABA_ID` (públicos)
+- `META_APP_SECRET`, `META_ACCESS_TOKEN`, `META_WEBHOOK_VERIFY_TOKEN` (segredos)
+- `META_API_VERSION=v25.0`, `META_DISABLED=true|false` (modo mock pra dev/CI)
+
+**Modo mock:** `META_DISABLED=true` faz `sendTemplate` retornar `wamid` simulado sem bater na Meta — útil em CI e dev sem credenciais.
+
+**Setup operacional:** ver `docs/runbooks/setup-meta-whatsapp.md` (Etapas 1-6).
 
 ---
 
