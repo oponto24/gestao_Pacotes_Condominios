@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AlertCircle, Camera, QrCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useBottomNav } from './BottomNavContext';
 
 /**
  * Bottom nav fixa da portaria (story 3.1 + Onda 1 polish).
@@ -52,6 +53,12 @@ export function BottomNavBar() {
   const chegadaActive = isActive(pathname, CHEGADA);
   const pendentesActive = isActive(pathname, PENDENTES);
   const retiradaActive = isActive(pathname, RETIRADA);
+  const { override } = useBottomNav();
+
+  // FAB central — quando override está setado por uma página (ex: CapturaPage
+  // após captura de foto), vira botão de ação contextual em vez de link.
+  const fabBaseClass =
+    'relative -top-5 flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-full shadow-lg transition-all disabled:opacity-60';
 
   return (
     <nav
@@ -62,23 +69,42 @@ export function BottomNavBar() {
       <div className="relative mx-auto flex max-w-screen-md items-end justify-around">
         <SideTab item={PENDENTES} active={pendentesActive} />
 
-        {/* FAB Chegada — central elevado */}
-        <Link
-          href={CHEGADA.href}
-          aria-current={chegadaActive ? 'page' : undefined}
-          aria-label={CHEGADA.label}
-          className={cn(
-            'relative -top-5 flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-full shadow-lg transition-all',
-            chegadaActive
-              ? 'bg-primary-dark text-primary-foreground ring-4 ring-primary/30'
-              : 'bg-primary text-primary-foreground hover:bg-primary-dark',
-          )}
-        >
-          {CHEGADA.icon}
-          <span className="text-[10px] font-bold uppercase tracking-wide">
-            {CHEGADA.label}
-          </span>
-        </Link>
+        {override ? (
+          <button
+            type="button"
+            onClick={override.onClick}
+            disabled={override.disabled}
+            aria-label={override.ariaLabel ?? override.label}
+            className={cn(
+              fabBaseClass,
+              override.variant === 'success'
+                ? 'bg-success text-white hover:bg-success/90'
+                : 'animate-pulse bg-primary text-primary-foreground ring-4 ring-primary/40 hover:bg-primary-dark hover:animate-none',
+            )}
+          >
+            {override.icon}
+            <span className="text-[10px] font-bold uppercase tracking-wide">
+              {override.label}
+            </span>
+          </button>
+        ) : (
+          <Link
+            href={CHEGADA.href}
+            aria-current={chegadaActive ? 'page' : undefined}
+            aria-label={CHEGADA.label}
+            className={cn(
+              fabBaseClass,
+              chegadaActive
+                ? 'bg-primary-dark text-primary-foreground ring-4 ring-primary/30'
+                : 'bg-primary text-primary-foreground hover:bg-primary-dark',
+            )}
+          >
+            {CHEGADA.icon}
+            <span className="text-[10px] font-bold uppercase tracking-wide">
+              {CHEGADA.label}
+            </span>
+          </Link>
+        )}
 
         <SideTab item={RETIRADA} active={retiradaActive} />
       </div>

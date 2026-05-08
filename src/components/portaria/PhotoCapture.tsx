@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
-import { AlertCircle, Camera, RefreshCcw, SwitchCamera } from 'lucide-react';
+import { AlertCircle, Camera, Check, RefreshCcw, SwitchCamera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useBottomNavOverride } from './BottomNavContext';
 
 /**
  * `<PhotoCapture>` — captura de foto da etiqueta do pacote (story 3.2).
@@ -26,6 +27,12 @@ interface PhotoCaptureProps {
   disabled?: boolean;
   /** Em dev, renderiza link "baixar foto" no estado captured pra inspeção visual. */
   debugDownload?: boolean;
+  /**
+   * Se true, no estado `captured` esconde o botão interno "Usar essa foto"
+   * e registra o override no FAB central (via BottomNavContext). O usuário
+   * confirma a foto pelo botão Chegada do bottom nav. Default: false.
+   */
+  useFabForConfirm?: boolean;
 }
 
 type State =
@@ -87,6 +94,7 @@ export function PhotoCapture({
   preferredFacingMode = 'environment',
   disabled = false,
   debugDownload = false,
+  useFabForConfirm = false,
 }: PhotoCaptureProps) {
   const [state, dispatch] = useReducer(reducer, { kind: 'idle' });
   // facingMode é fallback inicial — usuário troca via dropdown deviceId.
@@ -307,6 +315,22 @@ export function PhotoCapture({
     onCapture(state.blob, state.dataUrl);
   }, [state, onCapture]);
 
+  // Quando captured + FAB mode ativo: registra override no botão central da
+  // bottom nav. Hook chamado incondicionalmente (regra hooks); override só
+  // é aplicado quando o objeto é não-nulo.
+  useBottomNavOverride(
+    useFabForConfirm && state.kind === 'captured'
+      ? {
+          label: 'Usar foto',
+          icon: <Check className="h-7 w-7" aria-hidden />,
+          onClick: handleConfirm,
+          ariaLabel: 'Usar essa foto e enviar pacote',
+          variant: 'success',
+          disabled,
+        }
+      : null,
+  );
+
   const handleRetry = useCallback(() => {
     dispatch({ type: 'reset' });
   }, []);
@@ -451,15 +475,23 @@ export function PhotoCapture({
             <RefreshCcw className="mr-2 h-5 w-5" aria-hidden />
             Refazer foto
           </Button>
-          <Button
-            type="button"
-            onClick={handleConfirm}
-            disabled={disabled}
-            aria-label="Usar essa foto"
-            className="min-h-[56px] sm:flex-1"
-          >
-            Usar essa foto
-          </Button>
+          {!useFabForConfirm && (
+            <Button
+              type="button"
+              onClick={handleConfirm}
+              disabled={disabled}
+              aria-label="Usar essa foto"
+              className="min-h-[56px] sm:flex-1"
+            >
+              Usar essa foto
+            </Button>
+          )}
+          {useFabForConfirm && (
+            <p className="flex-1 self-center text-center text-xs text-text-secondary">
+              Confirme pelo botão <strong className="text-foreground">Chegada</strong>{' '}
+              abaixo ↓
+            </p>
+          )}
         </div>
       )}
 
