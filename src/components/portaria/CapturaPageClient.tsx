@@ -115,6 +115,7 @@ export function CapturaPageClient() {
         onError={(msg) => setCameraError(msg)}
         disabled={isSubmitting}
         debugDownload={process.env.NODE_ENV !== 'production'}
+        useFabForConfirm
       />
 
       {/* Bipar código — opcional, recolhido por padrão (IA extrai da foto) */}

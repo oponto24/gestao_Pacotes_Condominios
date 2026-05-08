@@ -1,6 +1,7 @@
 import { SignOutButton } from '@clerk/nextjs';
 import { LogOut } from 'lucide-react';
 import { BottomNavBar } from './BottomNavBar';
+import { BottomNavProvider } from './BottomNavContext';
 
 /**
  * Template da portaria (story 3.1).
@@ -59,10 +60,10 @@ export function PortariaLayout({ condominioNome, userNome, children }: PortariaL
       </header>
 
       {/* Main scrollable — pb-24 deixa espaço pra bottom nav (~56px + folga) */}
-      <main className="flex-1 overflow-y-auto px-4 pb-24 pt-4 md:px-6">{children}</main>
-
-      {/* Bottom nav fixo */}
-      <BottomNavBar />
+      <BottomNavProvider>
+        <main className="flex-1 overflow-y-auto px-4 pb-24 pt-4 md:px-6">{children}</main>
+        <BottomNavBar />
+      </BottomNavProvider>
     </div>
   );
 }
