@@ -14,6 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
+import { Reveal } from './Reveal';
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_LP_WHATSAPP ?? '5511914980582';
 const WHATSAPP_MESSAGE = encodeURIComponent(
@@ -45,7 +46,7 @@ export function LandingPage() {
 
 function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <Logo size="sm" />
         <nav className="hidden items-center gap-8 text-sm font-medium text-brand-mid md:flex">
@@ -62,7 +63,7 @@ function Header() {
         <div className="flex items-center gap-3">
           <Link
             href="/sign-in"
-            className="hidden text-sm font-medium text-brand-mid transition-colors hover:text-brand-ink sm:block"
+            className="text-sm font-medium text-brand-mid transition-colors hover:text-brand-ink"
           >
             Entrar
           </Link>
@@ -94,14 +95,20 @@ function Hero() {
         className="absolute left-1/2 top-32 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-primary/20 blur-3xl"
       />
 
-      <div className="relative mx-auto max-w-7xl px-6 pb-16 pt-16 sm:pb-24 sm:pt-24">
+      <div className="relative mx-auto max-w-7xl px-6 pb-16 pt-12 sm:pb-24 sm:pt-24">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent-light px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-accent-dark">
+          <span
+            className="animate-hero-rise inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent-light px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-accent-dark"
+            style={{ animationDelay: '0ms' }}
+          >
             <Sparkles className="h-3.5 w-3.5" />
             IA + WhatsApp + QR auditável
           </span>
 
-          <h1 className="mt-8 text-5xl font-bold leading-[1.05] tracking-tighter text-brand-ink sm:text-6xl md:text-7xl">
+          <h1
+            className="animate-hero-rise mt-8 text-5xl font-bold leading-[1.05] tracking-tighter text-brand-ink sm:text-6xl md:text-7xl"
+            style={{ animationDelay: '100ms' }}
+          >
             Zero pacote perdido.
             <br />
             <span className="bg-gradient-to-br from-brand-ink to-brand-mid bg-clip-text text-transparent">
@@ -109,31 +116,40 @@ function Hero() {
             </span>
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-brand-mid sm:text-xl">
+          <p
+            className="animate-hero-rise mt-6 max-w-2xl text-lg leading-relaxed text-brand-mid sm:text-xl"
+            style={{ animationDelay: '200ms' }}
+          >
             Notificação automática, retirada auditada, IA que identifica o morador pela
             etiqueta. A portaria inteligente que síndicos profissionais escolheram para
             acabar com pacote sumido.
           </p>
 
-          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
+          <div
+            className="animate-hero-rise mt-10 flex flex-col items-center gap-4 sm:flex-row"
+            style={{ animationDelay: '300ms' }}
+          >
             <a
               href={WHATSAPP_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="group inline-flex h-14 items-center justify-center gap-2 rounded-full bg-primary px-8 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary-dark hover:shadow-xl hover:shadow-primary/30"
+              className="group inline-flex h-14 items-center justify-center gap-2 rounded-full bg-primary px-8 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-xl hover:shadow-primary/30"
             >
               Falar no WhatsApp
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </a>
             <a
               href="#como-funciona"
-              className="inline-flex h-14 items-center justify-center rounded-full border border-border bg-background px-8 text-base font-semibold text-brand-ink transition-colors hover:bg-surface"
+              className="inline-flex h-14 items-center justify-center rounded-full border border-border bg-background px-8 text-base font-semibold text-brand-ink transition-all hover:-translate-y-0.5 hover:bg-surface"
             >
               Ver como funciona
             </a>
           </div>
 
-          <p className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-brand-mid">
+          <p
+            className="animate-hero-rise mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-brand-mid"
+            style={{ animationDelay: '400ms' }}
+          >
             <span className="inline-flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 text-success" /> Sem instalação
             </span>
@@ -147,13 +163,15 @@ function Hero() {
         </div>
 
         {/* Mockup CSS-only — composição com phone (porteiro) + card admin */}
-        <div className="relative mx-auto mt-20 max-w-5xl">
-          <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-primary/10 via-accent/5 to-transparent blur-2xl" />
-          <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
-            <PhoneMockup className="lg:col-span-5 lg:rotate-[-4deg]" />
-            <DashboardMockup className="lg:col-span-7" />
+        <Reveal className="mx-auto mt-20 max-w-5xl">
+          <div className="relative">
+            <div className="absolute inset-0 -z-10 bg-gradient-to-tr from-primary/10 via-accent/5 to-transparent blur-2xl" />
+            <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12">
+              <PhoneMockup className="animate-mockup-float lg:col-span-5 lg:rotate-[-4deg]" />
+              <DashboardMockup className="lg:col-span-7" />
+            </div>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -328,15 +346,15 @@ function ProvaSocial() {
             { v: '98%', l: 'precisão da IA' },
             { v: '0', l: 'apps pro morador instalar' },
             { v: '100%', l: 'auditoria via QR Code' },
-          ].map((m) => (
-            <div key={m.l}>
+          ].map((m, i) => (
+            <Reveal key={m.l} delay={i * 80}>
               <div className="text-3xl font-bold tracking-tight text-brand-ink sm:text-4xl">
                 {m.v}
               </div>
               <div className="mt-1 text-xs uppercase tracking-wider text-brand-mid">
                 {m.l}
               </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -376,7 +394,7 @@ function ComoFunciona() {
   return (
     <section id="como-funciona" className="py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <span className="inline-block rounded-full bg-primary-light px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-ink">
             Como funciona
           </span>
@@ -385,31 +403,30 @@ function ComoFunciona() {
             <br />
             <span className="text-brand-mid">Rastreabilidade total.</span>
           </h2>
-        </div>
+        </Reveal>
 
         <div className="mt-16 grid gap-8 md:grid-cols-3">
           {passos.map((p, i) => (
-            <div
-              key={p.n}
-              className="group relative rounded-2xl border border-border bg-background p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5"
-            >
-              {/* connector arrow on desktop */}
-              {i < passos.length - 1 && (
-                <div className="absolute right-0 top-1/2 hidden -translate-y-1/2 translate-x-1/2 md:block">
-                  <ArrowRight className="h-5 w-5 text-border" />
+            <Reveal key={p.n} delay={i * 120}>
+              <div className="group relative h-full rounded-2xl border border-border bg-background p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5">
+                {/* connector arrow on desktop */}
+                {i < passos.length - 1 && (
+                  <div className="absolute right-0 top-1/2 hidden -translate-y-1/2 translate-x-1/2 md:block">
+                    <ArrowRight className="h-5 w-5 text-border" />
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary-dark transition-transform group-hover:scale-110">
+                    <p.icon className="h-6 w-6" />
+                  </div>
+                  <span className="font-mono text-sm font-bold text-brand-mid/40">
+                    {p.n}
+                  </span>
                 </div>
-              )}
-              <div className="flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary-dark">
-                  <p.icon className="h-6 w-6" />
-                </div>
-                <span className="font-mono text-sm font-bold text-brand-mid/40">
-                  {p.n}
-                </span>
+                <h3 className="mt-6 text-xl font-semibold text-brand-ink">{p.titulo}</h3>
+                <p className="mt-2 leading-relaxed text-brand-mid">{p.texto}</p>
               </div>
-              <h3 className="mt-6 text-xl font-semibold text-brand-ink">{p.titulo}</h3>
-              <p className="mt-2 leading-relaxed text-brand-mid">{p.texto}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -464,7 +481,7 @@ function Diferenciais() {
   return (
     <section id="diferenciais" className="bg-surface py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <span className="inline-block rounded-full bg-accent-light px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent-dark">
             Por que Ponto 24
           </span>
@@ -475,22 +492,23 @@ function Diferenciais() {
             É o sistema completo da chegada à retirada — auditável, simples e sem fricção
             pro morador.
           </p>
-        </div>
+        </Reveal>
 
         <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((it) => (
-            <div
-              key={it.titulo}
-              className="rounded-2xl border border-border bg-background p-6 transition-all hover:border-primary/30 hover:shadow-md"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary-dark">
-                <it.icon className="h-5 w-5" />
+          {items.map((it, i) => (
+            <Reveal key={it.titulo} delay={(i % 3) * 100}>
+              <div className="group h-full rounded-2xl border border-border bg-background p-6 transition-all hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary-dark transition-transform group-hover:scale-110">
+                  <it.icon className="h-5 w-5" />
+                </div>
+                <h3 className="mt-4 text-base font-semibold text-brand-ink">
+                  {it.titulo}
+                </h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-brand-mid">
+                  {it.texto}
+                </p>
               </div>
-              <h3 className="mt-4 text-base font-semibold text-brand-ink">
-                {it.titulo}
-              </h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-brand-mid">{it.texto}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -524,7 +542,7 @@ function Problema() {
   return (
     <section className="py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
             Você reconhece esse cenário?
           </h2>
@@ -532,16 +550,15 @@ function Problema() {
             Toda administradora e todo síndico conhece a dor da gestão de pacotes — e
             todo morador sente o impacto.
           </p>
-        </div>
+        </Reveal>
         <div className="mx-auto mt-12 grid max-w-4xl gap-4 md:grid-cols-3">
-          {dores.map((d) => (
-            <div
-              key={d.titulo}
-              className="rounded-xl border-l-4 border-danger/60 bg-danger/5 p-6"
-            >
-              <h3 className="font-semibold text-brand-ink">{d.titulo}</h3>
-              <p className="mt-2 text-sm text-brand-mid">{d.texto}</p>
-            </div>
+          {dores.map((d, i) => (
+            <Reveal key={d.titulo} delay={i * 100}>
+              <div className="h-full rounded-xl border-l-4 border-danger/60 bg-danger/5 p-6">
+                <h3 className="font-semibold text-brand-ink">{d.titulo}</h3>
+                <p className="mt-2 text-sm text-brand-mid">{d.texto}</p>
+              </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -584,15 +601,15 @@ function FAQ() {
   return (
     <section id="faq" className="bg-surface py-24 sm:py-32">
       <div className="mx-auto max-w-3xl px-6">
-        <div className="text-center">
+        <Reveal className="text-center">
           <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
             Perguntas comuns
           </h2>
           <p className="mt-4 text-lg text-brand-mid">
             Não achou sua dúvida? Manda no WhatsApp.
           </p>
-        </div>
-        <div className="mt-12 divide-y divide-border rounded-2xl border border-border bg-background">
+        </Reveal>
+        <Reveal className="mt-12 divide-y divide-border rounded-2xl border border-border bg-background" delay={100}>
           {perguntas.map((p) => (
             <details key={p.q} className="group p-6 [&_summary::-webkit-details-marker]:hidden">
               <summary className="flex cursor-pointer items-center justify-between gap-4 font-semibold text-brand-ink">
@@ -604,7 +621,7 @@ function FAQ() {
               <p className="mt-3 leading-relaxed text-brand-mid">{p.a}</p>
             </details>
           ))}
-        </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -617,7 +634,7 @@ function FAQ() {
 function CtaFinal() {
   return (
     <section className="py-24 sm:py-32">
-      <div className="mx-auto max-w-5xl px-6">
+      <Reveal className="mx-auto max-w-5xl px-6">
         <div className="relative overflow-hidden rounded-3xl bg-brand-ink p-10 shadow-2xl sm:p-16">
           {/* decorative glow */}
           <div
@@ -661,7 +678,7 @@ function CtaFinal() {
             </div>
           </div>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

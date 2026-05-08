@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Montserrat } from 'next/font/google';
-import { ClerkProvider, SignInButton, Show, UserButton } from '@clerk/nextjs';
+import { ClerkProvider, Show, UserButton } from '@clerk/nextjs';
 import { Toaster } from 'sonner';
 import { Logo } from '@/components/brand/Logo';
 import { ImpersonateBanner } from '@/components/super-admin/ImpersonateBanner';
@@ -43,21 +43,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" className={montserrat.variable}>
       <body className="font-sans antialiased">
         <ClerkProvider>
-          <header className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
-            <Logo size="sm" />
-            <div className="flex items-center gap-2">
-              <Show when="signed-out">
-                <SignInButton mode="modal">
-                  <button className="h-btn-sm rounded-md border border-input bg-white px-3 text-sm font-medium hover:bg-primary-light">
-                    Entrar
-                  </button>
-                </SignInButton>
-              </Show>
-              <Show when="signed-in">
+          {/* Header global só pra signed-in. Signed-out vê a LandingPage com header próprio. */}
+          <Show when="signed-in">
+            <header className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
+              <Logo size="sm" />
+              <div className="flex items-center gap-2">
                 <UserButton />
-              </Show>
-            </div>
-          </header>
+              </div>
+            </header>
+          </Show>
           <ImpersonateBanner />
           <main>{children}</main>
           <Toaster position="top-right" richColors closeButton />
