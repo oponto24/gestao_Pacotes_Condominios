@@ -1,20 +1,23 @@
-# Comparação de modelos Claude — Extração de etiqueta
+# Comparação de modelos IA — Extração de etiqueta
 
-> **Status:** Decisão atual. Manter Haiku 4.5 como default no MVP.
+> **Status:** **Gemini 2.5 Flash-Lite é o default novo (decisão 2026-05-08).** Anthropic Haiku 4.5 fica como fallback automático.
 > **Última atualização:** 2026-05-08
 > **Owner:** Gustavo Silva
 
 ## TL;DR
 
-| Modelo | Custo/foto | Custo/condo/ano* | Acurácia | Tempo | Decisão |
+| Modelo | Custo/foto | Custo/condo/ano* | Acurácia (5 etiquetas) | Tempo | Decisão |
 |---|---:|---:|---|---:|---|
-| **Haiku 4.5** | $0.0049 | $54 | 2/5 perfeito (1 grave: nome inventado) | ~2.2s | ✅ **Default no MVP** |
-| **Sonnet 4.6** | $0.0146 | $160 | 3/5 perfeito | ~3-5s | 🟡 Reserva (fallback futuro) |
-| **Opus 4.7** | $0.0908 | $1.000 | 4/5 perfeito | ~5.3s | ❌ Custo desproporcional |
+| **Gemini 2.5 Flash-Lite** ⭐ | **$0.00031** | **$3.40** | 4/4 testados perfeitos (1 erro 503) | 3-23s | ✅ **DEFAULT novo** |
+| **Anthropic Haiku 4.5** | $0.0049 | $54 | 2/5 perfeito (1 grave: nome inventado) | ~2.2s | 🟡 **Fallback automático** |
+| Sonnet 4.6 | $0.0146 | $160 | 3/5 perfeito | ~3-5s | ❌ Custo > benefício |
+| Opus 4.7 | $0.0908 | $1.000 | 4/5 perfeito | ~5.3s | ❌ Custo desproporcional |
 
 \* Estimativa: 30 pacotes/dia × 365 dias = 11k fotos/ano por condomínio.
 
-**Decisão:** Haiku 4.5 segue como default. Quando o produto crescer e tivermos margem, considerar **Haiku como primeiro pass + Sonnet como fallback** para confiança < 0.7. Opus não compensa — Sonnet entrega quase a mesma qualidade por 1/6 do custo.
+**Decisão final:** Gemini Flash-Lite como default — equivalente em qualidade ao Sonnet por 47x menos custo. Anthropic Haiku 4.5 segue como fallback automático em caso de erros 5xx/429 (resiliência multi-vendor + retry com backoff exponencial).
+
+**Economia em escala (100 condos):** Anthropic-only seria $5.400/ano. Gemini-default = $340/ano. **Diferença: $5.060/ano = R$25k/ano**.
 
 ---
 

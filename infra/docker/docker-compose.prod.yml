@@ -56,7 +56,13 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/gestao_pacotes
       DATABASE_RUNTIME_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/gestao_pacotes
       REDIS_URL: redis://redis:6379
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY obrigatório}
+      # Provider de extração de etiqueta (default: gemini, fallback: anthropic)
+      EXTRACT_LABEL_PROVIDER: ${EXTRACT_LABEL_PROVIDER:-gemini}
+      EXTRACT_LABEL_FALLBACK: ${EXTRACT_LABEL_FALLBACK:-anthropic}
+      EXTRACT_LABEL_MAX_RETRIES: ${EXTRACT_LABEL_MAX_RETRIES:-3}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:?GOOGLE_API_KEY obrigatório (Gemini default)}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash-lite}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY obrigatório (fallback)}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
       ANTHROPIC_PROMPT_CACHE_ENABLED: 'true'
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?CLERK_SECRET_KEY obrigatório}
@@ -95,6 +101,11 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/gestao_pacotes
       REDIS_URL: redis://redis:6379
+      EXTRACT_LABEL_PROVIDER: ${EXTRACT_LABEL_PROVIDER:-gemini}
+      EXTRACT_LABEL_FALLBACK: ${EXTRACT_LABEL_FALLBACK:-anthropic}
+      EXTRACT_LABEL_MAX_RETRIES: ${EXTRACT_LABEL_MAX_RETRIES:-3}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash-lite}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
       ANTHROPIC_PROMPT_CACHE_ENABLED: 'true'
