@@ -24,11 +24,60 @@
   * {
     border-color: hsl(var(--border));
   }
+  html {
+    scroll-behavior: smooth;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
+  }
+}
+
+@layer utilities {
+  /* Apple-style hero entrance — fade + slide up, com delay opcional */
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-hero-rise {
+    animation: hero-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-hero-rise {
+      animation: none;
+    }
+  }
+
+  /* Mockup float — leve oscilação contínua */
+  @keyframes mockup-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+  .animate-mockup-float {
+    animation: mockup-float 6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-mockup-float {
+      animation: none;
+    }
   }
 }
