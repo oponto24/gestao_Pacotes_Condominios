@@ -44,7 +44,9 @@ if [[ "${1:-}" == "first-deploy" ]]; then
   sleep 10
 
   echo "2️⃣  Rodando prisma migrate deploy (via container worker — tem CLI nos node_modules)..."
-  $COMPOSE run --rm --entrypoint "" worker sh -c 'cd /app && npx prisma migrate deploy'
+  # Usa binário local (./node_modules/.bin/prisma) em vez de `npx prisma`, que com
+  # CLI ausente cai no registry e baixa @latest — pegando major novo com breaking changes.
+  $COMPOSE run --rm --entrypoint "" worker sh -c 'cd /app && ./node_modules/.bin/prisma migrate deploy'
 
   echo "3️⃣  Subindo app + worker..."
   $COMPOSE up -d app worker
@@ -83,7 +85,9 @@ else
   $COMPOSE up -d --build
 
   echo "🗃️  Migrações pendentes..."
-  $COMPOSE exec app sh -c 'cd /app && npx prisma migrate deploy' || true
+  # Container `app` (production stage) NÃO tem prisma CLI — só @prisma/client.
+  # Roda via worker (que tem node_modules completo) usando o binário local pinado.
+  $COMPOSE run --rm --entrypoint "" worker sh -c 'cd /app && ./node_modules/.bin/prisma migrate deploy' || true
 
   echo ""
   echo "✅ DEPLOY OK!"
