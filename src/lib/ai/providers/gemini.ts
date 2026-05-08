@@ -10,10 +10,10 @@ const globalForGemini = globalThis as unknown as {
 
 function buildClient(): GoogleGenerativeAI {
   const apiKey = process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('GOOGLE_API_KEY ausente em produção');
-    }
+  if (!apiKey || apiKey === '' || apiKey === 'AIza...') {
+    // Build-time fallback: Next.js 15 page data collection instancia clients
+    // mesmo de routes dynamic. Erro real só aparece em runtime quando rota
+    // tenta usar o client — SDK valida na call.
     return new GoogleGenerativeAI('placeholder-buildtime');
   }
   return new GoogleGenerativeAI(apiKey);

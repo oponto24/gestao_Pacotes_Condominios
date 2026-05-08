@@ -8,10 +8,10 @@ const globalForAnthropic = globalThis as unknown as { anthropic?: Anthropic };
 
 function buildClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('ANTHROPIC_API_KEY ausente em produção');
-    }
+  if (!apiKey || apiKey === '' || apiKey === 'sk-ant-') {
+    // Build-time fallback: Next.js 15 page data collection instancia clients
+    // mesmo de routes dynamic. Erro real só aparece em runtime quando rota
+    // tenta usar o client — SDK valida na call.
     return new Anthropic({ apiKey: 'sk-ant-buildtime-placeholder' });
   }
   return new Anthropic({ apiKey });
