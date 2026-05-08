@@ -1,8 +1,8 @@
 'use client';
 
-import { useReducer, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, AlertCircle, Loader2 } from 'lucide-react';
+import { Package, AlertCircle, Loader2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PhotoCapture } from '@/components/portaria/PhotoCapture';
 import { BarcodeScannerInput } from '@/components/portaria/BarcodeScannerInput';
@@ -10,13 +10,14 @@ import {
   capturaReducer,
   initialCapturaState,
   isCodigoValid,
+  type CapturedPhoto,
 } from '@/components/portaria/captura-page-reducer';
 
 /**
  * `<CapturaPageClient>` — tela final de chegada de pacote (story 3.6).
  *
- * Compõe PhotoCapture (3.2) + BarcodeScannerInput (3.3) + POST /api/pacotes (3.4).
- * Após sucesso, redireciona para /chegada/confirmar/{pacote_id} (3.8).
+ * Fluxo simplificado (2026-05-08): porteiro tira foto → auto-submit imediato.
+ * IA lê o código de rastreio da etiqueta — bipar é opcional (campo recolhido).
  *
  * State machine via useReducer — ver `captura-page-reducer.ts` para regras.
  */
@@ -24,17 +25,15 @@ export function CapturaPageClient() {
   const router = useRouter();
   const [state, dispatch] = useReducer(capturaReducer, initialCapturaState);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [showCodigoInput, setShowCodigoInput] = useState(false);
 
   const codigoInvalido = !isCodigoValid(state.codigo);
   const isSubmitting = state.kind === 'submitting';
 
-  async function handleSubmit() {
-    if (state.kind !== 'photo_taken' && state.kind !== 'error') return;
-    if (codigoInvalido) return;
+  // Ref pra evitar duplo submit em strict mode dev (useEffect roda 2x)
+  const submittedFor = useRef<Blob | null>(null);
 
-    const photo = state.photo;
-    const codigo = state.codigo.trim();
-
+  async function uploadPacote(photo: CapturedPhoto, codigo: string) {
     dispatch({ type: 'submit_started' });
 
     try {
@@ -53,7 +52,6 @@ export function CapturaPageClient() {
         throw new Error(body.message ?? `Erro HTTP ${res.status}`);
       }
 
-      // Vibração táctil em sucesso (mobile only)
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate(200);
       }
@@ -65,6 +63,23 @@ export function CapturaPageClient() {
     }
   }
 
+  // Auto-submit: assim que o porteiro confirma a foto, sobe direto.
+  // Sem step manual de "Registrar pacote" (UX 2026-05-08).
+  useEffect(() => {
+    if (state.kind !== 'photo_taken') return;
+    if (codigoInvalido) return;
+    if (submittedFor.current === state.photo.blob) return; // dedupe
+    submittedFor.current = state.photo.blob;
+    uploadPacote(state.photo, state.codigo.trim());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.kind]);
+
+  async function handleRetry() {
+    if (state.kind !== 'error') return;
+    submittedFor.current = null;
+    await uploadPacote(state.photo, state.codigo.trim());
+  }
+
   return (
     <div className="space-y-4 pb-8">
       <header className="flex items-start gap-3">
@@ -74,7 +89,7 @@ export function CapturaPageClient() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Nova chegada</h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Tire a foto da etiqueta. O bipe é opcional.
+            Tire a foto da etiqueta — o código é lido pela IA automaticamente.
           </p>
         </div>
       </header>
@@ -102,37 +117,65 @@ export function CapturaPageClient() {
         debugDownload={process.env.NODE_ENV !== 'production'}
       />
 
-      <div className="space-y-2">
-        <label
-          htmlFor="codigo-rastreio"
-          className="text-sm font-medium text-foreground"
-        >
-          Código de rastreio (opcional)
-        </label>
-        <BarcodeScannerInput
-          value={state.codigo}
-          onChange={(codigo) => dispatch({ type: 'codigo_changed', codigo })}
-          placeholder="Bipar ou digitar"
+      {/* Bipar código — opcional, recolhido por padrão (IA extrai da foto) */}
+      {!showCodigoInput ? (
+        <button
+          type="button"
+          onClick={() => setShowCodigoInput(true)}
           disabled={isSubmitting}
-        />
-        {codigoInvalido && (
-          <p className="text-xs text-danger" role="alert">
-            Caracteres <code>&lt;</code> e <code>&gt;</code> não são permitidos (até 200 caracteres).
-          </p>
-        )}
-      </div>
+          className="flex w-full items-center justify-between rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-text-secondary transition-colors hover:bg-muted/40"
+        >
+          <span>Bipar código manualmente (opcional)</span>
+          <ChevronDown className="size-4" aria-hidden />
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <label
+            htmlFor="codigo-rastreio"
+            className="text-sm font-medium text-foreground"
+          >
+            Código de rastreio (opcional — IA preenche da foto)
+          </label>
+          <BarcodeScannerInput
+            value={state.codigo}
+            onChange={(codigo) => dispatch({ type: 'codigo_changed', codigo })}
+            placeholder="Bipar ou digitar"
+            disabled={isSubmitting}
+          />
+          {codigoInvalido && (
+            <p className="text-xs text-danger" role="alert">
+              Caracteres <code>&lt;</code> e <code>&gt;</code> não são permitidos (até 200 caracteres).
+            </p>
+          )}
+        </div>
+      )}
 
-      {state.kind === 'photo_taken' || state.kind === 'submitting' || state.kind === 'error' ? (
+      {/* Status da foto + auto-upload feedback */}
+      {(state.kind === 'photo_taken' ||
+        state.kind === 'submitting' ||
+        state.kind === 'error') && (
         <div className="space-y-3 rounded-lg border border-border bg-background p-4">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-xs text-text-secondary">
-              Foto pronta · <strong>{state.photo.sizeKb} KB</strong>
+            <div className="flex items-center gap-2 text-xs text-text-secondary">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin text-primary" aria-hidden />
+                  <span>Enviando foto…</span>
+                </>
+              ) : state.kind === 'error' ? (
+                <span className="text-danger">Falha no envio · {state.photo.sizeKb} KB</span>
+              ) : (
+                <span>Foto pronta · {state.photo.sizeKb} KB</span>
+              )}
             </div>
             {!isSubmitting && (
               <button
                 type="button"
-                onClick={() => dispatch({ type: 'photo_cleared' })}
-                className="text-xs text-primary underline disabled:opacity-50"
+                onClick={() => {
+                  submittedFor.current = null;
+                  dispatch({ type: 'photo_cleared' });
+                }}
+                className="text-xs text-primary underline"
               >
                 Tirar outra
               </button>
@@ -140,34 +183,25 @@ export function CapturaPageClient() {
           </div>
 
           {state.kind === 'error' && (
-            <div
-              role="alert"
-              className="rounded-md border border-danger/30 bg-danger/5 p-3 text-sm text-danger"
-            >
-              <p className="font-medium">Falha ao enviar</p>
-              <p className="mt-0.5 text-xs">{state.message}</p>
-            </div>
+            <>
+              <div
+                role="alert"
+                className="rounded-md border border-danger/30 bg-danger/5 p-3 text-sm text-danger"
+              >
+                <p className="font-medium">Falha ao enviar</p>
+                <p className="mt-0.5 text-xs">{state.message}</p>
+              </div>
+              <Button
+                onClick={handleRetry}
+                disabled={isSubmitting || codigoInvalido}
+                className="h-12 w-full text-base"
+              >
+                Tentar novamente
+              </Button>
+            </>
           )}
-
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || codigoInvalido}
-            aria-busy={isSubmitting}
-            className="h-12 w-full text-base"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                Enviando…
-              </>
-            ) : state.kind === 'error' ? (
-              'Tentar novamente'
-            ) : (
-              'Registrar pacote'
-            )}
-          </Button>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

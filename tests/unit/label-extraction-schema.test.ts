@@ -33,10 +33,22 @@ describe('labelExtractionSchema', () => {
     expect(out.cep).toBe('01310-100');
   });
 
-  it('rejeita transportadora inválida', () => {
-    expect(() =>
-      labelExtractionSchema.parse({ ...minimalValid, transportadora: 'fedex' }),
-    ).toThrow();
+  it('normaliza transportadora desconhecida para "outro" (tolerante)', () => {
+    const out = labelExtractionSchema.parse({
+      ...minimalValid,
+      transportadora: 'fedex',
+    });
+    expect(out.transportadora).toBe('outro');
+  });
+
+  it('aceita transportadora nova (tiktok_shop / imile)', () => {
+    const a = labelExtractionSchema.parse({
+      ...minimalValid,
+      transportadora: 'tiktok_shop',
+    });
+    expect(a.transportadora).toBe('tiktok_shop');
+    const b = labelExtractionSchema.parse({ ...minimalValid, transportadora: 'imile' });
+    expect(b.transportadora).toBe('imile');
   });
 
   it('aceita transportadora null', () => {
@@ -62,7 +74,12 @@ describe('labelExtractionSchema', () => {
     expect(out.endereco).toBeNull();
   });
 
-  it('rejeita CEP com formato errado', () => {
-    expect(() => labelExtractionSchema.parse({ ...minimalValid, cep: '12345' })).toThrow();
+  it('CEP malformado (≠8 dígitos) vira null em vez de rejeitar (tolerante)', () => {
+    const a = labelExtractionSchema.parse({ ...minimalValid, cep: '12345' });
+    expect(a.cep).toBeNull();
+    const b = labelExtractionSchema.parse({ ...minimalValid, cep: '024010' });
+    expect(b.cep).toBeNull();
+    const c = labelExtractionSchema.parse({ ...minimalValid, cep: '02403' });
+    expect(c.cep).toBeNull();
   });
 });

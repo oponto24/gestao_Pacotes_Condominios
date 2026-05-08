@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
-import { AlertCircle, Camera, RefreshCcw } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import { AlertCircle, Camera, RefreshCcw, SwitchCamera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -89,18 +89,28 @@ export function PhotoCapture({
   debugDownload = false,
 }: PhotoCaptureProps) {
   const [state, dispatch] = useReducer(reducer, { kind: 'idle' });
+  // Câmera ativa — pode ser trocada via botão. `ideal` em vez de match estrito
+  // pra fallback automático no celular que só tem 1 câmera.
+  const [facingMode, setFacingMode] = React.useState<'environment' | 'user'>(
+    preferredFacingMode,
+  );
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const flashRef = useRef<HTMLDivElement | null>(null);
   // Mantém ref do stream pra cleanup confiável (evita stale closure)
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Memoizado pra evitar re-execução desnecessária do effect (sugestão @po)
+  // Resolução solicitada — pedimos alta (até 1920x1080) pra OCR de etiqueta.
+  // O navegador entrega o que conseguir; getSettings() devolve o real depois.
   const videoConstraints = useMemo<MediaStreamConstraints>(
     () => ({
-      video: { facingMode: preferredFacingMode },
+      video: {
+        facingMode: { ideal: facingMode },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
       audio: false,
     }),
-    [preferredFacingMode],
+    [facingMode],
   );
 
   // Solicita câmera quando entra em 'requesting' (cancela se desmonta antes)
@@ -193,7 +203,7 @@ export function PhotoCapture({
       return;
     }
 
-    const { w, h } = fitInBox(sw, sh, 1280);
+    const { w, h } = fitInBox(sw, sh, 1920);
     const canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
@@ -338,16 +348,35 @@ export function PhotoCapture({
       )}
 
       {state.kind === 'streaming' && (
-        <Button
-          type="button"
-          onClick={handleCaptureClick}
-          disabled={disabled}
-          aria-label="Tirar foto"
-          className="w-full min-h-[56px] text-base"
-        >
-          <Camera className="mr-2 h-5 w-5" aria-hidden />
-          Tirar foto
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            onClick={handleCaptureClick}
+            disabled={disabled}
+            aria-label="Tirar foto"
+            className="min-h-[56px] text-base sm:flex-1"
+          >
+            <Camera className="mr-2 h-5 w-5" aria-hidden />
+            Tirar foto
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setFacingMode((m) => (m === 'environment' ? 'user' : 'environment'));
+              dispatch({ type: 'request' });
+            }}
+            disabled={disabled}
+            aria-label="Trocar câmera"
+            title={facingMode === 'environment' ? 'Trocar pra frontal' : 'Trocar pra traseira'}
+            className="min-h-[56px] sm:w-auto sm:px-4"
+          >
+            <SwitchCamera className="h-5 w-5" aria-hidden />
+            <span className="ml-2 sm:hidden">
+              Trocar câmera ({facingMode === 'environment' ? 'traseira' : 'frontal'})
+            </span>
+          </Button>
+        </div>
       )}
 
       {state.kind === 'captured' && (
