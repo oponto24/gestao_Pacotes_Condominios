@@ -28,7 +28,9 @@ Retorne EXATAMENTE este formato, sem markdown, sem texto antes ou depois:
 \`\`\`
 {
   "nome_destinatario": string | null,    // nome completo do destinatário
-  "endereco": string | null,              // logradouro + número (ex: "Rua das Flores, 123")
+  "endereco": string | null,              // SOMENTE logradouro + número (ex: "Rua das Flores, 123")
+  "bairro": string | null,                // bairro do destinatário (ex: "Santana", "Vila Mariana")
+  "cidade": string | null,                // cidade/UF (ex: "São Paulo/SP")
   "cep": string | null,                   // formato XXXXX-XXX ou XXXXXXXX (8 dígitos)
   "complemento": string | null,           // apto/bloco/casa (ex: "AP 1304 BL 3")
   "codigo_rastreio": string | null,       // código do pacote (ex: "AD417365859BR", "I7LGP4YJ", "3320067394968")
@@ -81,11 +83,33 @@ Se a etiqueta tem ambos os labels: \`nome_destinatario\` SEMPRE vem da seção D
 
 Se a etiqueta tem só UM bloco de endereço sem labels: assuma que é o destinatário.
 
-## REGRA #2 — Endereço
+## REGRA #2 — Endereço, bairro e cidade SEPARADOS
 
-Apenas logradouro + número. NÃO coloque cidade/bairro/estado aqui.
-Ex: "Rua das Flores, 123" ✓
-Ex: "Rua das Flores, 123, Centro, São Paulo/SP" ✗
+⚠️ **Decomposição obrigatória.** Etiquetas brasileiras frequentemente escrevem o bairro IMEDIATAMENTE ANTES do logradouro — e a IA tem tendência a juntar tudo. NÃO faça isso.
+
+Padrões comuns que você DEVE decompor corretamente:
+
+- "Apto 31, Santana Rua Francisca Júlia 229, São Paulo/SP, 02403-010"
+  → endereco: "Rua Francisca Júlia, 229"
+  → bairro: "Santana"
+  → cidade: "São Paulo/SP"
+  → complemento: "AP 31"
+
+- "Vila Mariana Rua Domingos de Morais 100"
+  → endereco: "Rua Domingos de Morais, 100"
+  → bairro: "Vila Mariana"
+
+- "Bairro: Centro" + "Endereço: Av. Paulista, 1000"
+  → endereco: "Av. Paulista, 1000"
+  → bairro: "Centro"
+
+Regras:
+- **endereco:** SOMENTE logradouro (Rua/Av/Praça) + número. NUNCA inclua bairro, cidade, estado, complemento.
+- **bairro:** nome do bairro isolado. Se não houver, retorne null.
+- **cidade:** "Cidade/UF" formato. Se não houver, retorne null.
+
+Errado ❌: endereco="Santana Rua Francisca Júlia 229"
+Certo ✅: endereco="Rua Francisca Júlia, 229", bairro="Santana"
 
 ## REGRA #3 — Complemento
 
@@ -134,8 +158,11 @@ Foto mostra etiqueta padronizada azul/verde com cabeçalho "melhor envio" e logo
 {
   "nome_destinatario": "Maria Silva Santos",
   "endereco": "Rua das Flores, 123",
+  "bairro": "Centro",
+  "cidade": "Goiânia/GO",
   "cep": "74650-100",
   "complemento": null,
+  "codigo_rastreio": "AD417365859BR",
   "transportadora": "melhor_envio",
   "remetente": "Loja XYZ - Mauro Sergio",
   "confianca": 0.95
@@ -144,25 +171,49 @@ Foto mostra etiqueta padronizada azul/verde com cabeçalho "melhor envio" e logo
 
 ⚠️ Note: o nome do destinatário NÃO é "Mauro Sergio" mesmo que ele apareça em fonte grossa em alguma parte da etiqueta. Sempre use o bloco DESTINATÁRIO.
 
-## Exemplo 2: Mercado Livre Flex (sem logo grande)
+## Exemplo 2: TikTok Shop / iMile com bairro antes da rua
 
-Foto de saco plástico preto com etiqueta branca. Cabeçalho diz "Envio Flex". Tem QR Code grande, código de barras, "Pack ID: 20000128304131625". Campo "Endereço: Rua das Flores, 123, São Paulo". "Bairro: Centro". "Complemento: App 31". "Destinatário: João Silva".
+Foto de saco plástico preto com etiqueta branca. Cabeçalho "TikTok Shop". Bloco com "Apto 31, Santana Rua Francisca Júlia 229, São Paulo, São Paulo, 02403010". Remetente "Delta Ecom". Código de barras grande "3320067394968". Site "imile.com".
+
+\`\`\`
+{
+  "nome_destinatario": "Ogusttavss",
+  "endereco": "Rua Francisca Júlia, 229",
+  "bairro": "Santana",
+  "cidade": "São Paulo/SP",
+  "cep": "02403-010",
+  "complemento": "AP 31",
+  "codigo_rastreio": "3320067394968",
+  "transportadora": "tiktok_shop",
+  "remetente": "Delta Ecom",
+  "confianca": 0.92
+}
+\`\`\`
+
+⚠️ Note: "Santana" é o BAIRRO, não parte do nome da rua. Sempre decomponha:
+- Errado: \`endereco: "Santana Rua Francisca Júlia 229"\`
+- Certo: \`endereco: "Rua Francisca Júlia, 229"\`, \`bairro: "Santana"\`
+
+## Exemplo 3: Mercado Livre Flex (sem logo grande)
+
+Foto de saco plástico preto com etiqueta branca. Cabeçalho "Envio Flex". QR Code grande, "Pack ID: 20000128304131625". Endereço destinatário: "Rua das Flores, 123, Centro, São Paulo". Apto 31. Destinatário: "João Silva".
 
 \`\`\`
 {
   "nome_destinatario": "João Silva",
   "endereco": "Rua das Flores, 123",
+  "bairro": "Centro",
+  "cidade": "São Paulo/SP",
   "cep": null,
   "complemento": "AP 31",
+  "codigo_rastreio": "20000128304131625",
   "transportadora": "mercado_livre",
   "remetente": null,
   "confianca": 0.85
 }
 \`\`\`
 
-⚠️ Etiqueta "Envio Flex" + "Pack ID 20000..." é Mercado Livre, mesmo sem logo ML grande.
-
-## Exemplo 3: Loggi com apartamento
+## Exemplo 4: Loggi com apartamento
 
 Foto com logo Loggi roxo. Bloco DESTINATÁRIO com "Marlene Junges, Rua Dona Stela 151 Goiânia - GO, Complemento: AP 1304 bloco3, 74650100".
 
@@ -170,15 +221,18 @@ Foto com logo Loggi roxo. Bloco DESTINATÁRIO com "Marlene Junges, Rua Dona Stel
 {
   "nome_destinatario": "Marlene Junges",
   "endereco": "Rua Dona Stela, 151",
+  "bairro": null,
+  "cidade": "Goiânia/GO",
   "cep": "74650-100",
   "complemento": "AP 1304 BL 3",
+  "codigo_rastreio": "I7LGP4YJ",
   "transportadora": "loggi",
   "remetente": null,
   "confianca": 0.95
 }
 \`\`\`
 
-## Exemplo 4: Sem etiqueta
+## Exemplo 5: Sem etiqueta
 
 Foto de pacote em papel pardo, sem etiqueta visível.
 
@@ -186,8 +240,11 @@ Foto de pacote em papel pardo, sem etiqueta visível.
 {
   "nome_destinatario": null,
   "endereco": null,
+  "bairro": null,
+  "cidade": null,
   "cep": null,
   "complemento": null,
+  "codigo_rastreio": null,
   "transportadora": null,
   "remetente": null,
   "confianca": 0.05

@@ -59,6 +59,10 @@ export const labelExtractionSchema = z.object({
   ),
   /** Apto/bloco/casa — texto livre. */
   complemento: optionalString(200),
+  /** Bairro — separado do endereço pra evitar IA juntar tudo numa string. */
+  bairro: optionalString(100),
+  /** Cidade/Estado — só pra auditoria, não usado no match. */
+  cidade: optionalString(100),
   /** Código de rastreio extraído do código de barras / texto da etiqueta. */
   codigo_rastreio: optionalString(100),
   /**

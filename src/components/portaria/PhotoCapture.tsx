@@ -89,11 +89,14 @@ export function PhotoCapture({
   debugDownload = false,
 }: PhotoCaptureProps) {
   const [state, dispatch] = useReducer(reducer, { kind: 'idle' });
-  // Câmera ativa — pode ser trocada via botão. `ideal` em vez de match estrito
-  // pra fallback automático no celular que só tem 1 câmera.
-  const [facingMode, setFacingMode] = React.useState<'environment' | 'user'>(
-    preferredFacingMode,
+  // facingMode é fallback inicial — usuário troca via dropdown deviceId.
+  const facingMode = preferredFacingMode;
+  // Lista de câmeras disponíveis (descoberta via enumerateDevices) — útil
+  // em celulares com várias lentes traseiras (ultrawide / principal / tele).
+  const [availableCameras, setAvailableCameras] = React.useState<MediaDeviceInfo[]>(
+    [],
   );
+  const [selectedDeviceId, setSelectedDeviceId] = React.useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const flashRef = useRef<HTMLDivElement | null>(null);
   // Mantém ref do stream pra cleanup confiável (evita stale closure)
@@ -101,17 +104,67 @@ export function PhotoCapture({
 
   // Resolução solicitada — pedimos alta (até 1920x1080) pra OCR de etiqueta.
   // O navegador entrega o que conseguir; getSettings() devolve o real depois.
+  // Quando há `selectedDeviceId`, usa-o como exact (escolha de lente específica).
   const videoConstraints = useMemo<MediaStreamConstraints>(
     () => ({
-      video: {
-        facingMode: { ideal: facingMode },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
+      video: selectedDeviceId
+        ? {
+            deviceId: { exact: selectedDeviceId },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          }
+        : {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
       audio: false,
     }),
-    [facingMode],
+    [facingMode, selectedDeviceId],
   );
+
+  // Após permissão concedida (streaming), descobre todas as câmeras pra
+  // popular o dropdown. enumerateDevices só retorna labels úteis depois
+  // que o usuário concedeu permissão pelo menos uma vez.
+  useEffect(() => {
+    if (state.kind !== 'streaming') return;
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+
+    let cancelled = false;
+    navigator.mediaDevices
+      .enumerateDevices()
+      .then((devices) => {
+        if (cancelled) return;
+        const videos = devices.filter((d) => d.kind === 'videoinput');
+        setAvailableCameras(videos);
+        // Captura device id atual da track pra marcar selecionado no UI
+        const currentTrack = state.stream.getVideoTracks()[0];
+        const currentId = currentTrack?.getSettings?.().deviceId;
+        if (currentId && !selectedDeviceId) {
+          setSelectedDeviceId(currentId);
+        }
+      })
+      .catch(() => {
+        // ignora — listagem é nice-to-have
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state, selectedDeviceId]);
+
+  // Heurística pra batizar câmera quando label vem cru tipo "camera2 0, facing back"
+  function prettyLabel(d: MediaDeviceInfo, idx: number): string {
+    const lbl = d.label.toLowerCase();
+    if (!lbl) return `Câmera ${idx + 1}`;
+    if (lbl.includes('front') || lbl.includes('user')) return `Frontal (${d.label})`;
+    if (lbl.includes('ultra') || lbl.includes('wide') || lbl.includes('0.5'))
+      return `Ultra-grande angular`;
+    if (lbl.includes('tele') || lbl.includes('zoom') || lbl.includes('2x') || lbl.includes('3x'))
+      return `Telefoto`;
+    if (lbl.includes('back') || lbl.includes('environment') || lbl.includes('rear'))
+      return `Traseira ${idx > 0 ? `(${idx + 1})` : 'principal'}`;
+    return d.label || `Câmera ${idx + 1}`;
+  }
 
   // Solicita câmera quando entra em 'requesting' (cancela se desmonta antes)
   useEffect(() => {
@@ -348,33 +401,39 @@ export function PhotoCapture({
       )}
 
       {state.kind === 'streaming' && (
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="space-y-2">
+          {/* Selector de lente — só aparece se há mais de 1 câmera detectada */}
+          {availableCameras.length > 1 && (
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-2 text-xs">
+              <SwitchCamera className="size-4 shrink-0 text-text-secondary" aria-hidden />
+              <select
+                value={selectedDeviceId ?? ''}
+                onChange={(e) => {
+                  setSelectedDeviceId(e.target.value || null);
+                  dispatch({ type: 'request' });
+                }}
+                disabled={disabled}
+                className="flex-1 cursor-pointer bg-transparent text-foreground outline-none"
+                aria-label="Escolher lente da câmera"
+              >
+                {availableCameras.map((cam, i) => (
+                  <option key={cam.deviceId} value={cam.deviceId}>
+                    {prettyLabel(cam, i)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <Button
             type="button"
             onClick={handleCaptureClick}
             disabled={disabled}
             aria-label="Tirar foto"
-            className="min-h-[56px] text-base sm:flex-1"
+            className="min-h-[56px] w-full text-base"
           >
             <Camera className="mr-2 h-5 w-5" aria-hidden />
             Tirar foto
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setFacingMode((m) => (m === 'environment' ? 'user' : 'environment'));
-              dispatch({ type: 'request' });
-            }}
-            disabled={disabled}
-            aria-label="Trocar câmera"
-            title={facingMode === 'environment' ? 'Trocar pra frontal' : 'Trocar pra traseira'}
-            className="min-h-[56px] sm:w-auto sm:px-4"
-          >
-            <SwitchCamera className="h-5 w-5" aria-hidden />
-            <span className="ml-2 sm:hidden">
-              Trocar câmera ({facingMode === 'environment' ? 'traseira' : 'frontal'})
-            </span>
           </Button>
         </div>
       )}
