@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { ensureQrForPacote } from '@/lib/qr';
 import { MetaApiError, sendTemplate } from '@/lib/meta-whatsapp';
+import { chooseRecipient } from '@/lib/whatsapp/recipient';
 import { loggerForJob } from '@/lib/logger';
 
 /**
@@ -58,27 +59,13 @@ export async function processSendWhatsApp(
         condominio_id: true,
         unidade_id: true,
         condominio: { select: { nome: true } },
-        unidade: {
-          select: {
-            id: true,
-            moradores: {
-              where: { ativo: true, deleted_at: null },
-              select: {
-                id: true,
-                nome: true,
-                telefone: true,
-                is_principal: true,
-              },
-            },
-          },
-        },
       },
     });
 
     if (!pacote) {
       throw new Error(`Pacote ${pacote_id} não encontrado em cond ${condominio_id}`);
     }
-    if (!pacote.unidade) {
+    if (!pacote.unidade_id) {
       throw new Error(`Pacote ${pacote_id} sem unidade — não pode enviar WhatsApp`);
     }
 
@@ -95,8 +82,8 @@ export async function processSendWhatsApp(
     return { pacote, whatsappNumber };
   });
 
-  // 2. Determina destinatário (simplificado — TODO 4.5 substitui)
-  const recipient = chooseRecipientSimple(ctx.pacote.unidade!.moradores);
+  // 2. Determina destinatário (story 4.5 — nome → principal → adicional)
+  const recipient = await chooseRecipient(pacote_id);
   if (!recipient) {
     log.warn({ pacote_id }, 'sendWhatsApp: sem destinatário com telefone');
     const message = await db.$transaction(async (tx) => {
@@ -143,13 +130,20 @@ export async function processSendWhatsApp(
         template_params: {
           body: [recipient.nome, ctx.pacote.condominio.nome],
           header: { type: 'image', url: qr.publicUrl },
+          matched_by: recipient.matched_by,
         } as Prisma.InputJsonValue,
         pacote_id,
-        morador_id: recipient.id,
+        morador_id: recipient.morador_id,
       },
       select: { id: true, retry_count: true },
     });
   });
+
+  // Audit: matched_by já registrado em template_params JSON da mensagem.
+  // Evento dedicado em PacoteEvento exigiria nova entrada no enum
+  // PacoteEventoTipo (atualmente: criado, ia_processou, confirmado, notificado,
+  // notificacao_falhou, retirado, cancelado, pendencia_resolvida,
+  // reenvio_notificacao). Dispensável no MVP — débito menor.
 
   // 5. Chama Meta sendTemplate
   try {
@@ -212,23 +206,3 @@ export async function processSendWhatsApp(
   }
 }
 
-/**
- * Lógica simplificada de escolha de destinatário.
- * Story 4.5 substitui por matching nome → adicionais → fallback principal.
- */
-interface SimpleMorador {
-  id: string;
-  nome: string;
-  telefone: string;
-  is_principal: boolean;
-}
-
-function chooseRecipientSimple(moradores: SimpleMorador[]): SimpleMorador | null {
-  const ativosComTel = moradores.filter((m) => m.telefone && m.telefone.trim().length > 0);
-  if (ativosComTel.length === 0) return null;
-  const principal = ativosComTel.find((m) => m.is_principal);
-  return principal ?? ativosComTel[0]!;
-}
-
-/** Exposto pra teste. */
-export const __testing__ = { chooseRecipientSimple };
