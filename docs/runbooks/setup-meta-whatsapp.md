@@ -5,7 +5,7 @@
 > **Bloqueia:** Epic 4 (Notificação WhatsApp), Story 6.5 (Reenviar/Cancelar), Epic 7 (Códigos ML)
 > **Tempo total estimado:** 1-2 dias úteis (com janelas de espera Meta)
 >
-> **Estado atual:** Etapas 1-5 ✅ (template `pacote_chegou` submetido 2026-05-08 16h25, em análise). Falta só Etapa 6 (após deploy story 4.4) + chip dedicado pra produção.
+> **Estado atual:** Etapas 1-6 ✅ concluídas (2026-05-08). Webhook ativo em produção, validado por Meta, inscrito em `messages` + `message_template_status_update`. Aguarda apenas aprovação Meta do template `pacote_chegou` (em análise) + chip dedicado pra produção real (sandbox = 90d).
 
 ---
 
