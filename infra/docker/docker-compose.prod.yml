@@ -68,9 +68,16 @@ services:
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?CLERK_SECRET_KEY obrigatório}
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:?CLERK key obrigatório}
       CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET:-}
+      # Meta WhatsApp Cloud API (Epic 4 — story 4.1, 4.4)
+      META_APP_ID: ${META_APP_ID:-placeholder}
+      META_APP_SECRET: ${META_APP_SECRET:-placeholder}
       META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-placeholder}
-      META_WHATSAPP_TOKEN: ${META_WHATSAPP_TOKEN:-placeholder}
       META_WABA_ID: ${META_WABA_ID:-placeholder}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-placeholder}
+      META_API_VERSION: ${META_API_VERSION:-v25.0}
+      META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN:-placeholder}
+      META_DISABLED: ${META_DISABLED:-false}
+      APP_URL: ${APP_URL:-https://${DOMAIN}}
       STORAGE_DRIVER: local
       STORAGE_LOCAL_ROOT: /app/storage
       LOG_LEVEL: info
@@ -112,7 +119,15 @@ services:
       STORAGE_DRIVER: local
       STORAGE_LOCAL_ROOT: /app/storage
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
+      APP_URL: ${APP_URL:-https://${DOMAIN}}
+      # Meta WhatsApp — worker precisa pra sendTemplate (story 4.3)
+      META_APP_ID: ${META_APP_ID:-placeholder}
+      META_APP_SECRET: ${META_APP_SECRET:-placeholder}
       META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-placeholder}
+      META_WABA_ID: ${META_WABA_ID:-placeholder}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-placeholder}
+      META_API_VERSION: ${META_API_VERSION:-v25.0}
+      META_DISABLED: ${META_DISABLED:-false}
       LOG_LEVEL: info
     volumes:
       - app_storage:/app/storage
