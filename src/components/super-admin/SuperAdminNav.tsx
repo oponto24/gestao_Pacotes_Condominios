@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, ScrollText, Users } from 'lucide-react';
+import { Building2, LayoutDashboard, ScrollText, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -12,6 +12,7 @@ interface NavItem {
 }
 
 const ITEMS: NavItem[] = [
+  { href: '/super-admin', label: 'Visão geral', icon: LayoutDashboard },
   { href: '/super-admin/condominios', label: 'Condomínios', icon: Building2 },
   { href: '/super-admin/users', label: 'Usuários', icon: Users },
   { href: '/super-admin/audit', label: 'Audit log', icon: ScrollText },
@@ -22,7 +23,11 @@ export function SuperAdminNav() {
   return (
     <nav className="flex flex-wrap gap-1 border-b border-border bg-background px-4 py-2">
       {ITEMS.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(item.href + '/');
+        // /super-admin precisa exact match (raiz não fica ativa em /super-admin/condominios)
+        const active =
+          item.href === '/super-admin'
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + '/');
         const Icon = item.icon;
         return (
           <Link

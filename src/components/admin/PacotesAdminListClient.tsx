@@ -121,8 +121,18 @@ export function PacotesAdminListClient({ data }: Props) {
 
       {/* Tabela */}
       {data.items.length === 0 ? (
-        <div className="rounded-lg border border-border bg-background p-8 text-center text-sm text-text-secondary">
-          Nenhum pacote encontrado{q && ` para "${q}"`}.
+        <div className="rounded-lg border border-dashed border-border bg-background p-8 text-center">
+          <p className="text-sm text-text-secondary">
+            Nenhum pacote encontrado{q && ` para "${q}"`}.
+          </p>
+          {!q && (
+            <a
+              href="/chegada"
+              className="mt-3 inline-block text-sm font-medium text-primary hover:text-primary-dark"
+            >
+              Ir pra captura na portaria →
+            </a>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-border bg-background">

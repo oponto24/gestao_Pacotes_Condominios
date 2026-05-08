@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Montserrat } from 'next/font/google';
-import { ClerkProvider, SignInButton, SignUpButton, Show, UserButton } from '@clerk/nextjs';
+import { ClerkProvider, SignInButton, Show, UserButton } from '@clerk/nextjs';
+import { Toaster } from 'sonner';
 import { Logo } from '@/components/brand/Logo';
 import { ImpersonateBanner } from '@/components/super-admin/ImpersonateBanner';
 import './globals.css';
@@ -51,11 +52,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     Entrar
                   </button>
                 </SignInButton>
-                <SignUpButton mode="modal">
-                  <button className="h-btn-sm rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-dark">
-                    Criar conta
-                  </button>
-                </SignUpButton>
               </Show>
               <Show when="signed-in">
                 <UserButton />
@@ -64,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </header>
           <ImpersonateBanner />
           <main>{children}</main>
+          <Toaster position="top-right" richColors closeButton />
         </ClerkProvider>
       </body>
     </html>

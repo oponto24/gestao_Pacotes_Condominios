@@ -3,6 +3,7 @@ import { Crown } from 'lucide-react';
 import { getTenantContext } from '@/server/middleware/tenant';
 import { isTenantError } from '@/server/errors';
 import { SuperAdminNav } from '@/components/super-admin/SuperAdminNav';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -38,6 +39,9 @@ export default async function SuperAdminLayout({
         </div>
       </div>
       <SuperAdminNav />
+      <div className="border-b border-border/50 bg-background/60 px-4 py-1.5 md:px-6">
+        <Breadcrumbs homeHref="/super-admin" homeLabel="Visão geral" />
+      </div>
       <main className="flex-1 px-4 py-4 md:px-6">{children}</main>
     </div>
   );
