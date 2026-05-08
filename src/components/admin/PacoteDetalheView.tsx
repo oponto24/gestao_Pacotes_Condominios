@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { AlertTriangle, ArrowLeft, Package } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Package, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PacoteStatusBadge } from '@/components/admin/PacoteStatusBadge';
 import { PacoteTimeline } from '@/components/admin/PacoteTimeline';
@@ -32,6 +32,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function PacoteDetalheView({ pacote }: Props) {
   const isPendente = pacote.status === 'pendente_identificacao';
+  const isAguardando = pacote.status === 'aguardando_retirada';
+  const isRetirado = pacote.status === 'retirado';
   const unidadeLabel = pacote.unidade
     ? `${pacote.unidade.bloco ? `Bloco ${pacote.unidade.bloco} · ` : ''}${pacote.unidade.identificador}`
     : null;
@@ -70,6 +72,40 @@ export function PacoteDetalheView({ pacote }: Props) {
           <Link href={`/chegada/confirmar/${pacote.id}`}>
             <Button>Resolver pendência</Button>
           </Link>
+        </div>
+      )}
+
+      {isAguardando && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-lg border border-info/30 bg-info/5 p-3"
+        >
+          <QrCode className="mt-0.5 size-5 text-info" aria-hidden />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Pronto pra retirada</p>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              Morador notificado. Quando chegar na portaria, escaneie o QR Code dele.
+            </p>
+          </div>
+          <Link href="/retirada">
+            <Button variant="secondary">Ir pra retirada</Button>
+          </Link>
+        </div>
+      )}
+
+      {isRetirado && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-lg border border-success/30 bg-success/5 p-3"
+        >
+          <CheckCircle2 className="mt-0.5 size-5 text-success" aria-hidden />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Pacote entregue</p>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              Retirado em {formatTs(pacote.retirado_em)}
+              {retiradoPor ? ` por ${retiradoPor}` : ''}.
+            </p>
+          </div>
         </div>
       )}
 

@@ -36,10 +36,16 @@ describe('BottomNavBar', () => {
     expect(screen.getByRole('link', { name: /Chegada/ })).not.toHaveAttribute('aria-current');
   });
 
-  it('touch target ≥44px: cada link tem min-h-[56px]', () => {
+  it('touch target adequado: side tabs ≥56px, FAB Chegada ≥64px (h-16)', () => {
     render(<BottomNavBar />);
-    const link = screen.getByRole('link', { name: /Chegada/ });
-    expect(link.className).toContain('min-h-[56px]');
+    // FAB Chegada é botão primário central, alvo maior
+    const chegada = screen.getByRole('link', { name: /Chegada/ });
+    expect(chegada.className).toMatch(/h-16/);
+    // Side tabs (Pendentes / Retirada) mantêm min-h-[56px]
+    const pendentes = screen.getByRole('link', { name: /Pendentes/ });
+    expect(pendentes.className).toContain('min-h-[56px]');
+    const retirada = screen.getByRole('link', { name: /Retirada/ });
+    expect(retirada.className).toContain('min-h-[56px]');
   });
 
   it('nav tem role + aria-label', () => {

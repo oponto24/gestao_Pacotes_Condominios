@@ -9,6 +9,7 @@ import {
   ChevronRight,
   FileUp,
   Home,
+  LayoutDashboard,
   Layers,
   LogOut,
   Package,
@@ -32,6 +33,7 @@ interface NavGroup {
 }
 
 const TOP_ITEMS: NavItem[] = [
+  { href: '/admin', label: 'Início', icon: <LayoutDashboard className="h-4 w-4" aria-hidden /> },
   { href: '/admin/pacotes', label: 'Pacotes', icon: <Package className="h-4 w-4" aria-hidden /> },
 ];
 
@@ -94,14 +96,21 @@ export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
     setEquipeOpen((prev) => persistGroupOpen(EQUIPE.storageKey, !prev));
   }
 
-  function isActive(href: string): boolean {
+  function isActive(href: string, exact = false): boolean {
+    if (exact) return pathname === href;
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
   return (
     <nav className="flex h-full flex-col gap-1 p-4" aria-label="Navegação admin">
       {TOP_ITEMS.map((item) => (
-        <SidebarLink key={item.href} item={item} active={isActive(item.href)} onNavigate={onNavigate} />
+        <SidebarLink
+          key={item.href}
+          item={item}
+          // /admin precisa ser exact: outras rotas /admin/* não ficam ativas no Início
+          active={isActive(item.href, item.href === '/admin')}
+          onNavigate={onNavigate}
+        />
       ))}
 
       <button
