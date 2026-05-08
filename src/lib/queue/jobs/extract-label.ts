@@ -48,7 +48,7 @@ export async function processExtractLabel(
 
     const pacote = await tx.pacote.findFirst({
       where: { id: pacote_id, condominio_id },
-      select: { id: true, status: true },
+      select: { id: true, status: true, codigo_rastreio: true },
     });
     if (!pacote) {
       throw new Error(`Pacote ${pacote_id} não encontrado em cond ${condominio_id}`);
@@ -102,6 +102,8 @@ export async function processExtractLabel(
   const iaCep = (iaJson.cep as string | null | undefined) ?? null;
   const iaComplemento = (iaJson.complemento as string | null | undefined) ?? null;
   const iaRemetente = (iaJson.remetente as string | null | undefined) ?? null;
+  const iaCodigoRastreio =
+    (iaJson.codigo_rastreio as string | null | undefined) ?? null;
 
   // 4. Roda matching IA → unidade/morador (story 3.7) — função pura, custo zero
   const match = matchUnidadeMorador({
@@ -130,6 +132,13 @@ export async function processExtractLabel(
       complemento_etiqueta: iaComplemento,
       remetente: iaRemetente,
     };
+
+    // Preenche codigo_rastreio se IA extraiu e o porteiro não tinha digitado.
+    // Trim + dedupe pra evitar overwrite se já tem valor manual.
+    const codigoExtraidoLimpo = iaCodigoRastreio?.trim() || null;
+    if (codigoExtraidoLimpo && !result.pacote.codigo_rastreio) {
+      updateData.codigo_rastreio = codigoExtraidoLimpo;
+    }
 
     if (match.kind === 'matched') {
       updateData.unidade = { connect: { id: match.unidade_id } };

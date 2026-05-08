@@ -31,6 +31,7 @@ Retorne EXATAMENTE este formato, sem markdown, sem texto antes ou depois:
   "endereco": string | null,              // logradouro + número (ex: "Rua das Flores, 123")
   "cep": string | null,                   // formato XXXXX-XXX ou XXXXXXXX (8 dígitos)
   "complemento": string | null,           // apto/bloco/casa (ex: "AP 1304 BL 3")
+  "codigo_rastreio": string | null,       // código do pacote (ex: "AD417365859BR", "I7LGP4YJ", "3320067394968")
   "transportadora": string | null,        // enum abaixo
   "remetente": string | null,             // nome do remetente (loja, pessoa, etc)
   "confianca": number                     // 0.0 a 1.0
@@ -48,6 +49,8 @@ Detecte pelo logo, cabeçalho ou cores da etiqueta:
 - "loggi" — logo Loggi (geralmente roxo/preto)
 - "shopee" — logo laranja Shopee, código BR.SP.######
 - "amazon" — etiqueta Amazon Logistics, código TBA#
+- "tiktok_shop" — etiqueta com logo "TikTok Shop" + código SP#-### (TikTok Shop usa iMile como transportadora)
+- "imile" — etiqueta com domínio "imile.com" + código alfanumérico curto (sem TikTok)
 - "outro" — etiqueta visível mas marca não identificável
 - null — sem etiqueta legível
 
@@ -98,9 +101,26 @@ Se não tiver, retorne null.
 ## REGRA #4 — CEP
 
 8 dígitos. Pode incluir o hífen ou não — sistema normaliza.
-**ATENÇÃO:** OCR confunde 8/6, 0/9, 5/3, 1/7. Releia o CEP duas vezes na imagem antes de devolver. Se houver qualquer dúvida, abaixe a confiança.
 
-## REGRA #5 — Campos não identificados
+**ATENÇÃO 1 — quebra de linha:** etiquetas brasileiras frequentemente partem o CEP entre 2 linhas (ex: a linha do endereço termina com "024" e a próxima começa com "03010" → CEP completo é "02403010"). Sempre **junte os dígitos das duas linhas adjacentes** se a primeira terminar com 3 ou mais dígitos sem nome de cidade depois e a segunda começar com mais dígitos.
+
+**ATENÇÃO 2 — OCR confunde dígitos parecidos:** 8/6, 0/9, 5/3, 1/7. Releia o CEP duas vezes na imagem antes de devolver. Se houver qualquer dúvida, abaixe a confiança.
+
+**ATENÇÃO 3 — só 8 dígitos contam como CEP válido:** se você só conseguir ler 5, 6 ou 7 dígitos, retorne \`null\` em vez de chutar — o sistema tolera CEP null e o porteiro completa manualmente.
+
+## REGRA #5 — Código de rastreio
+
+Procure pelo código do pacote — geralmente impresso em **fonte grande**, abaixo de um código de barras, ou em formato característico:
+- Correios: 13 caracteres tipo "AD417365859BR" (2 letras + 9 dígitos + 2 letras BR)
+- Mercado Livre: "Envio: 46997442936" ou número longo de 12+ dígitos
+- Loggi/SuperFrete: 8 caracteres alfanuméricos tipo "I7LGP4YJ" (campo "Código de rastreio")
+- TikTok Shop / iMile: número longo tipo "3320067394968" (abaixo do código de barras grande)
+- Magalu: "Pedido: 1534170108978940" (dígitos)
+- Amazon: "TBA######"
+
+Retorne apenas o código (sem prefixos como "Envio:" ou "Pedido:"). Se não conseguir ler, retorne null — o porteiro pode digitar/bipar manualmente.
+
+## REGRA #6 — Campos não identificados
 
 Retorne \`null\`. NUNCA invente. NUNCA copie do remetente para o destinatário (ou vice-versa) só pra preencher.
 
