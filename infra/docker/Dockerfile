@@ -54,6 +54,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 
+# Cria mountpoint do volume com owner correto (nextjs:nodejs).
+# Sem isso, Docker cria /app/storage como root no primeiro mount e o app falha
+# com EACCES ao gravar foto (POST /api/pacotes — story 3.4).
+RUN mkdir -p /app/storage && chown -R nextjs:nodejs /app/storage
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME=0.0.0.0
