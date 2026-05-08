@@ -66,7 +66,7 @@ services:
       META_WHATSAPP_TOKEN: ${META_WHATSAPP_TOKEN:-placeholder}
       META_WABA_ID: ${META_WABA_ID:-placeholder}
       STORAGE_DRIVER: local
-      STORAGE_LOCAL_DIR: /app/storage
+      STORAGE_LOCAL_ROOT: /app/storage
       LOG_LEVEL: info
     volumes:
       - app_storage:/app/storage
@@ -99,7 +99,7 @@ services:
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
       ANTHROPIC_PROMPT_CACHE_ENABLED: 'true'
       STORAGE_DRIVER: local
-      STORAGE_LOCAL_DIR: /app/storage
+      STORAGE_LOCAL_ROOT: /app/storage
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
       META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-placeholder}
       LOG_LEVEL: info

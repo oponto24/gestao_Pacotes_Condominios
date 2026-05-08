@@ -48,3 +48,10 @@ next-env.d.ts
 
 # Claude Code per-project memory
 .claude/projects/
+
+# Fotos de teste local na raiz — não commitar (PII de etiquetas reais).
+# Path-anchored com `/` pra NÃO ignorar `modelos_de_etiquetas/*.jpeg` etc.
+/pacote_teste*
+/*.jpeg
+/*.jpg
+/*.png
