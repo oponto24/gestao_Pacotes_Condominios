@@ -39,7 +39,7 @@ vi.mock('@/lib/storage', () => ({
 }));
 
 const mockExtraction = vi.fn();
-vi.mock('@/lib/anthropic/extract-label', () => ({
+vi.mock('@/lib/ai/extract-label', () => ({
   extractLabelFromImage: (input: unknown) => mockExtraction(input),
 }));
 

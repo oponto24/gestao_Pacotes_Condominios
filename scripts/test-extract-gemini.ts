@@ -1,15 +1,15 @@
 /**
- * Script de smoke test da extração de etiqueta.
- * Permite testar Haiku 4.5 vs Sonnet 4.6 com o mesmo prompt.
+ * Smoke test de extração de etiqueta com Gemini Flash-Lite.
+ *
+ * Reusa o MESMO prompt do software (LABEL_EXTRACTION_SYSTEM_PROMPT) e o
+ * MESMO schema Zod, só troca o provider.
  *
  * Uso:
- *   npx tsx scripts/test-extract-labels.ts                 # haiku
- *   ANTHROPIC_MODEL=claude-sonnet-4-6 npx tsx scripts/test-extract-labels.ts
- *   COMPARE=1 npx tsx scripts/test-extract-labels.ts       # roda os 2 modelos
+ *   GOOGLE_API_KEY=... node --env-file=.env --import tsx scripts/test-extract-gemini.ts
  */
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { labelExtractionSchema } from '../src/lib/ai/schemas/label-extraction';
 import { LABEL_EXTRACTION_SYSTEM_PROMPT } from '../src/lib/ai/prompts/label-extraction';
 
@@ -20,24 +20,22 @@ const SAMPLES: Array<{ file: string; label: string }> = [
   { file: 'modelos_de_etiquetas/melhorEnvio1.jpeg', label: 'Melhor Envio 1 (SEDEX)' },
   { file: 'modelos_de_etiquetas/melhorEnvio2.jpeg', label: 'Melhor Envio 2 (PAC)' },
   { file: 'modelos_de_etiquetas/superFrete.jpeg', label: 'SuperFrete (Loggi)' },
-  { file: 'pacote_teste.jpeg', label: 'Pacote real (Mercado Livre Flex)' },
+  { file: 'pacote_teste.jpeg', label: 'Pacote real (ML Flex)' },
 ];
 
-// Pricing (USD por 1M tokens) — abr/2026
-// Haiku 4.5:  input $1.00 / output $5.00
-// Sonnet 4.6: input $3.00 / output $15.00
-// Opus 4.7:   input $15.00 / output $75.00
+// Pricing (USD por 1M tokens)
+// Gemini 2.5 Flash-Lite: input $0.10 / output $0.40
+// Gemini 2.5 Flash:      input $0.30 / output $2.50
 const PRICES: Record<string, { input: number; output: number }> = {
-  'claude-haiku-4-5-20251001': { input: 1.0, output: 5.0 },
-  'claude-haiku-4-5': { input: 1.0, output: 5.0 },
-  'claude-sonnet-4-6': { input: 3.0, output: 15.0 },
-  'claude-sonnet-4-6-20250709': { input: 3.0, output: 15.0 },
-  'claude-opus-4-7': { input: 15.0, output: 75.0 },
+  'gemini-2.5-flash-lite': { input: 0.1, output: 0.4 },
+  'gemini-2.5-flash': { input: 0.3, output: 2.5 },
+  'gemini-2.0-flash-exp': { input: 0.075, output: 0.3 },
+  'gemini-2.0-flash': { input: 0.075, output: 0.3 },
 };
 
-function calcCostUsd(model: string, inTokens: number, outTokens: number): number {
+function calcCostUsd(model: string, inT: number, outT: number): number {
   const p = PRICES[model] ?? { input: 0, output: 0 };
-  return (inTokens * p.input + outTokens * p.output) / 1_000_000;
+  return (inT * p.input + outT * p.output) / 1_000_000;
 }
 
 function stripMarkdown(t: string): string {
@@ -48,36 +46,36 @@ function stripMarkdown(t: string): string {
     .trim();
 }
 
-async function runOne(model: string, buffer: Buffer) {
-  const client = new Anthropic();
-  const startedAt = Date.now();
-  // Opus 4.7+ não aceita temperature
-  const supportsTemp = !model.startsWith('claude-opus-4-7');
-  const res = await client.messages.create({
-    model,
-    max_tokens: 500,
-    ...(supportsTemp ? { temperature: 0 } : {}),
-    system: LABEL_EXTRACTION_SYSTEM_PROMPT,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: 'image/jpeg', data: buffer.toString('base64') },
-          },
-          {
-            type: 'text',
-            text: 'Extraia os dados desta etiqueta seguindo o schema. Retorne APENAS o JSON.',
-          },
-        ],
-      },
-    ],
+async function runOne(modelName: string, buffer: Buffer) {
+  const apiKey = process.env.GOOGLE_API_KEY ?? process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GOOGLE_API_KEY não configurada');
+  const client = new GoogleGenerativeAI(apiKey);
+  const model = client.getGenerativeModel({
+    model: modelName,
+    systemInstruction: LABEL_EXTRACTION_SYSTEM_PROMPT,
+    generationConfig: {
+      temperature: 0,
+      maxOutputTokens: 500,
+      responseMimeType: 'application/json',
+    },
   });
+
+  const startedAt = Date.now();
+  const res = await model.generateContent([
+    {
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: buffer.toString('base64'),
+      },
+    },
+    {
+      text: 'Extraia os dados desta etiqueta seguindo o schema. Retorne APENAS o JSON.',
+    },
+  ]);
   const durMs = Date.now() - startedAt;
-  const txt = res.content.find((b) => b.type === 'text');
-  if (!txt || txt.type !== 'text') throw new Error('sem texto');
-  const cleaned = stripMarkdown(txt.text);
+
+  const text = res.response.text();
+  const cleaned = stripMarkdown(text);
   let json: unknown;
   try {
     json = JSON.parse(cleaned);
@@ -85,28 +83,26 @@ async function runOne(model: string, buffer: Buffer) {
     json = { error: 'invalid_json', raw: cleaned.slice(0, 200) };
   }
   const validated = labelExtractionSchema.safeParse(json);
+
+  const usage = res.response.usageMetadata;
   return {
-    model: res.model,
+    model: modelName,
     durMs,
-    inTokens: res.usage.input_tokens,
-    outTokens: res.usage.output_tokens,
+    inTokens: usage?.promptTokenCount ?? 0,
+    outTokens: usage?.candidatesTokenCount ?? 0,
     json: validated.success ? validated.data : json,
     valid: validated.success,
   };
 }
 
 async function main() {
-  const compare = process.env.COMPARE === '1';
-  const modelEnv = process.env.ANTHROPIC_MODEL;
-  const models = compare
-    ? ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6']
-    : [modelEnv ?? 'claude-haiku-4-5-20251001'];
+  const models = (process.env.GEMINI_MODELS ?? 'gemini-2.5-flash-lite,gemini-2.5-flash')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   const totals: Record<string, { reqs: number; in: number; out: number; cost: number; ms: number }> = {};
-
-  for (const m of models) {
-    totals[m] = { reqs: 0, in: 0, out: 0, cost: 0, ms: 0 };
-  }
+  for (const m of models) totals[m] = { reqs: 0, in: 0, out: 0, cost: 0, ms: 0 };
 
   for (const s of SAMPLES) {
     const filePath = path.join(ROOT, s.file);
@@ -114,7 +110,7 @@ async function main() {
     try {
       buffer = await readFile(filePath);
     } catch {
-      console.log(`\n=== ${s.label} === SKIP (arquivo não encontrado)`);
+      console.log(`\n=== ${s.label} === SKIP`);
       continue;
     }
     console.log(`\n=== ${s.label} (${(buffer.length / 1024).toFixed(0)} KB) ===`);

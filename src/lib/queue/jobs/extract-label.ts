@@ -2,7 +2,7 @@ import type { Job } from 'bullmq';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { storage } from '@/lib/storage';
-import { extractLabelFromImage } from '@/lib/anthropic/extract-label';
+import { extractLabelFromImage } from '@/lib/ai/extract-label';
 import {
   matchUnidadeMorador,
   type MatchResult,
@@ -153,6 +153,7 @@ export async function processExtractLabel(
         tipo: 'ia_processou',
         metadata: {
           confianca: extraction.confianca,
+          provider: extraction.provider,
           model: extraction.model,
           duration_ms: extraction.durationMs,
           input_tokens: extraction.usage.input_tokens,

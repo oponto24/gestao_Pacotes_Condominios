@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { labelExtractionSchema } from '@/lib/anthropic/schemas/label-extraction';
+import { labelExtractionSchema } from '@/lib/ai/schemas/label-extraction';
 
 describe('labelExtractionSchema', () => {
   const minimalValid = { confianca: 0.5 };
