@@ -385,9 +385,9 @@ function ComoFunciona() {
     {
       n: '03',
       icon: QrCode,
-      titulo: 'Morador retira com QR Code',
+      titulo: 'Morador retira com QR pelo WhatsApp',
       texto:
-        'Notificação no WhatsApp com QR. Na retirada, o porteiro escaneia e o pacote é dado como entregue — com auditoria completa.',
+        'O QR chega direto na conversa do WhatsApp. Na retirada, o morador mostra o QR e o porteiro escaneia — pacote entregue com auditoria completa.',
     },
   ];
 
@@ -460,9 +460,9 @@ function Diferenciais() {
     },
     {
       icon: Smartphone,
-      titulo: 'Sem app pro morador',
+      titulo: 'Sem app, sem navegador',
       texto:
-        'Morador não baixa nada. Recebe link, abre, retira. 100% via navegador.',
+        'Morador não baixa nada e não abre site. Tudo direto no WhatsApp: recebe o aviso, recebe o QR, mostra na retirada.',
     },
     {
       icon: Building2,
@@ -578,7 +578,7 @@ function FAQ() {
     },
     {
       q: 'O morador precisa baixar app?',
-      a: 'Não. A notificação chega no WhatsApp com um link. O morador abre no navegador, vê o QR Code e leva no dia da retirada. Zero atrito.',
+      a: 'Não. O aviso e o próprio QR chegam direto na conversa do WhatsApp. No dia da retirada, o morador só mostra o QR ao porteiro — sem abrir site, sem instalar nada.',
     },
     {
       q: 'Funciona com qualquer celular do porteiro?',
