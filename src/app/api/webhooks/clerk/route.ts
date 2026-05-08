@@ -101,16 +101,19 @@ export async function POST(req: Request) {
           });
           reconciledFrom = 'email';
         } else {
-          await db.user.create({
-            data: {
-              clerk_id: event.data.id,
-              email,
-              nome,
-              role: 'porteiro',
-              condominio_id: null,
-              ativo: true,
-            },
-          });
+          // Decisão produto 2026-05-07: self-signup desabilitado durante MVP sem cobrança.
+          // Só viram users no banco aqueles previamente provisionados pelo super-admin/admin
+          // (stories 8.5/8.6/8.7) com clerk_id placeholder + email — reconciliados acima.
+          // Sem registro pré-existente → NÃO criar. A conta Clerk fica órfã (sem acesso real:
+          // getTenantContext rejeita user inexistente, todas rotas protegidas devolvem 403).
+          log.warn(
+            { clerk_id: event.data.id, email },
+            'self-signup bloqueado: nenhum registro pré-provisionado encontrado',
+          );
+          return NextResponse.json(
+            { ok: false, reason: 'self_signup_disabled' },
+            { status: 200 },
+          );
         }
       }
 
