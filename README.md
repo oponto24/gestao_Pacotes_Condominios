@@ -1,8 +1,10 @@
 # Ponto 24 — Gestão de Pacotes em Condomínios
 
-PWA mobile-first **com identidade Ponto24** (amarelo `#FDC800` + violet `#7C3AED`) para gerenciar a chegada e retirada de encomendas em condomínios, com notificação ao morador via WhatsApp e extração automática de dados de etiqueta por IA (Claude Haiku 4.5 com vision).
+PWA mobile-first **com identidade Ponto24** (amarelo `#FDC800` + violet `#7C3AED`) para gerenciar a chegada e retirada de encomendas em condomínios, com notificação ao morador via WhatsApp e extração automática de dados de etiqueta por IA (Gemini Flash-Lite default + Claude Haiku 4.5 fallback, ambos com vision).
 
-> **Status:** MVP funcional ponta-a-ponta localmente. 335/335 tests passing. Pipeline real validado: foto → IA Anthropic → matching CEP+nome+complemento → confirmação → organização → notificação (Epic 4 pendente) → scan QR → retirada com auditoria completa. Falta apenas deploy VPS (DNS pendente) e integração WhatsApp Business.
+> **Status (2026-05-08):** MVP funcional ponta-a-ponta + Epic 4 (WhatsApp) implementado. **401/401 tests passing**. Em produção em [https://condominios.oponto24.com.br](https://condominios.oponto24.com.br) (HTTPS Let's Encrypt). Pipeline real validado: foto → IA → matching CEP+nome+complemento → confirmação → organização → **notificação WhatsApp (template Meta + QR Code) → scan QR → retirada com auditoria completa**.
+>
+> **Pendências externas:** aprovação Meta do template `pacote_chegou` (smoke real), deploy 4.4 webhook em prod, chip dedicado WhatsApp pra produção. Detalhes no runbook [`docs/runbooks/setup-meta-whatsapp.md`](docs/runbooks/setup-meta-whatsapp.md).
 
 **Documentação completa:**
 - 📋 PRD: [`docs/prd/PRD.md`](docs/prd/PRD.md)
@@ -72,8 +74,9 @@ Detalhes do seed (variáveis, idempotência, reconciliação Clerk) em [`docs/ru
 - **BullMQ** + **Redis 7** (jobs assíncronos)
 - **Pino** (logger estruturado JSON em prod, pretty em dev)
 - **Storage abstraction** local (volume Docker) — trocável por S3/R2 sem refactor
-- **Anthropic Claude Haiku 4.5** (vision + prompt caching) — extração estruturada de etiqueta
-- **Vitest** + **Testing Library** (335+ testes — unit + integration tenant-scoped)
+- **IA dual-provider:** **Google Gemini Flash-Lite** (default, ~15× mais barato) + **Anthropic Claude Haiku 4.5** (fallback) — vision + extração estruturada
+- **Meta WhatsApp Cloud API** — template messages com header de imagem (QR), webhook HMAC, retry exponencial via BullMQ
+- **Vitest** + **Testing Library** (401 testes — unit + integration tenant-scoped + UI components)
 - **Docker Compose** dev: postgres + redis + app + worker
 
 ## Estrutura
@@ -105,7 +108,11 @@ docs/
 
 Variáveis específicas da aplicação: [`.env.app.example`](.env.app.example) → copiar para `.env.local`.
 
-Categorias: `DATABASE_*`, `REDIS_URL`, `CLERK_*`, `ANTHROPIC_*`, `META_*`, `STORAGE_*`, `LOG_LEVEL`, `SUPER_ADMIN_EMAIL`.
+Categorias:
+- `DATABASE_*` (3 conexões: SUPERUSER, app_runtime sujeito a RLS, webhook_worker BYPASSRLS)
+- `REDIS_URL`, `CLERK_*`, `STORAGE_*`, `LOG_LEVEL`, `SUPER_ADMIN_EMAIL`
+- **IA:** `EXTRACT_LABEL_PROVIDER` (default `gemini`), `EXTRACT_LABEL_FALLBACK` (default `anthropic`), `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY`
+- **WhatsApp Meta:** `META_APP_ID`, `META_APP_SECRET`, `META_PHONE_NUMBER_ID`, `META_WABA_ID`, `META_ACCESS_TOKEN`, `META_API_VERSION` (`v25.0`), `META_WEBHOOK_VERIFY_TOKEN`, `META_DISABLED` (modo mock pra dev/CI)
 
 ## Convenções
 
@@ -121,28 +128,41 @@ Categorias: `DATABASE_*`, `REDIS_URL`, `CLERK_*`, `ANTHROPIC_*`, `META_*`, `STOR
 |---|---|
 | **Epic 1 — Fundação Técnica** | ✅ Concluído (2026-05-06) — 10/10 stories |
 | **Epic 2 — Cadastros** (CRUDs + CSV) | ✅ Concluído (2026-05-07) — 7/7 stories |
-| **Epic 3 — Chegada do Pacote** (PWA + IA + matching) | ✅ Funcional (11/12) — falta 3.12 deploy VPS (aguardando DNS) |
-| Epic 4 — Notificação WhatsApp (Meta Cloud API) | ⏳ Pendente — aguardando criação Meta Business Manager |
+| **Epic 3 — Chegada do Pacote** (PWA + IA + matching) | ✅ Concluído (2026-05-08) — 12/12 stories incluindo 3.12 deploy VPS |
+| **Epic 4 — Notificação WhatsApp** (Meta Cloud API) | ✅ Concluído (2026-05-08) — 6 stories + 4.6b UI bloco. Aguarda aprovação Meta do template `pacote_chegou` pra smoke real |
 | **Epic 5 — Retirada do Pacote** | ✅ Concluído (2026-05-07) — 4/4 stories |
-| **Epic 6 — Painel Administrativo** | ✅ 4/5 (lista, busca, detalhe, resolver pendência); 6.5 depende Epic 4 |
-| Epic 7 — Código ML via WhatsApp | ⏳ P1 — futuro |
-| Epic 8 — Operação SaaS (deploy VPS) | ⏳ P1 — VPS provisionada (`2.24.82.192`), aguarda DNS apontar `condominios.oponto24.com.br` |
+| **Epic 6 — Painel Administrativo** | ✅ 5/5 — 6.5 (Reenviar/Cancelar) coberto pelo bloco 4.6b no detalhe |
+| Epic 7 — Código ML via WhatsApp | ⏳ P1 — futuro (handler inbound já no webhook 4.4, falta parser ML) |
+| Epic 8 — Operação SaaS (deploy VPS) | 🟡 8.4 done (VPS + HTTPS); 8.1-8.3 super-admin parcial (lista + impersonate done), 8.5-8.7 cadastro hierárquico pendentes |
 
-**Pipeline end-to-end (local):**
+**Pipeline end-to-end (em produção):**
 
 ```
-Foto → Worker IA Haiku 4.5 → Matching auto (CEP + nome + complemento)
+Foto → Worker IA Gemini Flash-Lite (fallback Anthropic) → Matching (CEP + nome + complemento)
   ├─ matched: rascunho → confirmar → organizar → aguardando_retirada
   └─ pending: pendente_identificacao → /portaria/pendentes → resolver → confirmar → organizar
                                                                                   ↓
-            scan QR (ou digita) ← /retirada ← aguardando_retirada
+                              ┌────────────────────────────────────────────────────┘
+                              ↓
+            Worker sendWhatsApp BullMQ → ensureQrForPacote (QR 1200×628)
+                                       → chooseRecipient (nome→principal→adicional)
+                                       → Meta Cloud API sendTemplate `pacote_chegou`
+                                       → registra WhatsAppMessage (status pending)
+                              ↓
+            Webhook Meta /api/webhooks/meta-whatsapp
+                                       → HMAC válido? → enfileira processWhatsappWebhook
+                                       → atualiza status sent/delivered/read/failed
+                              ↓
+            scan QR pelo porteiro (mostra a imagem do morador) ← /retirada
                 ↓
             confirmar destinatário (próprio / terceiro) → status retirado + audit
                 ↓
-            admin lista + busca + detalhe com timeline em /admin/pacotes
+            admin lista + busca + detalhe com timeline + bloco notificações WhatsApp
+                + botão Reenviar (rate limit 3/h) em /admin/pacotes/[id]
 ```
 
-**Custo de IA por foto:** ~R$ 0,013 (4× abaixo do NFR-041 < R$ 0,05).
+**Custos por condomínio (estimativa):** ~R$ 5-7/mês (IA Gemini ~R$ 0,5 + WhatsApp utility ~R$ 4 + VPS rateada).
 
 Detalhes completos em [`docs/stories/ROADMAP.md`](docs/stories/ROADMAP.md).
-Para retomar deploy VPS: [`docs/stories/3.12-PENDENCIAS.md`](docs/stories/3.12-PENDENCIAS.md).
+Setup Meta WhatsApp passo-a-passo: [`docs/runbooks/setup-meta-whatsapp.md`](docs/runbooks/setup-meta-whatsapp.md).
+Decisão IA dual-provider: [`docs/decisions/ai-model-comparison.md`](docs/decisions/ai-model-comparison.md).

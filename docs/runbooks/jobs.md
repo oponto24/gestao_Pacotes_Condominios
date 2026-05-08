@@ -221,14 +221,21 @@ Lock duration 60s. Se worker crashou em meio de job, próximo worker espera 60s 
 
 ---
 
-## Próximas stories que vão adicionar jobs
+## Jobs registrados (atualizado 2026-05-08)
+
+| Story | Job name | Payload | Retry config | Notas |
+|-------|----------|---------|--------------|-------|
+| 1.8 | `ping` | `{ ts: number }` | default (3 attempts, 1s/2s/4s) | sanity check |
+| 3.5 | `extractLabel` | `{ pacote_id, condominio_id }` | default | Worker carrega foto principal, chama Gemini (fallback Anthropic), atualiza pacote + cria evento `ia_processou` |
+| 4.3 | `sendWhatsApp` | `{ pacote_id, condominio_id }` | **4 attempts**, backoff exp **5s/10s/20s/40s** | jobId determinístico `sendWhatsApp:{pacote_id}` (anti-dup); `forceUnique=true` no reenvio manual (4.6) |
+| 4.4 | `processWhatsappWebhook` | `{ value: MetaWebhookValue }` | default | Cross-tenant — bypassa RLS; idempotência via `meta_message_id @unique` + STATUS_RANK |
+
+### Próximas stories que vão adicionar jobs
 
 | Story | Job | Payload (esboço) |
 |-------|-----|------------------|
-| 3.5 | `extract-label` | `{ pacoteId, condominioId, fotoPath }` |
-| 4.3 | `send-whatsapp` | `{ messageId, condominioId, templateName, params }` |
-| 7.2 | `process-incoming-msg` | `{ wamId, fromPhone, body }` (cross-tenant — usa `webhook_worker` role) |
-| 7.5 | `expire-codigo-ml` | cron diário, sem payload |
+| 7.2 | `processIncomingMessage` | `{ whatsapp_message_id }` — consome inserts inbound da 4.4, extrai código ML via regex+LLM |
+| 7.5 | `expireCodigoMl` | cron diário, sem payload |
 
 ---
 

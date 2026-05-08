@@ -429,49 +429,61 @@ Porteiro                  Frontend            API/Worker          Externos
    │ ◀───────────────────────│                    │                   │
 ```
 
-### 5.2 Fluxo: Notificação WhatsApp (worker `sendWhatsApp`)
+### 5.2 Fluxo: Notificação WhatsApp (worker `sendWhatsApp` — story 4.3, atualizado 2026-05-08)
 
-1. Job recebe `{ pacoteId, condominioId }`.
-2. Carrega pacote + morador alvo (destinatário com prioridade ou condômino principal — FR-031/032).
-3. Gera QR Code PNG (lib `qrcode`) com payload `{ pacoteId, token }`.
-4. Faz upload temporário do QR para storage (URL acessível pela Meta para baixar).
-5. Chama Meta Cloud API:
-   ```
-   POST https://graph.facebook.com/v21.0/{phone_number_id}/messages
+1. Trigger: `PATCH /api/pacotes/{id}/organizar` (story 3.9) enfileira `sendWhatsApp` com `jobId: sendWhatsApp:{pacote_id}` (anti-duplicação) na primeira organização. Falha de enfileiramento não bloqueia resposta da API (try/catch isolado).
+2. Job recebe `{ pacote_id, condominio_id }`.
+3. Carrega pacote + condomínio + WhatsAppNumber compartilhado (`condominio_id IS NULL, ativo=true`). Worker bypassa RLS via `SET LOCAL app.is_super_admin = 'true'` em transação.
+4. **`chooseRecipient(pacoteId)`** (story 4.5): matching nome etiqueta → exato/fuzzy/primeiro+último → fallback principal → primeiro adicional com telefone. Retorna `{ morador_id, nome, telefone, matched_by }` ou null.
+5. **`ensureQrForPacote(pacoteId)`** (story 4.2, idempotente): se já existe QR, retorna URL; senão gera PNG 1200×628 com sharp (canvas + qrcode + SVG overlay com nome do condomínio), salva em `qr/{condominio_id}/{pacote_id}.png` e atualiza `pacote.qr_image_path`.
+6. Cria `WhatsAppMessage` em `pending` antes do envio (preserva audit em caso de falha).
+7. Chama `sendTemplate` (story 4.1) → `POST https://graph.facebook.com/v25.0/{phone_number_id}/messages`:
+   ```json
    {
      "messaging_product": "whatsapp",
-     "to": "55119XXXXXXXX",
+     "to": "5511999999999",
      "type": "template",
      "template": {
        "name": "pacote_chegou",
        "language": { "code": "pt_BR" },
        "components": [
-         { "type": "header", "parameters": [{"type": "image", "image": {"link": "..."}}] },
+         { "type": "header", "parameters": [{"type": "image", "image": {"link": "<URL pública do QR>"}}] },
          { "type": "body", "parameters": [
-             {"type": "text", "text": "Edifício Aurora"},
-             {"type": "text", "text": "Maria"},
-             {"type": "text", "text": "Setor B, posição 12"}
+             {"type": "text", "text": "Maria Silva"},
+             {"type": "text", "text": "Edifício Aurora"}
            ]
          }
        ]
      }
    }
    ```
-6. Salva `whatsapp_message` com `meta_message_id` retornado.
-7. Em caso de erro 4xx (template inválido, número bloqueado): marca `failed`, sem retry.
-8. Em caso de erro 5xx ou network: BullMQ retenta automaticamente (3 tentativas, backoff exponencial 30s/2min/10min).
+8. Atualiza `WhatsAppMessage` com `meta_message_id` (wamid) + `status=sent` + `sent_at`.
+9. Em erro `MetaApiError.retriable=false` (token inválido, número fora de WhatsApp, código 100/131026/131047): marca `failed` sem throw — BullMQ não retenta.
+10. Em erro `retriable=true` (rate 131056, 5xx, network/timeout): throw — BullMQ retenta com backoff exp `5s → 10s → 20s → 40s` (4 attempts total).
+11. Modo mock: se `META_DISABLED=true`, `sendTemplate` retorna `wamid: 'mock-...'` simulado sem bater na Meta — útil em CI/dev.
 
-### 5.3 Fluxo: Recepção de webhook Meta (mensagem do morador)
+**Reenvio manual:** `POST /api/pacotes/{id}/reenviar-whatsapp` (story 4.6) com auth porteiro/admin, valida `status=aguardando_retirada`, rate limit 3/h por pacote, enfileira com `forceUnique=true` (jobId com timestamp pra evitar dedupe).
 
-1. POST `/api/webhooks/meta-whatsapp` recebe evento.
-2. Valida assinatura HMAC (`X-Hub-Signature-256`) — bloqueia se inválida.
-3. Extrai `from` (telefone do morador) e `text.body` (mensagem).
-4. Lookup `morador WHERE telefone = from` em **todos os condomínios** (porque o número do sistema é compartilhado).
-5. Se encontrou: enfileira `processIncomingMessage` job com `{ moradorId, condominioId, mensagem }`.
-6. Worker tenta extrair código ML via regex simples + LLM se necessário.
-7. Salva em `codigo_ml_pendente` com `expira_em = now + 30d`.
-8. Envia template `codigo_ml_recebido` confirmando.
-9. Retorna 200 OK pra Meta (sempre, mesmo em erro interno — Meta retenta se 5xx).
+### 5.3 Fluxo: Recepção de webhook Meta (story 4.4, atualizado 2026-05-08)
+
+1. `GET /api/webhooks/meta-whatsapp?hub.mode=subscribe&hub.verify_token=...&hub.challenge=...` — handshake inicial. Valida `verify_token === META_WEBHOOK_VERIFY_TOKEN` e ecoa challenge com 200 text/plain.
+2. `POST /api/webhooks/meta-whatsapp` — eventos. Lê body bruto (`request.text()`) ANTES de parsear (necessário pra HMAC).
+3. Valida assinatura `X-Hub-Signature-256` via HMAC-SHA256 timing-safe (`crypto.timingSafeEqual`) com `META_APP_SECRET`. Se inválida → 401 (loga apenas IP + body size, **nunca** signature ou body).
+4. Para cada `entry[].changes[].value` com `field='messages'`, enfileira job `processWhatsappWebhook` com payload do `value`. Retorna 200 imediatamente (Meta exige <1s).
+5. Worker `processWhatsappWebhook` roteia entre dois sub-handlers:
+
+**`handleStatusUpdate`** (status outbound):
+- Lookup `WhatsAppMessage WHERE meta_message_id = status.id`. Se não encontrado: log warn + skip.
+- Idempotência via `STATUS_RANK` (pending=0, sent=1, delivered=2, read=3, failed=99). Não regride status (delivered → sent é ignorado), exceto failed que sempre vence.
+- Atualiza timestamps correspondentes (`sent_at`, `delivered_at`, `read_at`, `failed_at`) + `failure_reason` se houver.
+
+**`handleInboundMessage`** (mensagem do morador — Epic 7 vai consumir):
+- Idempotência via `meta_message_id @unique`: se já existe, retorna `duplicate`.
+- Lookup `Morador WHERE telefone = message.from` (cross-tenant — número do sistema é compartilhado). Ordena por `updated_at desc` pra preferir morador mais recente.
+- Cria `WhatsAppMessage` direção `inbound` com `morador_id` (pode ser null se telefone não cadastrado).
+- **Não processa código ML aqui** — apenas registra. Epic 7 cria handler dedicado escutando inserts em WhatsAppMessage inbound.
+
+**Bloqueio:** Etapa 6 do runbook setup-meta-whatsapp (configurar webhook URL no painel Meta) só é executável após deploy em produção, porque Meta faz GET de verificação numa URL pública.
 
 ### 5.4 Fluxo: Retirada do pacote
 
