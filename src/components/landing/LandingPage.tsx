@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_LP_WHATSAPP ?? '5511914980582';
@@ -194,6 +195,9 @@ function Footer() {
           >
             WhatsApp
           </a>
+          <Link href="/sign-in" className="hover:text-brand-ink">
+            Entrar
+          </Link>
           <span>© {new Date().getFullYear()} Ponto 24</span>
         </div>
       </div>

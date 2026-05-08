@@ -5,9 +5,10 @@
  * Cobre:
  *   1. POST sem headers svix → 400
  *   2. POST com assinatura inválida → 400
- *   3. POST user.created válido → cria user no DB
- *   4. POST user.updated → preserva condominio_id/role
- *   5. POST user.deleted → seta ativo=false (não deleta)
+ *   3. POST user.created sem registro pré-provisionado → BLOQUEADO (self-signup off)
+ *   4. POST user.created reconciliando registro pré-provisionado por email
+ *   5. POST user.updated → preserva condominio_id/role
+ *   6. POST user.deleted → seta ativo=false (não deleta)
  *
  * Pula automaticamente se DB inacessível ou CLERK_WEBHOOK_SECRET ausente.
  */
@@ -103,15 +104,59 @@ describe.skipIf(!CONFIGURED)('Clerk webhook handler', () => {
     expect(res.status).toBe(400);
   });
 
-  it('aceita user.created válido e cria user no DB', async () => {
+  it('user.created sem registro pré-provisionado: BLOQUEADO (self-signup off)', async () => {
     if (!APP_REACHABLE) return;
     const payload = {
       type: 'user.created',
       data: {
-        id: TEST_CLERK_ID,
+        id: `user_orphan_${TEST_TAG}`,
         email_addresses: [
-          { id: 'eml_1', email_address: `${TEST_TAG}@test.local` },
+          { id: 'eml_1', email_address: `orphan-${TEST_TAG}@test.local` },
         ],
+        primary_email_address_id: 'eml_1',
+        first_name: 'Forasteiro',
+        last_name: 'Teste',
+      },
+    };
+    const { body, headers } = buildSignedRequest(payload, WEBHOOK_SECRET!);
+    const res = await fetch(`${APP_URL}${WEBHOOK_PATH}`, {
+      method: 'POST',
+      body,
+      headers,
+    });
+    // Webhook responde 200 mas com reason — Clerk não retenta
+    expect(res.status).toBe(200);
+
+    const user = await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SET LOCAL app.is_super_admin = 'true'`;
+      return tx.user.findUnique({ where: { clerk_id: `user_orphan_${TEST_TAG}` } });
+    });
+    expect(user).toBeNull(); // NADA criado no DB
+  });
+
+  it('user.created reconcilia registro pré-provisionado por email', async () => {
+    if (!APP_REACHABLE) return;
+    const email = `${TEST_TAG}@test.local`;
+    // Setup: simula provisionamento via /api/super-admin/users (story 8.5)
+    await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SET LOCAL app.is_super_admin = 'true'`;
+      await tx.user.create({
+        data: {
+          clerk_id: `pending_clerk_link_${TEST_TAG}`,
+          email,
+          nome: 'Maria Pré-cadastrada',
+          role: 'admin',
+          condominio_id: null,
+          ativo: true,
+        },
+      });
+    });
+
+    const payload = {
+      type: 'user.created',
+      data: {
+        id: TEST_CLERK_ID,
+        email_addresses: [{ id: 'eml_1', email_address: email }],
         primary_email_address_id: 'eml_1',
         first_name: 'Maria',
         last_name: 'Teste',
@@ -130,10 +175,8 @@ describe.skipIf(!CONFIGURED)('Clerk webhook handler', () => {
       return tx.user.findUnique({ where: { clerk_id: TEST_CLERK_ID } });
     });
     expect(user).toBeTruthy();
-    expect(user?.email).toBe(`${TEST_TAG}@test.local`);
-    expect(user?.nome).toBe('Maria Teste');
-    expect(user?.role).toBe('porteiro');
-    expect(user?.condominio_id).toBeNull();
+    expect(user?.email).toBe(email);
+    expect(user?.role).toBe('admin'); // role preservada do pré-cadastro
     expect(user?.ativo).toBe(true);
   });
 
