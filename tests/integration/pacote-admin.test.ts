@@ -49,7 +49,7 @@ beforeAll(async () => {
         clerk_id: `${TAG}-clerk`,
         email: `${TAG}@t.com`,
         nome: 'Admin',
-        role: 'admin',
+        role: 'admin_master',
         condominio_id: condAId,
       },
     });
@@ -95,7 +95,7 @@ const ctx = () => ({
   kind: 'tenant' as const,
   userId: userAId,
   condominioId: condAId,
-  role: 'admin' as const,
+  role: 'admin_master' as const,
 });
 
 async function createPacote(condId: string, data: Record<string, unknown>) {

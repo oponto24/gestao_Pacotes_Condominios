@@ -30,7 +30,8 @@ datasource db {
 
 enum UserRole {
   super_admin
-  admin
+  admin_master      // ex-`admin` — síndico/admin geral do condomínio (story 10.1)
+  admin_funcionario // operacional da admin (secretária, zelador adm) — story 10.1
   porteiro
 }
 
@@ -109,6 +110,10 @@ model Condominio {
   contato_telefone String    @db.VarChar(20)
   contato_email    String?   @db.VarChar(200)
   ativo            Boolean   @default(true)
+  /// Story 10.1: condomínio tem equipe administrativa dedicada (síndico + funcionários
+  /// da admin)? Define se a organização do pacote é feita pelo porteiro (false) ou
+  /// pela administração (true). Default false preserva fluxo atual.
+  tem_administracao Boolean  @default(false)
   created_at       DateTime  @default(now())
   updated_at       DateTime  @updatedAt
   deleted_at       DateTime?

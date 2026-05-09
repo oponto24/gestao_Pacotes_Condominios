@@ -24,7 +24,7 @@ export default async function AdminEquipePage() {
 
   return (
     <div className="mx-auto max-w-6xl p-6">
-      <AdminUsersListClient rows={rows} role="admin" />
+      <AdminUsersListClient rows={rows} role="admin_master" />
     </div>
   );
 }

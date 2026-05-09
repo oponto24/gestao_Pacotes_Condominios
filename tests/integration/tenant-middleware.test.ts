@@ -87,14 +87,14 @@ const ctxA = (): TenantContext => ({
   kind: 'tenant',
   userId: '00000000-0000-0000-0000-000000000001',
   condominioId: condAId,
-  role: 'admin',
+  role: 'admin_master',
 });
 
 const ctxB = (): TenantContext => ({
   kind: 'tenant',
   userId: '00000000-0000-0000-0000-000000000002',
   condominioId: condBId,
-  role: 'admin',
+  role: 'admin_master',
 });
 
 const ctxSuperAdmin = (): TenantContext => ({

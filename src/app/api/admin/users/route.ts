@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       userId: ctx.userId,
       condominioId: ctx.condominioId,
       acao:
-        parsed.data.role === 'admin'
+        parsed.data.role === 'admin_master' || parsed.data.role === 'admin_funcionario'
           ? 'admin_created_by_admin'
           : 'porteiro_created_by_admin',
       entidadeTipo: 'user',

@@ -31,8 +31,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // super_admin não tem AdminLayout — vai para sua área dedicada
   if (ctx.kind === 'super_admin') redirect('/super-admin/condominios');
 
-  // Apenas admin passa. Porteiro vai pra raiz (futuro `/portaria`).
-  if (ctx.role !== 'admin') redirect('/');
+  // Apenas admin_master passa. admin_funcionario e porteiro vão pra raiz.
+  // Story 10.5 vai criar /administracao pra admin_funcionario.
+  if (ctx.role !== 'admin_master') redirect('/');
 
   const condominio = await db.condominio.findUnique({
     where: { id: ctx.condominioId },
@@ -56,6 +57,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       condominioCidadeUf={`${condominio.cidade}/${condominio.estado}`}
       userNome={user?.nome ?? 'Admin'}
       userEmail={user?.email}
+      userRole={ctx.role}
     >
       {children}
     </AdminLayoutClient>

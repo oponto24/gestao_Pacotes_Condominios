@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     const created = await createPendingUser({
       email: parsed.data.email,
       nome: parsed.data.nome,
-      role: 'admin',
+      role: 'admin_master',
       condominioId: parsed.data.condominio_id,
     });
 

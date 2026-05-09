@@ -19,11 +19,11 @@ export interface AdminUserRow {
 
 interface Props {
   rows: AdminUserRow[];
-  role: 'admin' | 'porteiro';
+  role: 'admin_master' | 'porteiro';
 }
 
 const TITLES = {
-  admin: { heading: 'Equipe (admins do condomínio)', cta: 'Adicionar admin' },
+  admin_master: { heading: 'Equipe (admins do condomínio)', cta: 'Adicionar admin' },
   porteiro: { heading: 'Funcionários (porteiros)', cta: 'Adicionar porteiro' },
 } as const;
 
@@ -55,7 +55,7 @@ export function AdminUsersListClient({ rows, role }: Props) {
       {rows.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-text-secondary">
-            Nenhum {role === 'admin' ? 'admin' : 'porteiro'} cadastrado ainda.
+            Nenhum {role === 'admin_master' ? 'admin' : 'porteiro'} cadastrado ainda.
           </p>
         </div>
       ) : (

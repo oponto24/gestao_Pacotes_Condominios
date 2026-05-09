@@ -1,6 +1,19 @@
 # Runbook — Super-Admin
 
-> **Story:** 2.1 (CRUD Condominio) | **Owner:** Dev (Dex) | **Última atualização:** 2026-05-06
+> **Story:** 2.1 (CRUD Condominio), 10.1 (hierarquia roles) | **Owner:** Dev (Dex) | **Última atualização:** 2026-05-08
+
+## Hierarquia de roles (PRD §3.8 — Story 10.1)
+
+| Role | Onde opera | Capabilities principais |
+|------|-----------|------------------------|
+| `super_admin` | `/super-admin/*` | Cria condomínios, ativa/desativa, impersona admins, governança SaaS |
+| `admin_master` | `/admin/*` | Síndico/admin geral. CRUD de cadastros (blocos, unidades, moradores, equipe), configura `tem_administracao` |
+| `admin_funcionario` | `/administracao/*` (Story 10.5) + `/chegada` (operacional) | Funcionário da admin. Organiza pacotes em condomínio com administração + entrega ao morador |
+| `porteiro` | `/chegada`, `/retirada`, `/portaria/*` | Recebe pacotes, organiza (em condomínio sem admin), entrega no QR |
+
+**Bipe entrega final** (FR-083): qualquer role operacional (`admin_master`, `admin_funcionario`, `porteiro`) pode finalizar — flexibilidade pra suprir ausências.
+
+**Refactor histórico (Story 10.1, 2026-05-08):** o role `admin` foi renomeado para `admin_master` via migration `ALTER TYPE RENAME VALUE`. Novo `admin_funcionario` adicionado. Alias deprecated `requireAdmin` mantido por 1 release como sinônimo de `requireAdminMaster`.
 
 ## Quem é super_admin
 

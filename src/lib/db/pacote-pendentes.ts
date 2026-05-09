@@ -10,7 +10,7 @@ export interface PendenteCtx {
   kind: 'tenant';
   userId: string;
   condominioId: string;
-  role: 'admin' | 'porteiro';
+  role: 'admin_master' | 'admin_funcionario' | 'porteiro';
 }
 
 export interface PendenteListItem {

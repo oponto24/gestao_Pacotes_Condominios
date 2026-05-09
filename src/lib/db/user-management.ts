@@ -12,7 +12,7 @@ import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { ValidationError } from '@/server/errors';
 
-export type CreatableRole = 'admin' | 'porteiro';
+export type CreatableRole = 'admin_master' | 'admin_funcionario' | 'porteiro';
 
 export interface CreatePendingUserInput {
   email: string;
@@ -84,7 +84,7 @@ export async function createPendingUser(
 
 export async function listAdminsByCondominio(condominioId: string): Promise<PendingUser[]> {
   return db.user.findMany({
-    where: { condominio_id: condominioId, role: 'admin' },
+    where: { condominio_id: condominioId, role: { in: ['admin_master', 'admin_funcionario'] } },
     orderBy: { created_at: 'desc' },
   }) as Promise<PendingUser[]>;
 }
@@ -100,7 +100,7 @@ export async function listAllAdmins(): Promise<
   Array<PendingUser & { condominio_nome: string | null }>
 > {
   const admins = (await db.user.findMany({
-    where: { role: 'admin' },
+    where: { role: { in: ['admin_master', 'admin_funcionario'] } },
     orderBy: [{ condominio_id: 'asc' }, { created_at: 'desc' }],
   })) as PendingUser[];
   const condIds = [...new Set(admins.map((a) => a.condominio_id).filter(Boolean) as string[])];

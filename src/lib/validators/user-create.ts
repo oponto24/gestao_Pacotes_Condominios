@@ -16,7 +16,9 @@ export const userCreateSuperAdminSchema = z.object({
 export const userCreateAdminSchema = z.object({
   email: z.string().email('E-mail inválido').max(200),
   nome: z.string().trim().min(1, 'Nome obrigatório').max(200),
-  role: z.enum(['admin', 'porteiro'], { message: 'Role inválido (apenas admin ou porteiro)' }),
+  role: z.enum(['admin_master', 'admin_funcionario', 'porteiro'], {
+    message: 'Role inválido (apenas admin_master, admin_funcionario ou porteiro)',
+  }),
 });
 
 export type UserCreateSuperAdminInput = z.infer<typeof userCreateSuperAdminSchema>;
