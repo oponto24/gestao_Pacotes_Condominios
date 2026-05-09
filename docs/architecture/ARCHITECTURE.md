@@ -161,6 +161,38 @@ src/lib/queue/jobs/
 
 **Setup operacional:** ver `docs/runbooks/setup-meta-whatsapp.md` (Etapas 1-6).
 
+### 2.5 Hierarquia operacional (refactor Epic 10 — pendente)
+
+> **Status atual (2026-05-08):** schema atual usa enum `Role { super_admin | admin | porteiro }` e `PacoteStatus { rascunho | pendente_identificacao | confirmado | aguardando_retirada | retirado | cancelado }`. Epic 10 vai refatorar para suportar hierarquia operacional (PRD §3.8).
+
+**Refactor planejado em Epic 10:**
+
+| Antes | Depois |
+|-------|--------|
+| `Role.admin` | `Role.admin_master` (síndico/admin geral) + novo `Role.admin_funcionario` (operacional da admin) |
+| Sem flag de admin | `Condominio.tem_administracao Boolean @default(false)` |
+| `PacoteStatus`: confirmado → aguardando_retirada (porteiro organiza) | Adiciona `aguardando_organizacao` (entre confirmado e aguardando_retirada, em condomínio com adm) |
+| Sem trajeto adm | Adiciona `em_administracao` (após `aguardando_retirada`, quando pacote sai da portaria pra admin entregar) |
+
+**Fluxo bifurcado (após Epic 10):**
+
+```
+Condomínio SEM administração (atual):
+  porteiro recebe → confirma morador → organiza setor+pos → dispara WhatsApp → entrega QR
+
+Condomínio COM administração:
+  porteiro recebe → confirma morador →
+    [aguardando_organizacao]
+    admin organiza setor+pos → dispara WhatsApp →
+    [aguardando_retirada]
+    morador apresenta QR → entrega
+    (ou pacote vai pra trajeto adm)
+    [em_administracao]
+    admin entrega ao morador (ou porteiro pode bipar com aviso)
+```
+
+**Bipe entrega flexível (FR-083):** qualquer role operacional pode finalizar entrega.
+
 ---
 
 ## 3. Estrutura de pastas (Monorepo único Next.js)

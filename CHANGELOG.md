@@ -6,7 +6,29 @@ Histórico de mudanças do projeto. Formato baseado em [Keep a Changelog](https:
 
 ---
 
-## [Unreleased] — Epic 4 (PR #59)
+## [2026-05-08-pos-deploy] — Etapa 6 Meta WhatsApp + hotfixes deploy
+
+### Added
+
+- Webhook Meta WhatsApp configurado em produção (`/api/webhooks/meta-whatsapp`) — validado por Meta, inscrito em `messages` + `message_template_status_update`
+- `META_WEBHOOK_VERIFY_TOKEN` adicionado a `.env.prod`
+- Decisões de produto pós-Epic 4 capturadas no PRD (admin levels, palavra-chave, hierarquia, audit, dashboard)
+
+### Fixed (hotfix PR #60)
+
+- `docker-compose.prod.yml` faltava 9 vars Meta novas do Epic 4 — webhook retornava 403 e sendTemplate falhava por env ausente
+- App e worker agora propagam `META_APP_ID`, `META_APP_SECRET`, `META_ACCESS_TOKEN`, `META_WEBHOOK_VERIFY_TOKEN`, `APP_URL`, etc.
+
+### Docs (PR #62)
+
+- PRD ganhou §3.8 (hierarquia operacional), §3.9 (lembretes), §3.10 (busca + Torres/Blocos), §3.11 (audit), §3.12 (dashboard)
+- Renomeação "código ML" → "palavra-chave" (terminologia operacional)
+- Roadmap pós-MVP definido: Epic 10 → 7 → 11 → 12 (~13 dias dev)
+- Documentação simplificada -31% linhas (1395 → 959), eliminando duplicação
+
+---
+
+## [2026-05-08] — Epic 4 (PR #59)
 
 ### Added — Notificação WhatsApp
 
