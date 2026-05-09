@@ -2,9 +2,9 @@
 
 PWA mobile-first **com identidade Ponto24** (amarelo `#FDC800` + violet `#7C3AED`) para gerenciar a chegada e retirada de encomendas em condomínios, com notificação ao morador via WhatsApp e extração automática de dados de etiqueta por IA (Gemini Flash-Lite default + Claude Haiku 4.5 fallback, ambos com vision).
 
-> **Status (2026-05-08):** MVP funcional ponta-a-ponta + Epic 4 (WhatsApp) implementado. **401/401 tests passing**. Em produção em [https://condominios.oponto24.com.br](https://condominios.oponto24.com.br) (HTTPS Let's Encrypt). Pipeline real validado: foto → IA → matching CEP+nome+complemento → confirmação → organização → **notificação WhatsApp (template Meta + QR Code) → scan QR → retirada com auditoria completa**.
+> **Status (2026-05-09):** Em produção em [https://condominios.oponto24.com.br](https://condominios.oponto24.com.br). **312/312 unit tests passando**. Epics 1-7, 10, parcial 11/12 entregues. Pipeline real: foto → IA → matching apto+bloco+nome → confirmação (porteiro ou admin) → organização → **notificação WhatsApp + QR + lembrete 24h automático** → scan QR → retirada com auditoria completa. Suporta condomínios com **administração dedicada** (rota separada porteiro vs admin) ou só portaria.
 >
-> **Pendências externas:** aprovação Meta do template `pacote_chegou` (smoke real), deploy 4.4 webhook em prod, chip dedicado WhatsApp pra produção. Detalhes no runbook [`docs/runbooks/setup-meta-whatsapp.md`](docs/runbooks/setup-meta-whatsapp.md).
+> **Pendências externas:** aprovação Meta do template `pacote_chegou` + submissão dos templates `palavra_chave_recebida` e `morador_nao_cadastrado`, chip dedicado WhatsApp pra produção real. Detalhes no runbook [`docs/runbooks/setup-meta-whatsapp.md`](docs/runbooks/setup-meta-whatsapp.md).
 
 **Documentação completa:**
 - 📋 PRD: [`docs/prd/PRD.md`](docs/prd/PRD.md)
