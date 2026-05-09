@@ -45,7 +45,9 @@ enum TamanhoPacote {
 enum PacoteStatus {
   rascunho // criado, esperando IA + confirmação
   pendente_identificacao // IA não casou com unidade, admin precisa resolver
+  aguardando_organizacao // story 10.2 — porteiro confirmou morador, aguarda admin organizar (em condomínio com adm)
   aguardando_retirada // notificado, esperando morador
+  em_administracao // story 10.2 — saiu da portaria, está com admin pra entregar (rota administração)
   retirado // entregue ao morador
   cancelado // descartado (erro de cadastro)
 }
