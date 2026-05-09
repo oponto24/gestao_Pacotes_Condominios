@@ -85,10 +85,19 @@ export function IAExtractionForm({ pacote }: Props) {
       const body = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         message?: string;
+        tem_administracao?: boolean;
       };
       if (!res.ok) throw new Error(body.message ?? `Erro HTTP ${res.status}`);
 
-      router.push(`/chegada/organizar/${pacote.id}`);
+      // Story 10.4: bifurcação fluxo chegada baseada em tem_administracao
+      // - Com admin: pacote já saiu da fila do porteiro (status=aguardando_organizacao)
+      //   e a admin organiza setor/posição. Volta pra /chegada (próximo pacote)
+      // - Sem admin: porteiro segue pra organizar setor/posição
+      if (body.tem_administracao) {
+        router.push('/chegada?msg=enviado_administracao');
+      } else {
+        router.push(`/chegada/organizar/${pacote.id}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao confirmar');
       setSubmitting(false);

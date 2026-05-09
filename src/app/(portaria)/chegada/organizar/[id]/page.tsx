@@ -20,6 +20,10 @@ export default async function OrganizarPacotePage({
   // Se já organizado, redireciona pra /chegada (ciclo recomeça)
   if (pacote.ja_organizado) redirect('/chegada');
 
+  // Story 10.4: pacote em condomínio com administração saiu da fila do porteiro.
+  // Story 10.5 vai criar /administracao/organizar — por enquanto redirect pra /chegada.
+  if (pacote.status === 'aguardando_organizacao') redirect('/chegada?msg=enviado_administracao');
+
   if (!pacote.unidade_id) {
     redirect(`/chegada/confirmar/${id}`);
   }
