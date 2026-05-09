@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ponto 24 — Gestão de Pacotes em Condomínios</title>
+<style>
+  :root {
+    --brand-yellow: #FDC800;
+    --brand-violet: #7C3AED;
+    --brand-violet-dark: #5B21B6;
+    --brand-yellow-soft: #FEF3C7;
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --text: #0F172A;
+    --text-soft: #475569;
+    --text-muted: #94A3B8;
+    --border: #E2E8F0;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --shadow: 0 1px 3px rgba(15, 23, 42, .04), 0 1px 2px rgba(15, 23, 42, .03);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, .06), 0 2px 4px rgba(15, 23, 42, .04);
+    --shadow-lg: 0 12px 32px rgba(15, 23, 42, .08), 0 4px 8px rgba(15, 23, 42, .04);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--brand-violet); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(135deg, var(--brand-violet) 0%, var(--brand-violet-dark) 100%);
+    color: white;
+    padding: 80px 24px 100px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, var(--brand-yellow) 0%, transparent 70%);
+    opacity: .15;
+  }
+  .hero-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+  .hero-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, .12);
+    backdrop-filter: blur(10px);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 32px;
+    border: 1px solid rgba(255, 255, 255, .18);
+  }
+  .hero-logo-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--brand-yellow);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--brand-yellow);
+  }
+  .hero h1 {
+    font-size: clamp(40px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -.03em;
+    margin-bottom: 20px;
+    max-width: 900px;
+  }
+  .hero h1 .highlight {
+    background: linear-gradient(90deg, var(--brand-yellow) 0%, #FFD93D 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    padding: 0 4px;
+  }
+  .hero p.lead {
+    font-size: clamp(18px, 2vw, 22px);
+    opacity: .9;
+    max-width: 700px;
+    margin-bottom: 32px;
+    line-height: 1.5;
+  }
+  .hero-stats {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .hero-stat-num {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--brand-yellow);
+    line-height: 1;
+  }
+  .hero-stat-label {
+    font-size: 13px;
+    opacity: .85;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--brand-yellow);
+    color: var(--text);
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-weight: 700;
+    margin-top: 32px;
+    margin-right: 12px;
+    box-shadow: 0 8px 24px rgba(253, 200, 0, .35);
+    transition: transform .2s, box-shadow .2s;
+  }
+  .hero-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(253, 200, 0, .45);
+    text-decoration: none;
+  }
+  .hero-cta-secondary {
+    background: rgba(255, 255, 255, .12);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, .25);
+    box-shadow: none;
+  }
+  .hero-cta-secondary:hover {
+    background: rgba(255, 255, 255, .2);
+    box-shadow: none;
+  }
+
+  /* SECTIONS */
+  section {
+    padding: 80px 24px;
+  }
+  .section-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .eyebrow {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--brand-violet);
+    margin-bottom: 12px;
+  }
+  h2 {
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin-bottom: 16px;
+    line-height: 1.15;
+  }
+  section p.intro {
+    font-size: 18px;
+    color: var(--text-soft);
+    max-width: 700px;
+    margin-bottom: 48px;
+  }
+
+  /* PROBLEMA */
+  .problema-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  .pain-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--danger);
+    border-radius: 12px;
+    padding: 28px 24px;
+    box-shadow: var(--shadow);
+  }
+  .pain-card .icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .pain-card h3 {
+    font-size: 17px;
+    margin-bottom: 8px;
+  }
+  .pain-card p {
+    font-size: 15px;
+    color: var(--text-soft);
+  }
+
+  /* SOLUÇÃO */
+  .solucao {
+    background: var(--surface);
+  }
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-top: 32px;
+    counter-reset: step;
+  }
+  .step {
+    background: linear-gradient(180deg, var(--brand-yellow-soft) 0%, white 100%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 20px;
+    position: relative;
+    counter-increment: step;
+  }
+  .step::before {
+    content: counter(step);
+    position: absolute;
+    top: -16px;
+    left: 20px;
+    width: 36px;
+    height: 36px;
+    background: var(--brand-violet);
+    color: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 16px;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, .3);
+  }
+  .step h4 {
+    font-size: 15px;
+    margin-top: 12px;
+    margin-bottom: 6px;
+  }
+  .step p {
+    font-size: 13px;
+    color: var(--text-soft);
+    line-height: 1.45;
+  }
+
+  /* DIFERENCIAIS */
+  .diferenciais-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+  }
+  .diff-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 28px;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+  }
+  .diff-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--brand-violet);
+  }
+  .diff-card .badge {
+    display: inline-block;
+    background: var(--brand-yellow);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 16px;
+  }
+  .diff-card h3 {
+    font-size: 19px;
+    margin-bottom: 10px;
+  }
+  .diff-card p {
+    color: var(--text-soft);
+    font-size: 15px;
+  }
+
+  /* MÉTRICAS / VENDÁVEL */
+  .vendavel {
+    background: linear-gradient(135deg, #1A0B2E 0%, #2D1B69 100%);
+    color: white;
+  }
+  .vendavel .eyebrow { color: var(--brand-yellow); }
+  .vendavel h2 { color: white; }
+  .vendavel p.intro { color: rgba(255, 255, 255, .8); }
+  .metricas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+  }
+  .metric {
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 14px;
+    padding: 28px 24px;
+    backdrop-filter: blur(20px);
+  }
+  .metric-value {
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--brand-yellow);
+    line-height: 1;
+    letter-spacing: -.02em;
+  }
+  .metric-label {
+    margin-top: 8px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, .85);
+  }
+  .metric-detail {
+    margin-top: 12px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, .55);
+    line-height: 1.4;
+  }
+
+  /* PROGRESSO / FEITO */
+  .progress-bar {
+    background: var(--brand-yellow-soft);
+    border-radius: 999px;
+    overflow: hidden;
+    height: 12px;
+    margin: 8px 0 32px;
+  }
+  .progress-fill {
+    background: linear-gradient(90deg, var(--brand-violet) 0%, #A855F7 100%);
+    height: 100%;
+    border-radius: 999px;
+    transition: width 1s ease;
+  }
+  .epics-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+  }
+  .epic-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: border-color .2s, transform .2s;
+  }
+  .epic-card:hover {
+    border-color: var(--brand-violet);
+    transform: translateX(4px);
+  }
+  .epic-status {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .epic-status.done { background: var(--success); color: white; }
+  .epic-status.partial { background: var(--brand-yellow); color: var(--text); }
+  .epic-status.todo { background: var(--border); color: var(--text-muted); }
+  .epic-text { flex: 1; }
+  .epic-num {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 700;
+    letter-spacing: .04em;
+  }
+  .epic-name {
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .epic-desc {
+    font-size: 13px;
+    color: var(--text-soft);
+    margin-top: 4px;
+  }
+
+  /* FALTA */
+  .falta {
+    background: var(--surface);
+  }
+  .falta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  .falta-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--brand-yellow);
+    border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .falta-card.bloqueado {
+    border-left-color: var(--danger);
+  }
+  .falta-card.parcial {
+    border-left-color: var(--warning);
+  }
+  .falta-card h4 {
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+  .falta-card p {
+    font-size: 13px;
+    color: var(--text-soft);
+    line-height: 1.5;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .tag.externo { background: #FEF2F2; color: #B91C1C; }
+  .tag.interno { background: #FEF3C7; color: #92400E; }
+  .tag.futuro { background: #EDE9FE; color: var(--brand-violet-dark); }
+
+  /* FOOTER */
+  footer {
+    background: var(--text);
+    color: rgba(255, 255, 255, .85);
+    padding: 60px 24px 40px;
+  }
+  .footer-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 40px;
+  }
+  footer h5 {
+    color: var(--brand-yellow);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    margin-bottom: 12px;
+  }
+  footer p, footer li {
+    font-size: 14px;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, .7);
+  }
+  footer ul { list-style: none; }
+  footer a { color: var(--brand-yellow); }
+  .copyright {
+    max-width: 1100px;
+    margin: 40px auto 0;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    font-size: 12px;
+    color: rgba(255, 255, 255, .5);
+    text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    .hero { padding: 60px 20px 80px; }
+    section { padding: 60px 20px; }
+    .footer-inner { grid-template-columns: 1fr; }
+    .hero-stats { gap: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="hero-logo">
+      <span class="hero-logo-dot"></span>
+      <span>PONTO 24</span>
+    </div>
+    <h1>O fim da bagunça de pacotes na <span class="highlight">portaria do condomínio</span></h1>
+    <p class="lead">
+      Plataforma SaaS que transforma o caos de encomendas em fluxo organizado: porteiro fotografa,
+      a IA lê, o morador é avisado pelo WhatsApp e retira com QR Code. Zero papelada, zero extravio,
+      zero ligação perdida.
+    </p>
+    <div class="hero-stats">
+      <div>
+        <div class="hero-stat-num">&lt;30s</div>
+        <div class="hero-stat-label">Por pacote registrado</div>
+      </div>
+      <div>
+        <div class="hero-stat-num">~R$ 5</div>
+        <div class="hero-stat-label">Custo / condomínio / mês</div>
+      </div>
+      <div>
+        <div class="hero-stat-num">100%</div>
+        <div class="hero-stat-label">Auditável (timestamp + foto)</div>
+      </div>
+      <div>
+        <div class="hero-stat-num">0</div>
+        <div class="hero-stat-label">App pra instalar (PWA + WhatsApp)</div>
+      </div>
+    </div>
+    <div>
+      <a href="https://condominios.oponto24.com.br" class="hero-cta" target="_blank">
+        Ver em produção →
+      </a>
+      <a href="#progresso" class="hero-cta hero-cta-secondary">
+        Estado atual
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- PROBLEMA -->
+<section>
+  <div class="section-inner">
+    <span class="eyebrow">A dor real</span>
+    <h2>Todo condomínio vive a mesma novela com pacotes</h2>
+    <p class="intro">
+      Crescimento do e-commerce + entregadores apressados + portaria com 1-2 funcionários =
+      receita pra confusão. O caderno de papel virou o gargalo da operação.
+    </p>
+    <div class="problema-grid">
+      <div class="pain-card">
+        <span class="icon">📒</span>
+        <h3>Caderno de papel ilegível</h3>
+        <p>Letra ruim, falta de info, perda de páginas. Quando o morador reclama "cadê meu pacote?", ninguém acha.</p>
+      </div>
+      <div class="pain-card">
+        <span class="icon">📞</span>
+        <h3>Síndico fica de plantão no telefone</h3>
+        <p>"O pacote chegou?" 50× por semana. Sem aviso automático, o porteiro vira call center.</p>
+      </div>
+      <div class="pain-card">
+        <span class="icon">🔑</span>
+        <h3>Palavra-chave do ML perdida</h3>
+        <p>Mercado Livre exige palavra-chave pra entrega. Morador não está em casa, porteiro não sabe, entregador volta.</p>
+      </div>
+      <div class="pain-card">
+        <span class="icon">📦</span>
+        <h3>Extravio sem responsável</h3>
+        <p>"Eu não recebi" vs "eu entreguei pro João". Sem registro auditável, todo mundo perde.</p>
+      </div>
+      <div class="pain-card">
+        <span class="icon">⏱️</span>
+        <h3>Pacote esquecido por dias</h3>
+        <p>Sem notificação ativa, ele fica empilhado. Quando o morador lembra, já tem 30 pacotes na frente.</p>
+      </div>
+      <div class="pain-card">
+        <span class="icon">🏗️</span>
+        <h3>Prédio grande = caos exponencial</h3>
+        <p>Em condomínios com administração dedicada, o fluxo porteiro→admin→morador não tem ferramenta nenhuma.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUÇÃO -->
+<section class="solucao">
+  <div class="section-inner">
+    <span class="eyebrow">A solução</span>
+    <h2>Da chegada à retirada em 4 atos sem fricção</h2>
+    <p class="intro">
+      Pipeline simples, mobile-first, sem app pra morador instalar. O canal é o WhatsApp que ele já usa todos os dias.
+    </p>
+    <div class="pipeline">
+      <div class="step">
+        <h4>Bipe + Foto</h4>
+        <p>Porteiro abre <code>/chegada</code> no celular, escaneia código de barras (opcional) e tira foto da etiqueta.</p>
+      </div>
+      <div class="step">
+        <h4>IA lê em &lt;3s</h4>
+        <p>Gemini Flash-Lite extrai nome, endereço, complemento, transportadora. Custo: R$ 0,002 por foto.</p>
+      </div>
+      <div class="step">
+        <h4>Match automático</h4>
+        <p>Sistema casa apto + bloco + nome com cadastro. Se não bate, vai pra fila de pendentes (admin resolve).</p>
+      </div>
+      <div class="step">
+        <h4>Organizar setor</h4>
+        <p>Porteiro (ou admin, dependendo do prédio) define onde guardar: setor + posição (ex: "Prateleira 3").</p>
+      </div>
+      <div class="step">
+        <h4>WhatsApp + QR</h4>
+        <p>Morador recebe template aprovado pela Meta com nome do condomínio + QR Code 1200×628.</p>
+      </div>
+      <div class="step">
+        <h4>Lembrete 24h</h4>
+        <p>Não retirou? Sistema reenvia QR a cada 24h. Se responde, pausa e admin reagenda.</p>
+      </div>
+      <div class="step">
+        <h4>Retirada com QR</h4>
+        <p>Porteiro escaneia QR, confirma destinatário (próprio ou terceiro com nome). Audit completo.</p>
+      </div>
+      <div class="step">
+        <h4>Painel auditável</h4>
+        <p>Síndico vê histórico, busca por morador/pacote, reenvia notificação, cancela com motivo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DIFERENCIAIS -->
+<section>
+  <div class="section-inner">
+    <span class="eyebrow">Por que vende</span>
+    <h2>5 diferenciais que tornam o Ponto 24 imbatível</h2>
+    <p class="intro">
+      Não é "mais um app de condomínio". É uma stack pensada de ponta a ponta pra zero fricção e custo operacional ínfimo.
+    </p>
+    <div class="diferenciais-grid">
+      <div class="diff-card">
+        <span class="badge">Zero fricção</span>
+        <h3>Morador sem app, sem cadastro</h3>
+        <p>O canal é WhatsApp. Funciona pra todas as idades, todas as transportadoras. Síndico ativa o condomínio em 1 hora.</p>
+      </div>
+      <div class="diff-card">
+        <span class="badge">IA real</span>
+        <h3>Etiqueta lida em segundos</h3>
+        <p>Gemini Flash-Lite (default) + Claude Haiku 4.5 (fallback). Vision com prompt caching, custo &lt; R$ 0,01/foto.</p>
+      </div>
+      <div class="diff-card">
+        <span class="badge">Operação flexível</span>
+        <h3>Funciona em qualquer prédio</h3>
+        <p>Predinho de 10 unidades só com porteiro? OK. Edifício gigante com administração dedicada? Tem fluxo separado pra admin organizar.</p>
+      </div>
+      <div class="diff-card">
+        <span class="badge">Palavra-chave ML</span>
+        <h3>Resolve o problema do Mercado Livre</h3>
+        <p>Morador manda a palavra-chave por WhatsApp. Aparece automaticamente pro porteiro quando o entregador chegar.</p>
+      </div>
+      <div class="diff-card">
+        <span class="badge">Auditoria 100%</span>
+        <h3>Tudo registrado, nada some</h3>
+        <p>Foto da etiqueta, hora de chegada, quem recebeu, hora de retirada, quem retirou (próprio ou terceiro com nome). LGPD-compliant.</p>
+      </div>
+      <div class="diff-card">
+        <span class="badge">Custo ínfimo</span>
+        <h3>~R$ 5 por condomínio/mês</h3>
+        <p>WhatsApp utility (Meta direto, sem BSP) + IA + VPS rateada. Modelo SaaS escalável com margens altas.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VENDÁVEL -->
+<section class="vendavel">
+  <div class="section-inner">
+    <span class="eyebrow">A oportunidade</span>
+    <h2>Mercado validado, dor universal, ROI direto</h2>
+    <p class="intro">
+      Condomínios são pulverizados, repetitivos e operam com margem de erro pequena. Software bom = decisão de minutos.
+    </p>
+    <div class="metricas-grid">
+      <div class="metric">
+        <div class="metric-value">100mil+</div>
+        <div class="metric-label">condomínios verticais no Brasil</div>
+        <div class="metric-detail">SECOVI-SP estima 25k só na Grande SP. TAM bilionário.</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value">200+</div>
+        <div class="metric-label">pacotes/mês em prédio médio</div>
+        <div class="metric-detail">100 unidades × 2 entregas/dia × 30 dias.</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value">R$ 199-299</div>
+        <div class="metric-label">mensalidade alvo</div>
+        <div class="metric-detail">≈ R$ 1-3 por unidade. Síndico aprova sem reunião.</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value">8-12 sem</div>
+        <div class="metric-label">payback do investimento</div>
+        <div class="metric-detail">Reduz extravios + 30% no tempo médio de retirada + zero overhead síndico.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROGRESSO -->
+<section id="progresso">
+  <div class="section-inner">
+    <span class="eyebrow">Onde estamos</span>
+    <h2>Em produção e funcionando</h2>
+    <p class="intro">
+      MVP em <strong><a href="https://condominios.oponto24.com.br" target="_blank">https://condominios.oponto24.com.br</a></strong>.
+      312 unit tests passando. Pipeline ponta-a-ponta validado em ambiente real.
+    </p>
+
+    <div style="margin-bottom: 16px; font-size: 14px; color: var(--text-soft);">
+      <strong>Progresso global:</strong> ~50 stories Done de ~75 totais (67%)
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" style="width: 67%;"></div>
+    </div>
+
+    <div class="epics-list">
+      <div class="epic-card">
+        <div class="epic-status done">✓</div>
+        <div class="epic-text">
+          <div class="epic-num">EPIC 1</div>
+          <div class="epic-name">Fundação técnica</div>
+          <div class="epic-desc">Monorepo, Docker, Postgres, Redis, RLS, Clerk, Pino. Multi-tenancy isolado.</div>
+        </div>
+      </div>
+      <div class="epic-card">
+        <div class="epic-status done">✓</div>
+        <div class="epic-text">
+          <div class="epic-num">EPIC 2</div>
+          <div class="epic-name">Cadastros</div>
+          <div class="epic-desc">CRUDs de condomínio, setor, unidade, morador. Importação CSV transacional.</div>
+        </div>
+      </div>
+      <div class="epic-card">
+        <div class="epic-status done">✓</div>
+        <div class="epic-text">
+          <div class="epic-num">EPIC 3</div>
+          <div class="epic-name">Chegada do pacote</div>
+          <div class="epic-desc">PWA mobile-first, captura de foto, IA Gemini/Claude, matching, organização. Deploy VPS HTTPS.</div>
+        </div>
+      </div>
+      <div class="epic-card">
+        <div class="epic-status done">✓</div>
+        <div class="epic-text">
+          <div class="epic-num">EPIC 4</div>
+          <div class="epic-name">Notificação WhatsApp</div>
+          <div class="epic-desc">Cliente Meta Cloud API, geração QR 1200×628, worker BullMQ, webhook HMAC, retry exponencial.</div>
+        </div>
+      </div>
+      <div class="epic-card">
+        <div class="epic-status done">✓</div>
+        <div class="epic-text">
+          <div class="epic-num">EPIC 5</div>
+          <div class="epic-name">Retirada do pacote</div>
+          <div class="epic-desc">Scanner QR, confirmação destinatário próprio/terceiro, audit log completo.</div>
+        </div>
+      </div>
+      <div class="epic-card">
+        <div class="epic-status done">✓</div>
+        <div class="epic-text">
+          <div class="epic-num">EPIC 6</div>
+          <div class="epic-name">Painel administrativo</div>
+          <div class="epic-desc">Lista, busca, filtros, detalhe com timeline, resolver pendência, reenviar WhatsApp.</div>
+        </div>
+      </div>
+      <div class="epic-card">
+        <div class="epic-status partial">~</div>
+        <div class="epic-text">
+          <div class="epic-num">EPIC 7</div>
+          <div class="epic-name">Palavra-chave ML via WhatsApp</div>
+          <div class="epic-desc">Parser regex + worker + UI portaria. Aguardando aprovação de templates Meta.</div>
+        </div>
+      </div>
+      <div class="epic-card">
+        <div class="epic-status done">✓</div>
+        <div class="epic-text">
+          <div class="epic-num">EPIC 10</div>
+          <div class="epic-name">Hierarquia operacional</div>
+          <div class="epic-desc">admin_master + admin_funcionario + flag tem_administracao. Rota administração com tela /organizar e /em-transito.</div>
+        </div>
+      </div>
+      <div class="epic-card">
+        <div class="epic-status partial">~</div>
+        <div class="epic-text">
+          <div class="epic-num">EPIC 11</div>
+          <div class="epic-name">UX admin refinado</div>
+          <div class="epic-desc">11.1 entregue (modelo Bloco). Faltam UI hierárquica + busca global ⌘K + filtros padronizados.</div>
+        </div>
+      </div>
+      <div class="epic-card">
+        <div class="epic-status partial">~</div>
+        <div class="epic-text">
+          <div class="epic-num">EPIC 12</div>
+          <div class="epic-name">Operação SaaS madura</div>
+          <div class="epic-desc">12.1 entregue (dashboard com breakdown por role). Faltam desativar condomínio + audit completo + CRUD users.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FALTA -->
+<section class="falta">
+  <div class="section-inner">
+    <span class="eyebrow">O que falta</span>
+    <h2>Pendências organizadas por categoria</h2>
+    <p class="intro">
+      Tudo dimensionado e priorizado. Nada bloqueia a operação técnica — pendências são externas (Meta) ou polish.
+    </p>
+    <div class="falta-grid">
+      <div class="falta-card bloqueado">
+        <span class="tag externo">Externo</span>
+        <h4>Aprovação template Meta <code>pacote_chegou</code></h4>
+        <p>Submetido em 2026-05-08. Aprovação geralmente em 1h-24h, mas Meta pode demorar mais em fim de semana.</p>
+      </div>
+      <div class="falta-card bloqueado">
+        <span class="tag externo">Externo</span>
+        <h4>Submeter templates novos da Epic 7</h4>
+        <p><code>palavra_chave_recebida</code> e <code>morador_nao_cadastrado</code>. Pendente decisão produto pra liberar.</p>
+      </div>
+      <div class="falta-card bloqueado">
+        <span class="tag externo">Externo</span>
+        <h4>Chip dedicado WhatsApp Business</h4>
+        <p>Sandbox vence em 90d e limita a 5 destinatários. Comprar pré-pago R$30 ou número virtual antes do piloto pago.</p>
+      </div>
+      <div class="falta-card parcial">
+        <span class="tag interno">UX polish</span>
+        <h4>Stories 11.2-11.5 — UI Torres/Blocos</h4>
+        <p>Drill down hierárquico bloco → apartamentos → moradores + busca global ⌘K + filtros padronizados.</p>
+      </div>
+      <div class="falta-card parcial">
+        <span class="tag interno">SaaS</span>
+        <h4>Stories 12.2-12.6 — Governança SaaS</h4>
+        <p>Desativar/reativar condomínio + CRUD users super-admin + audit log abrangente + UI filtros audit.</p>
+      </div>
+      <div class="falta-card parcial">
+        <span class="tag interno">Cron</span>
+        <h4>Configurar cron de lembretes 24h no worker</h4>
+        <p>Job <code>enviarLembretes</code> implementado. Falta o repeatable job no boot do worker BullMQ (1 linha).</p>
+      </div>
+      <div class="falta-card">
+        <span class="tag futuro">Pré-prod</span>
+        <h4>Rotação de 7 secrets vazados</h4>
+        <p>Anthropic, Google, VPS, Clerk dev→prod, Meta App Secret, Meta Access Token, Meta Webhook Verify Token.</p>
+      </div>
+      <div class="falta-card">
+        <span class="tag futuro">Pré-prod</span>
+        <h4>Verificação de negócio Meta</h4>
+        <p>Sai do modo sandbox. Documentos: contrato social ou cartão CNPJ. Aprovação: 2-14 dias.</p>
+      </div>
+      <div class="falta-card">
+        <span class="tag futuro">Polish</span>
+        <h4>E2E Playwright completo</h4>
+        <p>Specs documentados em <code>docs/qa/e2e-specs/</code>. Falta instalar Playwright e transcrever specs em código.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <h5>Ponto 24</h5>
+      <p>Plataforma SaaS de gestão de pacotes em condomínios. PWA mobile-first com identidade Ponto24 (amarelo #FDC800 + violet #7C3AED).</p>
+      <p style="margin-top: 16px;">
+        <a href="https://condominios.oponto24.com.br" target="_blank">condominios.oponto24.com.br</a>
+      </p>
+    </div>
+    <div>
+      <h5>Stack técnica</h5>
+      <ul>
+        <li>Next.js 16 (App Router)</li>
+        <li>PostgreSQL 16 + Prisma 6</li>
+        <li>Redis 7 + BullMQ</li>
+        <li>Clerk + RLS multi-tenant</li>
+        <li>Gemini + Claude (vision)</li>
+        <li>Meta WhatsApp Cloud API</li>
+      </ul>
+    </div>
+    <div>
+      <h5>Documentação</h5>
+      <ul>
+        <li><a href="../prd/PRD.md">PRD completo</a></li>
+        <li><a href="../architecture/ARCHITECTURE.md">Arquitetura</a></li>
+        <li><a href="../stories/ROADMAP.md">Roadmap stories</a></li>
+        <li><a href="../../CHANGELOG.md">Changelog</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="copyright">
+    © 2026 Ponto24 · Pitch deck gerado em 2026-05-09 · Status atual: produção em condominios.oponto24.com.br
+  </div>
+</footer>
+
+</body>
+</html>

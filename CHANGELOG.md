@@ -6,6 +6,43 @@ Histórico de mudanças do projeto. Formato baseado em [Keep a Changelog](https:
 
 ---
 
+## [2026-05-09] — Sessão noturna autônoma (Orion)
+
+### Added — Epic 10 completo (hierarquia operacional)
+- Refactor `UserRole`: `admin` → `admin_master` + novo `admin_funcionario` (PR #63)
+- `Condominio.tem_administracao` flag bifurca fluxo de chegada (PR #66, #67)
+- Status novos: `aguardando_organizacao` (entre confirmar e organizar) e `em_administracao` (rota administração) (PR #65)
+- Tela `/administracao/organizar` (PR #68) e `/administracao/em-transito` (PR #69)
+- Botão "Enviar pra administração" no detalhe do pacote (PR #69)
+- 4 guards backend: `requireAdminMaster`, `requireAdminFuncionario`, `requireAdminAny`, `requireAdminOrPorteiro`
+
+### Added — Epic 7 core (palavra-chave WhatsApp)
+- Worker `processPalavraChave` com regex parser (3 padrões: ML, código X, dígitos isolados) (PR #70)
+- Tela `/portaria/palavras-chave` com busca + filtros + cards
+- Auto-pause de lembretes 24h quando morador responde WhatsApp
+
+### Added — Epic 11.1 (modelo Bloco)
+- Entidade `Bloco` substitui string solta `unidade.bloco` (PR #71)
+- Migration backfill automática extraindo distinct strings existentes
+- Hierarquia preparada pra UI Torres/Blocos (stories 11.2-11.5 pendentes)
+
+### Added — Epic 12.1 (dashboard super-admin)
+- Breakdown por role: admin_master, admin_funcionario, porteiro (PR #72)
+- 7 KPIs cross-tenant com ícones distintos
+
+### Added — Decisões produto (PR #74)
+- **Cancelar pacote** restrito a `admin_master` com motivo obrigatório
+- **Lembrete 24h automático** via cron — envia template QR a cada 24h
+- **Pausa automática** de lembretes quando morador responde WhatsApp
+- **Reagendar** lembrete pelo admin (endpoint dedicado)
+- **Banner de aviso** quando bipa pacote em `em_administracao`
+
+### Changed
+- 15 callers do alias deprecated `requireAdmin` migrados para `requireAdminMaster` + alias removido (PR #64)
+- ROADMAP atualizado com status real de cada story (PR #73)
+
+---
+
 ## [2026-05-08-pos-deploy] — Etapa 6 Meta WhatsApp + hotfixes deploy
 
 ### Added
