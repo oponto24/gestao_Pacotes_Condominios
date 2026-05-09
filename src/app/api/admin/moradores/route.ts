@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loggerForRequest } from '@/lib/logger';
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ConflictError, NotFoundError } from '@/server/errors';
 import { moradorCreateSchema, moradorListQuerySchema } from '@/lib/validators/morador';
@@ -17,7 +17,7 @@ export const runtime = 'nodejs';
 export async function GET(req: Request) {
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:list' });
   try {
-    const ctx = await requireAdmin();
+    const ctx = await requireAdminMaster();
     const url = new URL(req.url);
     const query = moradorListQuerySchema.parse(Object.fromEntries(url.searchParams));
     const result = await listMoradores({
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:create' });
   try {
-    const ctx = await requireAdmin();
+    const ctx = await requireAdminMaster();
     const body = await req.json();
     const data = moradorCreateSchema.parse(body);
 

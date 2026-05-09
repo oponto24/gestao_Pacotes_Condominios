@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loggerForRequest } from '@/lib/logger';
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ConflictError, NotFoundError } from '@/server/errors';
 import { setorUpdateSchema } from '@/lib/validators/setor';
@@ -22,7 +22,7 @@ export async function GET(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/setores:get', setor_id: id });
   try {
-    await requireAdmin();
+    await requireAdminMaster();
     const setor = await getSetorById(id);
     if (!setor) throw new NotFoundError('Setor não encontrado');
     return NextResponse.json(setor);
@@ -35,7 +35,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/setores:update', setor_id: id });
   try {
-    await requireAdmin();
+    await requireAdminMaster();
     const body = await req.json();
     const data = setorUpdateSchema.parse(body);
 
@@ -59,7 +59,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/setores:delete', setor_id: id });
   try {
-    await requireAdmin();
+    await requireAdminMaster();
     const existing = await getSetorById(id);
     if (!existing) throw new NotFoundError('Setor não encontrado');
 

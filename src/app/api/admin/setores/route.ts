@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loggerForRequest } from '@/lib/logger';
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ConflictError } from '@/server/errors';
 import {
@@ -19,7 +19,7 @@ export const runtime = 'nodejs';
 export async function GET(req: Request) {
   const log = loggerForRequest(req).child({ scope: 'admin/setores:list' });
   try {
-    const ctx = await requireAdmin();
+    const ctx = await requireAdminMaster();
     const url = new URL(req.url);
     const query = setorListQuerySchema.parse(Object.fromEntries(url.searchParams));
     const result = await listSetores({
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const log = loggerForRequest(req).child({ scope: 'admin/setores:create' });
   try {
-    const ctx = await requireAdmin();
+    const ctx = await requireAdminMaster();
     const body = await req.json();
     const data = setorCreateSchema.parse(body);
 

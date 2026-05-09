@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { listAdminsByCondominio } from '@/lib/db/user-management';
 import {
   AdminUsersListClient,
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export default async function AdminEquipePage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminMaster();
   const admins = await listAdminsByCondominio(ctx.condominioId);
 
   const rows: AdminUserRow[] = admins.map((u) => ({

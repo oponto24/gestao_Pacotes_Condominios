@@ -123,12 +123,6 @@ export async function requireAdminOrPorteiro(): Promise<AdminOrPorteiroContext> 
 }
 
 /**
- * @deprecated Use `requireAdminMaster` (alias preservado pra compatibilidade
- * após refactor da story 10.1). Será removido em release futura.
+ * @deprecated Removido em story 10.1b — todos os callers já migrados pra
+ * `requireAdminMaster`. Mantenha este comentário como histórico.
  */
-export const requireAdmin = requireAdminMaster;
-
-/**
- * @deprecated Use `AdminMasterContext` diretamente.
- */
-export type AdminTenantContext = AdminMasterContext;

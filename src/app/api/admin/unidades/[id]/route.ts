@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loggerForRequest } from '@/lib/logger';
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ConflictError, NotFoundError } from '@/server/errors';
 import { unidadeUpdateSchema } from '@/lib/validators/unidade';
@@ -22,7 +22,7 @@ export async function GET(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/unidades:get', unidade_id: id });
   try {
-    await requireAdmin();
+    await requireAdminMaster();
     const unidade = await getUnidadeById(id);
     if (!unidade) throw new NotFoundError('Unidade não encontrada');
     return NextResponse.json(unidade);
@@ -35,7 +35,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/unidades:update', unidade_id: id });
   try {
-    await requireAdmin();
+    await requireAdminMaster();
     const body = await req.json();
     const data = unidadeUpdateSchema.parse(body);
 
@@ -69,7 +69,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/unidades:delete', unidade_id: id });
   try {
-    await requireAdmin();
+    await requireAdminMaster();
     const existing = await getUnidadeById(id);
     if (!existing) throw new NotFoundError('Unidade não encontrada');
 
