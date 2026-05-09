@@ -35,7 +35,7 @@ export default async function SuperAdminLayout({
           <Crown className="size-4 text-primary" aria-hidden />
           <span className="font-semibold">Super Admin</span>
           <span className="text-white/60">·</span>
-          <span className="text-white/80">Ponto 24</span>
+          <span className="font-extrabold uppercase tracking-tight text-white/80">PONTO24</span>
         </div>
       </div>
       <SuperAdminNav />
