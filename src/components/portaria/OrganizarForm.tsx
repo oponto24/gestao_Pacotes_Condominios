@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   CheckCircle2,
   Loader2,
@@ -43,6 +43,9 @@ interface Props {
 
 export function OrganizarForm({ pacote }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  // Story 10.5: se está sendo usado em /administracao, retornar pra lista admin
+  const isAdminContext = pathname?.startsWith('/administracao') ?? false;
   const [tamanho, setTamanho] = useState<Tamanho | null>(
     (pacote.tamanho as Tamanho | null) ?? null,
   );
@@ -77,7 +80,7 @@ export function OrganizarForm({ pacote }: Props) {
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate(150);
       }
-      router.push('/chegada');
+      router.push(isAdminContext ? '/administracao/organizar' : '/chegada');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao organizar');
       setSubmitting(false);
