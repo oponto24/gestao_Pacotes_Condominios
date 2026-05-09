@@ -69,6 +69,7 @@ export function createCondominio(data: CondominioCreateInput) {
       contato_nome: data.contato_nome,
       contato_telefone: data.contato_telefone,
       contato_email: data.contato_email ?? null,
+      tem_administracao: data.tem_administracao ?? false,
       ativo: true,
     },
   });
@@ -87,6 +88,7 @@ export function updateCondominio(id: string, data: CondominioUpdateInput) {
       ...(data.contato_nome !== undefined && { contato_nome: data.contato_nome }),
       ...(data.contato_telefone !== undefined && { contato_telefone: data.contato_telefone }),
       ...(data.contato_email !== undefined && { contato_email: data.contato_email || null }),
+      ...(data.tem_administracao !== undefined && { tem_administracao: data.tem_administracao }),
     },
   });
 }

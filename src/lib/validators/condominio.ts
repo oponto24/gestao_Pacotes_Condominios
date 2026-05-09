@@ -77,6 +77,14 @@ const baseShape = {
     .max(200, 'E-mail muito longo (max 200)')
     .optional()
     .or(z.literal('').transform(() => undefined)),
+
+  // Story 10.3 (Epic 10): condomínio tem equipe administrativa dedicada?
+  // false (default) = porteiro organiza pacote
+  // true = porteiro confirma morador, admin organiza setor/posição
+  tem_administracao: z
+    .boolean()
+    .optional()
+    .default(false),
 };
 
 export const condominioCreateSchema = z.object(baseShape);
