@@ -61,7 +61,12 @@ export async function loadPacoteByQrToken(
     if (pacote.status === 'cancelado') {
       return { ok: false, reason: 'cancelado' };
     }
-    if (pacote.status !== 'aguardando_retirada') {
+    // Story 10.6: aceita também em_administracao (rota administração).
+    // FR-083: qualquer role operacional pode finalizar entrega.
+    if (
+      pacote.status !== 'aguardando_retirada' &&
+      pacote.status !== 'em_administracao'
+    ) {
       return { ok: false, reason: 'nao_pronto' };
     }
 
