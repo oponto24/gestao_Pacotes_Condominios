@@ -149,7 +149,7 @@ async function handleInboundMessage(
     return 'skipped';
   }
 
-  await db.whatsAppMessage.create({
+  const created = await db.whatsAppMessage.create({
     data: {
       condominio_id: condominioId,
       whatsapp_number_id: whatsappNumber.id,
@@ -161,7 +161,23 @@ async function handleInboundMessage(
       body_text: message.text?.body ?? null,
       morador_id: morador?.id ?? null,
     },
+    select: { id: true },
   });
+
+  // Epic 7: enfileira processamento de palavra-chave se morador identificado
+  if (morador?.id) {
+    try {
+      const { enqueue } = await import('@/lib/queue/queues');
+      const { PROCESS_PALAVRA_CHAVE_JOB_NAME } = await import('./process-palavra-chave');
+      await enqueue(
+        PROCESS_PALAVRA_CHAVE_JOB_NAME,
+        { whatsapp_message_id: created.id },
+        { jobId: `palavraChave:${created.id}` },
+      );
+    } catch (err) {
+      log.warn({ err, message_id: created.id }, 'Falha ao enfileirar processPalavraChave');
+    }
+  }
 
   return 'created';
 }
