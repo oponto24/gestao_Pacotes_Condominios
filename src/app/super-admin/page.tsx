@@ -1,5 +1,14 @@
 import Link from 'next/link';
-import { AlertTriangle, Building2, Package, ScrollText, Users } from 'lucide-react';
+import {
+  AlertTriangle,
+  Building2,
+  Package,
+  ScrollText,
+  Users,
+  ShieldCheck,
+  Briefcase,
+  KeyRound,
+} from 'lucide-react';
 import {
   getSuperAdminStats,
   getRecentCondominios,
@@ -58,6 +67,31 @@ export default async function SuperAdminDashboardPage() {
             label="Pendentes (global)"
             value={stats.pendentesGlobal}
             tone={stats.pendentesGlobal > 0 ? 'warning' : 'default'}
+          />
+        </div>
+
+        {/* Story 12.1 (Epic 12 / FR-120): breakdown por role */}
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <KpiCard
+            href="/super-admin/users?role=admin_master"
+            icon={<ShieldCheck className="size-5" aria-hidden />}
+            label="Admins master (síndicos)"
+            value={stats.adminMastersAtivos}
+            tone="default"
+          />
+          <KpiCard
+            href="/super-admin/users?role=admin_funcionario"
+            icon={<Briefcase className="size-5" aria-hidden />}
+            label="Admins funcionários"
+            value={stats.adminFuncionariosAtivos}
+            tone="default"
+          />
+          <KpiCard
+            href="/super-admin/users?role=porteiro"
+            icon={<KeyRound className="size-5" aria-hidden />}
+            label="Porteiros"
+            value={stats.porteirosAtivos}
+            tone="default"
           />
         </div>
       </section>

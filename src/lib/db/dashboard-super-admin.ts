@@ -11,16 +11,32 @@ export interface SuperAdminStats {
   usersTotal: number;
   pacotes24h: number;
   pendentesGlobal: number;
+  // Story 12.1 (Epic 12 — PRD FR-120): breakdown por role
+  adminsAtivos: number; // admin_master + admin_funcionario
+  porteirosAtivos: number;
+  adminMastersAtivos: number;
+  adminFuncionariosAtivos: number;
 }
 
 export async function getSuperAdminStats(): Promise<SuperAdminStats> {
   const ontem = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [conds, users, pacotes24h, pendentes] = await Promise.all([
+  const [
+    conds,
+    users,
+    pacotes24h,
+    pendentes,
+    adminMasters,
+    adminFuncs,
+    porteiros,
+  ] = await Promise.all([
     db.condominio.count({ where: { ativo: true, deleted_at: null } }),
     db.user.count({ where: { ativo: true } }),
     db.pacote.count({ where: { created_at: { gte: ontem } } }),
     db.pacote.count({ where: { status: 'pendente_identificacao' } }),
+    db.user.count({ where: { ativo: true, role: 'admin_master' } }),
+    db.user.count({ where: { ativo: true, role: 'admin_funcionario' } }),
+    db.user.count({ where: { ativo: true, role: 'porteiro' } }),
   ]);
 
   return {
@@ -28,6 +44,10 @@ export async function getSuperAdminStats(): Promise<SuperAdminStats> {
     usersTotal: users,
     pacotes24h,
     pendentesGlobal: pendentes,
+    adminsAtivos: adminMasters + adminFuncs,
+    porteirosAtivos: porteiros,
+    adminMastersAtivos: adminMasters,
+    adminFuncionariosAtivos: adminFuncs,
   };
 }
 
