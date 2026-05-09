@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loggerForRequest } from '@/lib/logger';
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ValidationError } from '@/server/errors';
 import { parseImportCsv, MAX_ROWS } from '@/lib/csv/parse-import';
@@ -26,7 +26,7 @@ const ACCEPTED_CONTENT_TYPES = new Set([
 export async function POST(req: Request) {
   const log = loggerForRequest(req).child({ scope: 'admin/csv-import:parse' });
   try {
-    const ctx = await requireAdmin();
+    const ctx = await requireAdminMaster();
 
     const formData = await req.formData().catch(() => null);
     if (!formData) {

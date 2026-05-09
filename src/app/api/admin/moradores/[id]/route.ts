@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { loggerForRequest } from '@/lib/logger';
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ConflictError, NotFoundError } from '@/server/errors';
 import { moradorUpdateSchema } from '@/lib/validators/morador';
@@ -22,7 +22,7 @@ export async function GET(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:get', morador_id: id });
   try {
-    await requireAdmin();
+    await requireAdminMaster();
     const url = new URL(req.url);
     const includeArquivados = url.searchParams.get('include_arquivados') === 'true';
     const morador = await getMoradorById(id, includeArquivados);
@@ -37,7 +37,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:update', morador_id: id });
   try {
-    await requireAdmin();
+    await requireAdminMaster();
     const body = await req.json();
     const data = moradorUpdateSchema.parse(body);
 
@@ -64,7 +64,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:archive', morador_id: id });
   try {
-    await requireAdmin();
+    await requireAdminMaster();
     const existing = await getMoradorById(id, false);
     if (!existing) throw new NotFoundError('Morador não encontrado ou já arquivado');
 

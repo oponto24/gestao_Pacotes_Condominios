@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { listPacotesAdmin, type PacoteStatusFilter } from '@/lib/db/pacote-admin-list';
 import { PacotesAdminListClient } from '@/components/admin/PacotesAdminListClient';
 
@@ -19,7 +19,7 @@ export default async function PacotesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminMaster();
 
   const statusRaw = typeof sp.status === 'string' ? sp.status : undefined;
   const status: PacoteStatusFilter | undefined =

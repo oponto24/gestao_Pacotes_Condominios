@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { loggerForRequest } from '@/lib/logger';
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ValidationError } from '@/server/errors';
 import { csvRowSchema } from '@/lib/validators/csv-import';
@@ -32,7 +32,7 @@ const inputSchema = z.object({
 export async function POST(req: Request) {
   const log = loggerForRequest(req).child({ scope: 'admin/csv-import:commit' });
   try {
-    const ctx = await requireAdmin();
+    const ctx = await requireAdminMaster();
     const body = await req.json().catch(() => null);
     if (!body) throw new ValidationError('JSON inválido');
 

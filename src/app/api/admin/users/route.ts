@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { loggerForRequest } from '@/lib/logger';
 import { handleApiError } from '@/lib/api/handle-error';
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { ValidationError } from '@/server/errors';
 import { userCreateAdminSchema } from '@/lib/validators/user-create';
 import { createPendingUser } from '@/lib/db/user-management';
@@ -19,7 +19,7 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   const log = loggerForRequest(req).child({ scope: 'admin:create-user' });
   try {
-    const ctx = await requireAdmin();
+    const ctx = await requireAdminMaster();
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== 'object') {

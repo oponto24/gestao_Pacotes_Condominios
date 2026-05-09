@@ -85,17 +85,5 @@ describe('requireAdminOrPorteiro', () => {
   });
 });
 
-describe('requireAdmin (deprecated alias)', () => {
-  it('continua funcionando como alias de requireAdminMaster', async () => {
-    getTenantContextMock.mockResolvedValue(tenantCtx('admin_master'));
-    const { requireAdmin } = await import('@/lib/api/admin-guard');
-    const result = await requireAdmin();
-    expect(result.role).toBe('admin_master');
-  });
-
-  it('rejeita admin_funcionario (mesma semântica de requireAdminMaster)', async () => {
-    getTenantContextMock.mockResolvedValue(tenantCtx('admin_funcionario'));
-    const { requireAdmin } = await import('@/lib/api/admin-guard');
-    await expect(requireAdmin()).rejects.toBeInstanceOf(ForbiddenError);
-  });
-});
+// Alias deprecated `requireAdmin` removido em 10.1b após cleanup dos 15 callers.
+// Histórico do refactor permanece no story file.

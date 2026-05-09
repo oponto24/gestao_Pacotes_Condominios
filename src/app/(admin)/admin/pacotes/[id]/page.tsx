@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { requireAdmin } from '@/lib/api/admin-guard';
+import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { loadPacoteDetail } from '@/lib/db/pacote-admin-detail';
 import { PacoteDetalheView } from '@/components/admin/PacoteDetalheView';
 
@@ -12,7 +12,7 @@ export default async function PacoteDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminMaster();
   const pacote = await loadPacoteDetail(ctx, id);
   if (!pacote) notFound();
   return <PacoteDetalheView pacote={pacote} />;
