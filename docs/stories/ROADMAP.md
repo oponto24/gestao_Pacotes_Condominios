@@ -8,8 +8,8 @@
 
 ## Visão geral
 
-**Total:** 52 stories distribuídas em 8 épicos (3.11 brand + 4.6b UI bloco notificações adicionadas).
-**Progresso atual (2026-05-08):** **~39 stories Done** · **401 tests passing** · MVP funcional ponta-a-ponta + Epic 4 completo · em produção em https://condominios.oponto24.com.br
+**Total:** 60+ stories distribuídas em 12 épicos.
+**Progresso atual (2026-05-09 sessão noturna Orion):** **~50 stories Done** · **312 tests passing** · MVP em produção https://condominios.oponto24.com.br · Epics 1-6 + 4 done, Epic 7 core, Epic 10 completo, Epic 11.1 e 12.1 done
 **Bloqueios externos restantes:**
 - Aprovação Meta do template `pacote_chegou` (smoke real do envio WhatsApp)
 - Compra de chip dedicado WhatsApp pra produção (sandbox = 90d/5 destinatários)
@@ -141,7 +141,7 @@
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 7.1 | Webhook handler para mensagens inbound — lookup global por telefone (role webhook_worker) | Draft | 1.4, 4.4 |
+| 7.1 | Webhook handler para mensagens inbound — lookup global por telefone (role webhook_worker) | **Done** ✅ | 1.4, 4.4 |
 | 7.2 | Worker processIncomingMessage — extração código (regex + LLM fallback) | Draft | 7.1 |
 | 7.3 | Persistência codigo_ml_pendente + resposta automática template "codigo_ml_recebido" | Draft | 7.2, 4.1 |
 | 7.4 | Exibição do código pendente na tela /chegada/organizar (banner amarelo) | Draft | 3.9, 7.3 |
@@ -178,7 +178,7 @@
 
 | # | Story | Status |
 |---|-------|--------|
-| 7.1 | Worker `processIncomingMessage` consome `WhatsAppMessage inbound` (4.4) e extrai palavra-chave via regex+LLM | Draft |
+| 7.1 | Worker `processIncomingMessage` consome `WhatsAppMessage inbound` (4.4) e extrai palavra-chave via regex+LLM | **Done** ✅ |
 | 7.2 | Persiste `palavra_chave_pendente` + auto-reply via template aprovado | Draft |
 | 7.3 | Tela `/portaria/palavras-chave` com filtros (apto, bloco, morador, data) — aba admin read-only | Draft |
 | 7.4 | Banner sugestão durante chegada do pacote ("vincular palavra-chave?") | Draft |
@@ -191,12 +191,12 @@
 
 | # | Story | Status |
 |---|-------|--------|
-| 10.1 | Refactor enum `Role`: `admin` → `admin_master`, novo `admin_funcionario`. Migration de dados + atualização de guards | Draft |
-| 10.2 | Schema: `condominio.tem_administracao` + status `aguardando_organizacao` + status `em_administracao` | Draft |
-| 10.3 | Toggle no formulário super-admin de criação/edição de condomínio | Draft |
-| 10.4 | Fluxo bifurcado na chegada: porteiro confirma → vai pra admin organizar (se com adm) ou organiza direto (sem adm) | Draft |
-| 10.5 | Tela `/administracao/organizar` (admin escolhe setor/posição → dispara WhatsApp) | Draft |
-| 10.6 | Botão "Enviar pra administração" no detalhe do pacote (transição pra `em_administracao`) + tela `/administracao/em-transito` | Draft |
+| 10.1 | Refactor enum `Role`: `admin` → `admin_master`, novo `admin_funcionario`. Migration de dados + atualização de guards | **Done** ✅ |
+| 10.2 | Schema: `condominio.tem_administracao` + status `aguardando_organizacao` + status `em_administracao` | **Done** ✅ |
+| 10.3 | Toggle no formulário super-admin de criação/edição de condomínio | **Done** ✅ |
+| 10.4 | Fluxo bifurcado na chegada: porteiro confirma → vai pra admin organizar (se com adm) ou organiza direto (sem adm) | **Done** ✅ |
+| 10.5 | Tela `/administracao/organizar` (admin escolhe setor/posição → dispara WhatsApp) | **Done** ✅ |
+| 10.6 | Botão "Enviar pra administração" no detalhe do pacote (transição pra `em_administracao`) + tela `/administracao/em-transito` | **Done** ✅ |
 | 10.7 | Bipe entrega flexível: porteiro pode bipar pacote `em_administracao` com aviso de confirmação | Draft |
 
 ### Epic 11 — UX admin refinado
@@ -205,7 +205,7 @@
 
 | # | Story | Status |
 |---|-------|--------|
-| 11.1 | Modelo `Bloco` (entidade) + migration extraindo de `unidade.bloco` string | Draft |
+| 11.1 | Modelo `Bloco` (entidade) + migration extraindo de `unidade.bloco` string | **Done** ✅ |
 | 11.2 | UI `/admin/blocos` hierárquica (lista de blocos → drill down apartamentos → moradores) | Draft |
 | 11.3 | Renomear menu "Unidades" → "Torres/Blocos" | Draft |
 | 11.4 | Componente `<GlobalSearch />` com `⌘K`/`Ctrl+K` no header admin | Draft |
@@ -217,7 +217,7 @@
 
 | # | Story | Status |
 |---|-------|--------|
-| 12.1 | Dashboard `/super-admin` com KPIs (condomínios ativos, admins ativos, pacotes pendentes 24h, usuários por role) | Draft |
+| 12.1 | Dashboard `/super-admin` com KPIs (condomínios ativos, admins ativos, pacotes pendentes 24h, usuários por role) | **Done** ✅ |
 | 12.2 | Desativar/reativar condomínio (super-admin) + bloqueio de login dos users vinculados | Draft |
 | 12.3 | CRUD usuários (super-admin) — listar cross-tenant, criar admin_master de qualquer cond, editar role, soft delete | Draft |
 | 12.4 | Audit log abrangente — middleware que captura toda mutation + before/after diff | Draft |
