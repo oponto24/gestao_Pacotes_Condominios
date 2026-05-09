@@ -29,6 +29,7 @@ export interface CondominioRow {
   contato_nome: string;
   contato_telefone: string;
   contato_email: string | null;
+  tem_administracao: boolean;
   _count: { unidades: number; moradores: number };
 }
 

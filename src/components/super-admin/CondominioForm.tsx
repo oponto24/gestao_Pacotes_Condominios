@@ -21,6 +21,7 @@ export interface CondominioFormInitial {
   contato_nome?: string;
   contato_telefone?: string;
   contato_email?: string | null;
+  tem_administracao?: boolean;
 }
 
 interface Props {
@@ -53,6 +54,7 @@ export function CondominioForm({ mode, initial, onDone }: Props) {
     contato_nome: initial?.contato_nome ?? '',
     contato_telefone: initial?.contato_telefone ?? '',
     contato_email: initial?.contato_email ?? '',
+    tem_administracao: initial?.tem_administracao ?? false,
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -145,6 +147,29 @@ export function CondominioForm({ mode, initial, onDone }: Props) {
             </div>
           );
         })}
+
+        {/* Story 10.3: toggle tem_administracao (Epic 10 — hierarquia operacional) */}
+        <div className="space-y-1 rounded-md border border-border bg-muted/30 p-3">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1 size-4"
+              checked={Boolean(values.tem_administracao)}
+              onChange={(e) =>
+                setValues((v) => ({ ...v, tem_administracao: e.target.checked }))
+              }
+              disabled={submitting}
+            />
+            <div>
+              <span className="font-medium">Este condomínio tem equipe administrativa dedicada</span>
+              <p className="text-xs text-text-secondary">
+                Quando marcado, o porteiro recebe e confirma o pacote, mas a administração
+                organiza setor/posição e dispara a notificação ao morador. Pode ser alterado
+                a qualquer momento.
+              </p>
+            </div>
+          </label>
+        </div>
 
         {serverError && (
           <div role="alert" className="rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
