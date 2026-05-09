@@ -9,12 +9,12 @@ import { SheetClose, SheetFooter, SheetHeader, SheetTitle } from '@/components/u
 import { userCreateAdminSchema } from '@/lib/validators/user-create';
 
 interface Props {
-  role: 'admin' | 'porteiro';
+  role: 'admin_master' | 'porteiro';
   onDone?: () => void;
 }
 
 const COPY = {
-  admin: {
+  admin_master: {
     title: 'Cadastrar admin da equipe',
     button: 'Cadastrar admin',
     placeholder: 'Maria Síndica',

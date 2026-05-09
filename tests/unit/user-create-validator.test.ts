@@ -61,7 +61,7 @@ describe('userCreateSuperAdminSchema', () => {
 describe('userCreateAdminSchema', () => {
   it('aceita admin', () => {
     expect(() =>
-      userCreateAdminSchema.parse({ email: 'a@b.com', nome: 'A', role: 'admin' }),
+      userCreateAdminSchema.parse({ email: 'a@b.com', nome: 'A', role: 'admin_master' }),
     ).not.toThrow();
   });
 

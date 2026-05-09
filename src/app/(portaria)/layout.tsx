@@ -40,7 +40,12 @@ export default async function PortariaServerLayout({
   }
 
   if (ctx.kind === 'super_admin') redirect('/super-admin/condominios');
-  if (ctx.role !== 'porteiro' && ctx.role !== 'admin') redirect('/');
+  if (
+    ctx.role !== 'porteiro' &&
+    ctx.role !== 'admin_master' &&
+    ctx.role !== 'admin_funcionario'
+  )
+    redirect('/');
 
   const condominio = await db.condominio.findUnique({
     where: { id: ctx.condominioId },

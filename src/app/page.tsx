@@ -36,7 +36,8 @@ export default async function HomePage() {
   // current.kind === 'authenticated'
   const role = current.user.role;
   if (role === 'super_admin') redirect('/super-admin');
-  if (role === 'admin') redirect('/admin');
+  if (role === 'admin_master') redirect('/admin');
+  if (role === 'admin_funcionario') redirect('/chegada'); // story 10.5 vai criar /administracao
   if (role === 'porteiro') redirect('/chegada');
 
   // Role desconhecida (defensivo) — mostra tela neutra ao invés de loop

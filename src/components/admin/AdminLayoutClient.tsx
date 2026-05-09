@@ -10,6 +10,7 @@ interface AdminLayoutClientProps {
   condominioCidadeUf: string;
   userNome: string;
   userEmail?: string | null;
+  userRole?: 'super_admin' | 'admin_master' | 'admin_funcionario' | 'porteiro';
   children: React.ReactNode;
 }
 
@@ -18,6 +19,7 @@ export function AdminLayoutClient({
   condominioCidadeUf,
   userNome,
   userEmail,
+  userRole,
   children,
 }: AdminLayoutClientProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -44,6 +46,7 @@ export function AdminLayoutClient({
           condominioCidadeUf={condominioCidadeUf}
           userNome={userNome}
           userEmail={userEmail}
+          userRole={userRole}
           onOpenMobileNav={() => setMobileOpen(true)}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>

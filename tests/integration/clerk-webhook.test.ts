@@ -145,7 +145,7 @@ describe.skipIf(!CONFIGURED)('Clerk webhook handler', () => {
           clerk_id: `pending_clerk_link_${TEST_TAG}`,
           email,
           nome: 'Maria Pré-cadastrada',
-          role: 'admin',
+          role: 'admin_master',
           condominio_id: null,
           ativo: true,
         },
@@ -176,7 +176,7 @@ describe.skipIf(!CONFIGURED)('Clerk webhook handler', () => {
     });
     expect(user).toBeTruthy();
     expect(user?.email).toBe(email);
-    expect(user?.role).toBe('admin'); // role preservada do pré-cadastro
+    expect(user?.role).toBe('admin_master'); // role preservada do pré-cadastro
     expect(user?.ativo).toBe(true);
   });
 
@@ -187,7 +187,7 @@ describe.skipIf(!CONFIGURED)('Clerk webhook handler', () => {
       await tx.$executeRaw`SET LOCAL app.is_super_admin = 'true'`;
       await tx.user.update({
         where: { clerk_id: TEST_CLERK_ID },
-        data: { role: 'admin' },
+        data: { role: 'admin_master' },
       });
     });
 
@@ -212,7 +212,7 @@ describe.skipIf(!CONFIGURED)('Clerk webhook handler', () => {
     });
     expect(user?.email).toBe(`${TEST_TAG}-updated@test.local`);
     expect(user?.nome).toBe('Maria Atualizada');
-    expect(user?.role).toBe('admin'); // PRESERVADO, não voltou pra 'porteiro'
+    expect(user?.role).toBe('admin_master'); // PRESERVADO, não voltou pra 'porteiro'
   });
 
   it('user.deleted seta ativo=false e NÃO deleta a linha', async () => {

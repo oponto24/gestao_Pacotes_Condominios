@@ -5,19 +5,30 @@ import { Badge } from '@/components/ui/badge';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { UserMenu } from './UserMenu';
 
+type RoleLabel = 'admin_master' | 'admin_funcionario' | 'porteiro' | 'super_admin';
+
 interface AdminHeaderProps {
   condominioNome: string;
   condominioCidadeUf: string;
   userNome: string;
   userEmail?: string | null;
+  userRole?: RoleLabel;
   onOpenMobileNav: () => void;
 }
+
+const ROLE_LABELS: Record<RoleLabel, string> = {
+  super_admin: 'Super Admin',
+  admin_master: 'Admin Master',
+  admin_funcionario: 'Admin Funcionário',
+  porteiro: 'Porteiro',
+};
 
 export function AdminHeader({
   condominioNome,
   condominioCidadeUf,
   userNome,
   userEmail,
+  userRole,
   onOpenMobileNav,
 }: AdminHeaderProps) {
   return (
@@ -39,7 +50,7 @@ export function AdminHeader({
             <div className="text-xs text-text-secondary">{condominioCidadeUf}</div>
           </div>
           <Badge variant="muted" className="ml-2 hidden sm:inline-flex">
-            Admin
+            {userRole ? ROLE_LABELS[userRole] : 'Admin'}
           </Badge>
         </div>
 

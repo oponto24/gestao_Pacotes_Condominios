@@ -20,8 +20,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * Resultado do tenant context. Discriminado por `kind` para
  * forçar o consumidor a tratar `super_admin` separadamente.
  */
+export type TenantRole = 'admin_master' | 'admin_funcionario' | 'porteiro';
+
 export type TenantContext =
-  | { kind: 'tenant'; userId: string; condominioId: string; role: 'admin' | 'porteiro' }
+  | { kind: 'tenant'; userId: string; condominioId: string; role: TenantRole }
   | { kind: 'super_admin'; userId: string };
 
 /**
@@ -63,7 +65,7 @@ export const getTenantContext = cache(async (): Promise<TenantContext> => {
           kind: 'tenant',
           userId: user.id,
           condominioId: cond.id,
-          role: 'admin',
+          role: 'admin_master',
         };
       }
       // Cookie aponta pra cond inexistente/inativo: retorna super_admin normal.
@@ -81,7 +83,7 @@ export const getTenantContext = cache(async (): Promise<TenantContext> => {
     userId: user.id,
     condominioId: user.condominio_id,
     // Garantido pelo schema (UserRole enum), mas TS não infere após o guard acima
-    role: user.role as 'admin' | 'porteiro',
+    role: user.role as TenantRole,
   };
 });
 

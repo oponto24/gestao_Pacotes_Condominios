@@ -48,7 +48,7 @@ beforeAll(async () => {
         clerk_id: `${TAG}-clerk`,
         email: `${TAG}@test.com`,
         nome: 'Test Admin',
-        role: 'admin',
+        role: 'admin_master',
         condominio_id: condAId,
       },
     });
@@ -71,14 +71,14 @@ const ctxA = (): TenantContext => ({
   kind: 'tenant',
   userId: userAId,
   condominioId: condAId,
-  role: 'admin',
+  role: 'admin_master',
 });
 
 const ctxB = (): TenantContext => ({
   kind: 'tenant',
   userId: userAId, // mesmo user (não importa pra RLS) mas condominio diferente
   condominioId: condBId,
-  role: 'admin',
+  role: 'admin_master',
 });
 
 describe.skipIf(!DB_REACHABLE)('Setor DB helpers (tenant-scoped)', () => {

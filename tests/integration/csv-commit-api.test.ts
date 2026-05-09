@@ -58,7 +58,7 @@ const ctxA = (): TenantContext => ({
   kind: 'tenant',
   userId: 'fake-user-id',
   condominioId: condAId,
-  role: 'admin',
+  role: 'admin_master',
 });
 
 function makeRow(linha: number, overrides: Partial<ValidRow> = {}): ValidRow {
