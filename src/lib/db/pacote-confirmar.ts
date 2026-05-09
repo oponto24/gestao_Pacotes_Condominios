@@ -151,6 +151,8 @@ export async function loadPacoteForConfirmar(
 export interface ConfirmarPacoteResult {
   pacote_id: string;
   already_confirmed: boolean;
+  /** Story 10.4: true → pacote foi pra fila admin organizar; false → porteiro segue pra organizar */
+  tem_administracao?: boolean;
 }
 
 export async function confirmarPacote(
@@ -161,12 +163,22 @@ export async function confirmarPacote(
   return withTenantContext(ctx, async (tx) => {
     const pacote = await tx.pacote.findFirst({
       where: { id: pacoteId },
-      select: { id: true, status: true },
+      select: { id: true, status: true, condominio_id: true },
     });
     if (!pacote) throw new NotFoundError('Pacote não encontrado');
     if (pacote.status === 'cancelado' || pacote.status === 'retirado') {
       throw new ValidationError(`Pacote em estado terminal: ${pacote.status}`);
     }
+
+    // Story 10.4 (Epic 10): bifurcação fluxo chegada baseada em
+    // condominio.tem_administracao. Em condomínio com admin, após confirmação
+    // do porteiro o pacote sai da fila da portaria pra fila da administração
+    // (status `aguardando_organizacao` — story 10.5 vai criar UI /administracao).
+    const condominio = await tx.condominio.findUnique({
+      where: { id: pacote.condominio_id },
+      select: { tem_administracao: true },
+    });
+    const temAdministracao = condominio?.tem_administracao ?? false;
 
     // Idempotência
     const existing = await tx.pacoteEvento.findFirst({
@@ -215,8 +227,14 @@ export async function confirmarPacote(
         unidade_id: input.unidade_id,
         destinatario_id: input.destinatario_id,
         destinatario_resolvido_via: resolvidoVia,
-        // Se estava em pendente_identificacao, volta pra rascunho (3.9 organizar)
-        status: pacote.status === 'pendente_identificacao' ? 'rascunho' : pacote.status,
+        // Story 10.4: status pós-confirmação depende de tem_administracao
+        // - Com admin: aguardando_organizacao (admin organiza setor/posição em /administracao)
+        // - Sem admin: rascunho → /chegada/organizar (porteiro escolhe setor/posição)
+        status: temAdministracao
+          ? 'aguardando_organizacao'
+          : pacote.status === 'pendente_identificacao'
+            ? 'rascunho'
+            : pacote.status,
       },
     });
 
@@ -230,10 +248,15 @@ export async function confirmarPacote(
           resolvido_via: resolvidoVia,
           unidade_id: input.unidade_id,
           destinatario_id: input.destinatario_id,
+          tem_administracao: temAdministracao,
         },
       },
     });
 
-    return { pacote_id: pacoteId, already_confirmed: false };
+    return {
+      pacote_id: pacoteId,
+      already_confirmed: false,
+      tem_administracao: temAdministracao,
+    };
   });
 }
