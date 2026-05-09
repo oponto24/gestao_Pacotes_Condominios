@@ -18,7 +18,7 @@ import { Reveal } from './Reveal';
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_LP_WHATSAPP ?? '5511914980582';
 const WHATSAPP_MESSAGE = encodeURIComponent(
-  'Olá! Quero saber mais sobre o Ponto 24 para o meu condomínio.',
+  'Olá! Quero saber mais sobre o PONTO24 Pacotes para o meu condomínio.',
 );
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_MESSAGE}`;
 
@@ -261,8 +261,8 @@ function DashboardMockup({ className = '' }: { className?: string }) {
         <div className="grid grid-cols-12 gap-0">
           {/* sidebar */}
           <div className="col-span-3 border-r border-border bg-surface/50 p-4">
-            <div className="mb-4 text-[10px] font-bold uppercase tracking-wider text-brand-mid">
-              Ponto 24
+            <div className="mb-4 text-[10px] font-extrabold uppercase tracking-[0.2em] text-brand-mid">
+              PONTO24
             </div>
             {['Dashboard', 'Pacotes', 'Moradores', 'Funcionários'].map((item, i) => (
               <div
@@ -380,7 +380,7 @@ function ComoFunciona() {
       icon: Sparkles,
       titulo: 'IA identifica o morador',
       texto:
-        'O Ponto 24 lê a etiqueta, encontra o apartamento e o destinatário automaticamente — sem digitação.',
+        'O PONTO24 lê a etiqueta, encontra o apartamento e o destinatário automaticamente — sem digitação.',
     },
     {
       n: '03',
@@ -483,7 +483,7 @@ function Diferenciais() {
       <div className="mx-auto max-w-6xl px-6">
         <Reveal className="mx-auto max-w-2xl text-center">
           <span className="inline-block rounded-full bg-accent-light px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent-dark">
-            Por que Ponto 24
+            Por que PONTO24 Pacotes
           </span>
           <h2 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
             Não é só notificação por WhatsApp.
@@ -753,8 +753,8 @@ function Footer() {
           </div>
         </div>
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-xs text-brand-mid sm:flex-row">
-          <span>© {new Date().getFullYear()} Ponto 24. Todos os direitos reservados.</span>
-          <span>Pacotes na portaria, sem mistério.</span>
+          <span>© {new Date().getFullYear()} PONTO24. Todos os direitos reservados.</span>
+          <span>Pacotes na portaria, sem mistério. Um produto PONTO24.</span>
         </div>
       </div>
     </footer>

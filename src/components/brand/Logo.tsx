@@ -2,33 +2,46 @@ import { cn } from '@/lib/utils';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
+  /** Esconde a sublabel "Pacotes" — útil em headers muito apertados. */
+  hideProductLabel?: boolean;
   className?: string;
 }
 
-const SIZE_CLASSES: Record<NonNullable<LogoProps['size']>, string> = {
-  sm: 'text-lg',
-  md: 'text-2xl',
-  lg: 'text-4xl sm:text-5xl',
+const SIZE_CLASSES: Record<NonNullable<LogoProps['size']>, { wordmark: string; sublabel: string }> = {
+  sm: { wordmark: 'text-base', sublabel: 'text-[10px]' },
+  md: { wordmark: 'text-2xl', sublabel: 'text-xs' },
+  lg: { wordmark: 'text-4xl sm:text-5xl', sublabel: 'text-sm' },
 };
 
 /**
- * Logo wordmark Ponto 24 (story 3.11).
+ * Wordmark família de produto: PONTO24 (caps, peso 800) + sublabel "Pacotes".
  *
- * "Ponto" em cinza-tinta + "24" em amarelo brand.
- * TODO(brand): substituir por SVG oficial quando disponível.
+ * Alinha visualmente com a marca-mãe (https://ponto24-marketing.vercel.app/),
+ * que usa o wordmark em caixa alta e Montserrat heavy. "Pacotes" indica que
+ * este software é o produto de pacotes da família PONTO24 — análogo a
+ * Google Drive / Google Calendar.
  */
-export function Logo({ size = 'md', className }: LogoProps) {
+export function Logo({ size = 'md', hideProductLabel = false, className }: LogoProps) {
+  const sizes = SIZE_CLASSES[size];
   return (
     <span
-      aria-label="Ponto 24"
-      className={cn(
-        'inline-flex items-baseline gap-1 font-bold tracking-tight',
-        SIZE_CLASSES[size],
-        className,
-      )}
+      aria-label="PONTO24 Pacotes"
+      className={cn('inline-flex flex-col leading-none', className)}
     >
-      <span className="text-brand-ink">Ponto</span>
-      <span className="text-primary">24</span>
+      <span className={cn('font-extrabold tracking-tight', sizes.wordmark)}>
+        <span className="text-brand-ink">PONTO</span>
+        <span className="text-primary">24</span>
+      </span>
+      {!hideProductLabel ? (
+        <span
+          className={cn(
+            'mt-0.5 font-semibold uppercase tracking-[0.2em] text-text-secondary',
+            sizes.sublabel,
+          )}
+        >
+          Pacotes
+        </span>
+      ) : null}
     </span>
   );
 }

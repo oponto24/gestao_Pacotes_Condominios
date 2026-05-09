@@ -12,9 +12,9 @@ import type { MetadataRoute } from 'next';
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Ponto 24 — Pacotes',
-    short_name: 'Ponto 24',
-    description: 'Pacotes na portaria, sem mistério.',
+    name: 'PONTO24 Pacotes',
+    short_name: 'PONTO24',
+    description: 'Pacotes na portaria, sem mistério. Um produto PONTO24.',
     start_url: '/chegada?source=pwa',
     display: 'standalone',
     orientation: 'portrait',

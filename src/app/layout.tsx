@@ -9,17 +9,17 @@ import './globals.css';
 const montserrat = Montserrat({
   variable: '--font-sans',
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700', '800'],
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Ponto 24 — Pacotes',
-  description: 'Pacotes na portaria, sem mistério.',
+  title: 'PONTO24 Pacotes',
+  description: 'Pacotes na portaria, sem mistério. Um produto PONTO24.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Ponto 24',
+    title: 'PONTO24 Pacotes',
   },
   icons: {
     icon: [

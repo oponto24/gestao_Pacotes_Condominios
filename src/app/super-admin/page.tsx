@@ -31,7 +31,7 @@ export default async function SuperAdminDashboardPage() {
       <header>
         <h1 className="text-2xl font-semibold text-foreground">Visão geral da plataforma</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Saúde do Ponto 24 e atalhos administrativos
+          Saúde do PONTO24 Pacotes e atalhos administrativos
         </p>
       </header>
 
