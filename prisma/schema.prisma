@@ -121,6 +121,7 @@ model Condominio {
   deleted_at       DateTime?
 
   unidades          Unidade[]
+  blocos            Bloco[] // story 11.1 — Epic 11
   setores           Setor[]
   moradores         Morador[]
   pacotes           Pacote[]
@@ -224,22 +225,48 @@ model Setor {
 }
 
 /// Unidade habitacional (apartamento ou casa).
+/// Bloco/Torre de um condomínio (story 11.1 — Epic 11).
+/// Substitui o campo string `unidade.bloco` por entidade própria pra suportar
+/// listagem hierárquica (PRD §3.10 / FR-102). Campo legado `unidade.bloco`
+/// mantido por 1 release pra rollback seguro.
+model Bloco {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  condominio_id String   @db.Uuid
+  nome          String   @db.VarChar(50)
+  descricao     String?  @db.VarChar(500)
+  ordem         Int      @default(0)
+  ativo         Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  condominio Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  unidades   Unidade[]
+
+  @@unique([condominio_id, nome])
+  @@index([condominio_id])
+  @@map("bloco")
+}
+
 model Unidade {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   condominio_id String   @db.Uuid
   identificador String   @db.VarChar(50) // "101", "Apto 301-B", "Casa 12"
+  /// @deprecated story 11.1 — preferir bloco_id (FK Bloco). Mantido por 1 release.
   bloco         String?  @db.VarChar(50)
+  bloco_id      String?  @db.Uuid // story 11.1 — FK pra entidade Bloco
   observacoes   String?  @db.VarChar(500)
   ativo         Boolean  @default(true)
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
   condominio Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  bloco_ref  Bloco?     @relation(fields: [bloco_id], references: [id], onDelete: SetNull)
   moradores  Morador[]
   pacotes    Pacote[]
 
   @@unique([condominio_id, identificador, bloco])
   @@index([condominio_id])
+  @@index([bloco_id])
   @@map("unidade")
 }
 
