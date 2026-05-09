@@ -177,6 +177,32 @@ async function handleInboundMessage(
     } catch (err) {
       log.warn({ err, message_id: created.id }, 'Falha ao enfileirar processPalavraChave');
     }
+
+    // Decisão produto 2026-05-09: pausar lembretes 24h dos pacotes pendentes
+    // do morador. Admin do condomínio reagenda manualmente quando apropriado.
+    try {
+      const result = await db.pacote.updateMany({
+        where: {
+          condominio_id: condominioId,
+          status: 'aguardando_retirada',
+          destinatario_id: morador.id,
+          lembretes_pausados: false,
+        },
+        data: {
+          lembretes_pausados: true,
+          lembretes_pausados_em: new Date(),
+          lembretes_pausados_motivo: 'morador_respondeu_whatsapp',
+        },
+      });
+      if (result.count > 0) {
+        log.info(
+          { morador_id: morador.id, pacotes_pausados: result.count },
+          'lembretes pausados — morador respondeu WhatsApp',
+        );
+      }
+    } catch (err) {
+      log.warn({ err, morador_id: morador.id }, 'Falha ao pausar lembretes');
+    }
   }
 
   return 'created';
