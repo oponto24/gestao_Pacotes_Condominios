@@ -122,18 +122,9 @@ Categorias:
 - **Push:** delegado ao `@devops` (Gage) — devs fazem `git commit` local apenas
 - **Pendências de cliente:** nunca commitar — sempre via story workflow AIOX
 
-## Status do roadmap
+## Status
 
-| Epic | Status |
-|---|---|
-| **Epic 1 — Fundação Técnica** | ✅ Concluído (2026-05-06) — 10/10 stories |
-| **Epic 2 — Cadastros** (CRUDs + CSV) | ✅ Concluído (2026-05-07) — 7/7 stories |
-| **Epic 3 — Chegada do Pacote** (PWA + IA + matching) | ✅ Concluído (2026-05-08) — 12/12 stories incluindo 3.12 deploy VPS |
-| **Epic 4 — Notificação WhatsApp** (Meta Cloud API) | ✅ Concluído (2026-05-08) — 6 stories + 4.6b UI bloco. Aguarda aprovação Meta do template `pacote_chegou` pra smoke real |
-| **Epic 5 — Retirada do Pacote** | ✅ Concluído (2026-05-07) — 4/4 stories |
-| **Epic 6 — Painel Administrativo** | ✅ 5/5 — 6.5 (Reenviar/Cancelar) coberto pelo bloco 4.6b no detalhe |
-| Epic 7 — Código ML via WhatsApp | ⏳ P1 — futuro (handler inbound já no webhook 4.4, falta parser ML) |
-| Epic 8 — Operação SaaS (deploy VPS) | 🟡 8.4 done (VPS + HTTPS); 8.1-8.3 super-admin parcial (lista + impersonate done), 8.5-8.7 cadastro hierárquico pendentes |
+Epics 1-6 concluídos (MVP funcional ponta-a-ponta + Epic 4 WhatsApp). Detalhes vivos em [`docs/stories/ROADMAP.md`](docs/stories/ROADMAP.md). Roadmap pós-MVP capturado no PRD §6.
 
 **Pipeline end-to-end (em produção):**
 

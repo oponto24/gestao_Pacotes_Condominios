@@ -72,9 +72,10 @@ Sistema web mobile-first (PWA) para portaria/administração, com notificação 
 
 ### 3.1 Cadastros
 
-- **FR-001:** Sistema deve permitir cadastro de **condomínio** (nome, endereço, CEP, CNPJ, contato responsável).
+- **FR-001:** Sistema deve permitir cadastro de **condomínio** (nome, endereço, CEP, CNPJ, contato responsável). **Inclui flag `tem_administracao` (boolean)** definida na criação — pode ser alterada depois pelo admin do condomínio. Ver §3.8.
 - **FR-002:** Sistema deve permitir cadastro de **setores de armazenamento** por condomínio (nome, descrição, capacidade opcional).
-- **FR-003:** Sistema deve permitir cadastro de **unidades** (apartamento/casa), cada uma vinculada a um condomínio.
+- **FR-002.1:** Sistema deve permitir cadastro de **blocos/torres** por condomínio (nome, descrição, ordem). Em prédios de bloco único, é opcional. Apartamentos vinculam-se a um bloco quando existir.
+- **FR-003:** Sistema deve permitir cadastro de **unidades/apartamentos**, cada uma vinculada a um condomínio e opcionalmente a um bloco.
 - **FR-004:** Cada unidade deve ter um **condômino principal** (nome, telefone, e-mail opcional). Esse é o destinatário fallback de notificações.
 - **FR-005:** Cada unidade pode ter **destinatários adicionais** (nome, telefone opcional) — cônjuge, filhos, dependentes.
 - **FR-006:** Sistema deve permitir **importação em massa via CSV** de unidades + condômino principal (ativação rápida de condomínio novo).
@@ -86,21 +87,22 @@ Sistema web mobile-first (PWA) para portaria/administração, com notificação 
 - **FR-010:** Funcionário deve poder iniciar o registro de pacote pelo celular (PWA mobile-first).
 - **FR-011:** Sistema deve permitir **bipar o código de barras** do pacote (1D ou QR) usando a câmera do celular — opcional, serve para unicidade e rastreio.
 - **FR-012:** Sistema deve **obrigatoriamente capturar uma foto da etiqueta** do pacote.
-- **FR-013:** Sistema deve enviar a foto para pipeline de IA (Claude Haiku 4.5 vision) e extrair em JSON estruturado: nome do destinatário, endereço, CEP, complemento (apto/bloco), transportadora.
+- **FR-013:** Sistema deve enviar a foto para pipeline de IA (Gemini Flash-Lite default + Anthropic Haiku 4.5 fallback, ambos vision) e extrair em JSON estruturado: nome do destinatário, endereço, CEP, complemento (apto/bloco), transportadora.
 - **FR-014:** Sistema deve **sempre exibir os dados extraídos para confirmação/edição** antes de gravar (decisão MVP — modo "sempre confirmar").
-- **FR-015:** Sistema deve sugerir automaticamente o casamento com a unidade do condomínio baseado em CEP + nome + complemento.
+- **FR-015:** Sistema deve sugerir automaticamente o casamento com a unidade baseado em **apto + bloco + nome do destinatário**. CEP entra apenas como sanity check (alerta visual se divergir, não bloqueia). Razão: em prédios de múltiplos blocos, CEP é o mesmo para todos.
 - **FR-016:** Funcionário deve classificar o **tamanho do pacote** (Pequeno, Médio, Grande, Extra Grande) após confirmar os dados.
 - **FR-017:** Sistema deve sugerir um **setor de armazenamento** com base no tamanho (regra simples e configurável por condomínio).
 - **FR-018:** Funcionário deve poder **sobrescrever** a sugestão de setor e informar **posição** específica.
 - **FR-019:** Sistema deve registrar **horário de chegada automático** (timestamp do servidor no momento do registro), nunca digitado manualmente.
 - **FR-020:** Sistema deve registrar **funcionário responsável pelo recebimento** (capturado via login).
-- **FR-021:** Se o casamento automático falhar (CEP não bate, nome não encontrado), o pacote deve cair em status **"pendente de identificação"** para resolução manual pelo admin.
+- **FR-021:** Se o matching automático falhar, o pacote deve cair em status **"pendente de identificação"** com os dados que a IA conseguiu extrair preservados. Resolução é aberta a porteiro **OU** admin (qualquer um que tiver tempo primeiro).
+- **FR-022:** Em condomínio com `tem_administracao=true` (§3.8), porteiro **não escolhe setor + posição**. Após confirmar morador e tamanho, status vira `aguardando_organizacao` e pacote sai da fila do porteiro pra fila da administração. Em condomínio sem administração, fluxo segue como FR-016 a FR-018 (porteiro faz tudo).
 
 ### 3.3 Notificação ao morador
 
-- **FR-030:** Após o pacote ser registrado e organizado (setor + posição definidos), sistema deve **disparar notificação WhatsApp automaticamente**.
-- **FR-031:** Notificação deve ser enviada **prioritariamente para o nome do destinatário** que aparece na etiqueta, se ele estiver cadastrado naquela unidade.
-- **FR-032:** Se o destinatário **não estiver cadastrado**, notificação vai para o **condômino principal** da unidade (fallback).
+- **FR-030:** Após o pacote ser **organizado (setor + posição definidos)**, sistema deve **disparar notificação WhatsApp automaticamente**. Em condomínio com administração, gatilho é a confirmação da admin; sem administração, é o porteiro confirmando.
+- **FR-031:** Notificação deve casar destinatário pela seguinte prioridade: (1) **nome da etiqueta** se houver morador cadastrado com nome equivalente (match exato → fuzzy ≥0.7 → primeiro+último nome); (2) **condômino principal**; (3) **primeiro adicional** com telefone.
+- **FR-032:** Se ninguém na unidade tem telefone cadastrado, mensagem fica em estado `failed` com `failure_reason: 'sem_destinatario_telefone'` e admin é notificado pra cadastrar telefone (não retenta automaticamente).
 - **FR-033:** Mensagem deve conter: nome do condomínio em destaque, nome do morador, aviso de chegada, setor de retirada, **QR Code único** (imagem).
 - **FR-034:** QR Code **não expira** — vale até ser usado.
 - **FR-035:** Sistema deve usar templates Meta aprovados (categoria utility), com variáveis para nome do condomínio, nome do morador, setor.
@@ -118,15 +120,18 @@ Sistema web mobile-first (PWA) para portaria/administração, com notificação 
 - **FR-046:** Após confirmar retirada, status do pacote vira "retirado" e ele sai da lista de pendentes.
 - **FR-047:** Sistema deve **invalidar o QR Code** após uso (não permitir segunda retirada).
 
-### 3.5 Código de retirada Mercado Livre (via WhatsApp)
+### 3.5 Palavra-chave de entrega (via WhatsApp)
 
-- **FR-050:** Morador deve poder enviar código de retirada para o WhatsApp do sistema escrevendo livremente (ex: "Código ML 1234, pedido bola futebol").
-- **FR-051:** Sistema deve usar IA leve (regex + LLM se necessário) para extrair: código, identificação opcional do pedido (descrição/loja).
-- **FR-052:** Sistema deve identificar o **morador remetente pelo número de telefone** (lookup em todas as unidades de todos os condomínios).
-- **FR-053:** Sistema deve responder no WhatsApp confirmando o recebimento ("Recebemos seu código 1234, vai estar disponível na portaria quando o pacote chegar").
-- **FR-054:** Quando um pacote é registrado para esse morador na portaria, sistema deve **destacar o código de retirada na tela** do funcionário.
-- **FR-055:** Se múltiplos códigos pendentes, sistema deve listar todos para o funcionário escolher na confirmação dos dados.
-- **FR-056:** Códigos não consumidos expiram em **30 dias**.
+> **Contexto operacional:** Mercado Livre (e algumas plataformas) exige uma "palavra-chave" pra entregador deixar o pacote. Sem ela, entregador vai embora. Quando morador não está em casa, porteiro precisa saber a palavra-chave. Esse fluxo resolve isso.
+
+- **FR-050:** Morador **cadastrado** deve poder enviar palavra-chave pelo WhatsApp do sistema escrevendo livremente (ex: "Palavra-chave 1234, liquidificador").
+- **FR-051:** Sistema deve usar IA leve (regex primeiro, LLM fallback) para extrair: palavra-chave, descrição opcional do pedido.
+- **FR-052:** Sistema deve identificar o morador remetente pelo número de telefone (lookup cross-tenant). Se telefone **não cadastrado**, sistema responde com template padrão: "Apenas moradores cadastrados podem enviar palavras-chave. Procure o síndico do seu prédio pra cadastrar seu telefone." Mensagem fica registrada pra audit, mas sem vínculo a apartamento.
+- **FR-053:** Sistema deve responder no WhatsApp confirmando o recebimento ("Recebemos sua palavra-chave 1234. Vai aparecer pra portaria quando o entregador pedir.").
+- **FR-054:** Tela `/portaria/palavras-chave` deve listar palavras-chave pendentes do condomínio com filtros (apartamento, bloco, morador, data). **Sempre acessível ao porteiro** (rota principal). Admin tem aba de visualização também (read-only).
+- **FR-054.1:** Fluxo de uso na portaria: (1) entregador pergunta palavra-chave; (2) porteiro abre `/portaria/palavras-chave`; (3) busca por apto+bloco; (4) lê pro entregador; (5) entregador deixa o pacote; (6) porteiro faz fluxo normal de chegada — ao registrar pacote, sistema sugere vincular palavra-chave automaticamente.
+- **FR-055:** Quando porteiro registra pacote pra morador com palavras-chave pendentes, sistema deve mostrar **banner sugerindo vinculação** ("Tem 2 palavras-chave pendentes pra esse apto, vincular?").
+- **FR-056:** Palavras-chave não consumidas expiram em **30 dias** (cron diário).
 
 ### 3.6 Painel administrativo (mínimo no MVP)
 
@@ -143,8 +148,74 @@ Sistema web mobile-first (PWA) para portaria/administração, com notificação 
 - **FR-071:** Operador SaaS (Gustavo) deve ter visão "super admin" para criar novos condomínios e impersonar usuários para suporte.
 - **FR-072:** Cada usuário (porteiro/admin) é vinculado a **um único condomínio**.
 - **FR-073:** Sistema usa **número WhatsApp único compartilhado** entre todos os condomínios (modelo Meta Cloud API direto).
-- **FR-074:** Mensagens devem injetar `[Nome do Condomínio]` como prefixo para dar contexto ao morador.
-- **FR-075:** Roteamento de respostas WhatsApp (códigos ML) deve identificar o condomínio pelo telefone do remetente.
+- **FR-074:** Mensagens devem injetar nome do condomínio como variável do template para dar contexto ao morador.
+- **FR-075:** Roteamento de respostas WhatsApp (palavras-chave) deve identificar o morador pelo telefone do remetente.
+
+### 3.8 Hierarquia operacional (admin master + admin funcionário + porteiro)
+
+> **Contexto:** alguns condomínios têm equipe administrativa dedicada (síndico + secretária); outros são operados só pela portaria. O fluxo do app muda dependendo disso.
+
+**Roles:**
+
+- **`super_admin`** (operador SaaS — fora do condomínio)
+- **`admin_master`** (síndico ou administrador-geral do prédio): cadastros completos, configura estrutura, gerencia usuários, vê tudo
+- **`admin_funcionario`** (secretária administrativa, zelador da admin): operacional na admin — organiza pacotes em condomínio com administração + entrega aos moradores
+- **`porteiro`** (funcionário da portaria): recebe entregadores + (em condomínio sem administração) organiza pacotes
+
+**FR-080 — Toggle `condominio.tem_administracao`:**
+- Definido na criação do condomínio pelo super-admin (checkbox no formulário)
+- Pode ser alterado depois pelo admin_master em "Configurações do condomínio"
+- Quando `true`: porteiro recebe → admin organiza → admin dispara WhatsApp → entrega normal no QR
+- Quando `false`: porteiro faz tudo (fluxo atual)
+
+**FR-081 — Status `aguardando_organizacao`:**
+- Novo status entre `confirmado` e `aguardando_retirada`
+- Pacote em `aguardando_organizacao` aparece em `/administracao/organizar` (só `admin_*` enxergam)
+- Transição automática quando porteiro confirma morador em condomínio com `tem_administracao=true`
+
+**FR-082 — Rota administração (`em_administracao`):**
+- Status adicional aplicável depois de `aguardando_retirada`: pacote sai da portaria, vai pra admin (caso morador esteja viajando, doente, pacote grande etc).
+- Trigger: botão "Enviar pra administração" no detalhe do pacote — disponível pra porteiro e admin_master.
+- Pacote some da fila portaria, aparece em `/administracao/em-transito`.
+- admin_funcionario entrega ao morador → status `retirado`.
+
+**FR-083 — Bipe entrega final flexível:**
+- **Qualquer role operacional pode bipar a entrega final** (porteiro, admin_funcionario, admin_master).
+- Razão: flexibilidade — se admin estiver fora, porteiro entrega; se admin estiver disponível, admin entrega.
+- Audit log diferencia quem finalizou.
+- Quando porteiro escaneia QR de pacote em `em_administracao`, sistema avisa "Este pacote estava na administração — confirma entrega?" e prossegue.
+
+**FR-084 — CRUD usuários hierárquico:**
+- super_admin: cria/edita admin_master de qualquer condomínio + ativa/desativa condomínios
+- admin_master: cadastra/edita/desativa **admin_funcionario** e **porteiro** do mesmo condomínio
+- admin_funcionario: não tem CRUD de usuário
+- porteiro: não tem CRUD de usuário
+
+**FR-085 — Resolução de pendentes flexível:**
+- Pacotes em `pendente_identificacao` podem ser resolvidos por **porteiro OU admin** (qualquer um disponível).
+
+### 3.9 Lembretes operacionais (placeholder — a definir)
+
+- **FR-090:** Sistema deve enviar **lembrete WhatsApp ao morador** se pacote não for retirado em **24h após primeira notificação**. Texto e cadência a definir em iteração com primeiros pilotos.
+- **FR-091:** Sistema deve **expirar palavras-chave** não-consumidas após 30 dias (já em FR-056).
+- **FR-092:** Admin deve poder **cancelar pacote** com motivo (texto livre + razão estruturada). Pacote vai pra status `cancelado` com audit log. Decisão de produto a finalizar: cancelados aparecem na lista? Reabrir cancelados é permitido?
+
+### 3.10 Busca e filtros (operacional admin)
+
+- **FR-100:** Header admin deve ter **busca global** (atalho `⌘K` / `Ctrl+K`) que pesquisa em: nome de morador, telefone de morador, código de rastreio de pacote, identificador de unidade. Resultados em dropdown com link direto pro detalhe.
+- **FR-101:** Listas em `/admin/*` devem ter filtros padronizados: status, bloco/torre, período, busca textual. Padrão de UI consistente entre listas.
+- **FR-102:** Tela `/admin/blocos` deve apresentar **hierarquia visual**: lista de blocos/torres → drill down nos apartamentos → moradores. Substitui terminologia "Unidades" no menu lateral por **"Torres/Blocos"**.
+
+### 3.11 Audit log abrangente
+
+- **FR-110:** Toda operação sensível deve gerar entrada em `audit_log` com: ator (`user_id`), timestamp, ação, recurso afetado, condomínio, payload de mudança (before/after diff quando aplicável).
+- **FR-111:** Operações cobertas obrigatoriamente: login, criação/edição/desativação de condomínio/setor/bloco/unidade/morador/usuário, organização/retirada/cancelamento/reenvio de pacote, configuração de webhook, mudança de role, envio/recebimento WhatsApp.
+- **FR-112:** UI `/super-admin/audit` permite filtros por: ator, ação, recurso, período, condomínio. super_admin vê tudo; admin_master vê só do próprio condomínio.
+
+### 3.12 Dashboard super-admin
+
+- **FR-120:** Página `/super-admin` deve mostrar KPIs cross-tenant: total de **condomínios ativos**, total de **admins ativos**, total de **pacotes pendentes nas últimas 24h**, total de **usuários ativos** separados em colunas (admins vs porteiros).
+- **FR-121:** Super-admin deve poder **desativar/reativar** condomínio (soft delete `condominio.ativo`). Desativação bloqueia login dos users vinculados + remove da lista geral; reativação reverte.
 
 ---
 
@@ -202,18 +273,23 @@ Sistema web mobile-first (PWA) para portaria/administração, com notificação 
 
 ## 6. Estrutura de Épicos (alto nível)
 
-| Epic | Nome | Descrição | Stories estimadas | Prioridade |
-|------|------|-----------|-------------------|------------|
-| **E1** | Fundação técnica | Setup repo, Docker stack, banco, auth, multi-tenancy, deploy VPS | 8-10 | P0 |
-| **E2** | Cadastros | CRUD de condomínio, setores, unidades, moradores. Importação CSV | 6-8 | P0 |
-| **E3** | Chegada do pacote | Bipe, foto, pipeline IA Haiku, casamento, classificação, setor | 8-10 | P0 |
-| **E4** | Notificação WhatsApp | Integração Meta Cloud API, templates, geração QR, fila de envio, webhooks | 6-8 | P0 |
-| **E5** | Retirada do pacote | Scan QR, fluxo de confirmação, registro de quem retirou | 4-5 | P0 |
-| **E6** | Painel administrativo | Lista, filtros, busca, detalhe do pacote, resolução manual | 5-6 | P0 |
-| **E7** | Código ML via WhatsApp | Recepção de mensagem, parse, vinculação, exibição na portaria | 4-5 | P1 |
-| **E8** | Operação SaaS | Super admin, criação de novo condomínio, observabilidade básica | 3-4 | P1 |
+> **Status atual:** Epics 1-6 concluídos. Epics 7-11 são pós-MVP (alguns refactors, alguns features novos). Detalhe e progresso no [`docs/stories/ROADMAP.md`](../stories/ROADMAP.md).
 
-**Total estimado:** ~45-55 stories. Esforço alvo: **8-12 semanas** com 1 dev sênior em tempo integral, ou 5-7 semanas com 2 devs.
+| Epic | Nome | Status |
+|------|------|--------|
+| **E1** | Fundação técnica | ✅ Concluído |
+| **E2** | Cadastros | ✅ Concluído |
+| **E3** | Chegada do pacote | ✅ Concluído |
+| **E4** | Notificação WhatsApp | ✅ Concluído (aguarda aprovação template Meta + chip dedicado pra prod real) |
+| **E5** | Retirada do pacote | ✅ Concluído |
+| **E6** | Painel administrativo | ✅ Concluído |
+| **E7** | Palavra-chave de entrega via WhatsApp (FR-050 a FR-056) | ⏳ Pendente |
+| **E8** | Operação SaaS — primeira fase | 🟡 Parcial (deploy VPS done, super-admin parcial) |
+| **E9** | Operação SaaS madura (FR-110 a FR-121) — dashboard, audit, governança | ⏳ Pendente |
+| **E10** | Hierarquia operacional (FR-080 a FR-085) — admin master + admin funcionário + condomínio com administração | ⏳ Pendente |
+| **E11** | UX admin refinado (FR-100 a FR-102) — Torres/Blocos + busca global + filtros padronizados | ⏳ Pendente |
+
+**Sequência sugerida pós-MVP:** E10 → E7 → E11 → E9 (~13 dias dev). Justificativa: E10 é diferencial competitivo (rota administração); E7 destrava casos de uso reais (palavra-chave ML); E11 melhora UX cotidiana; E9 é polish operacional.
 
 ---
 
@@ -221,23 +297,27 @@ Sistema web mobile-first (PWA) para portaria/administração, com notificação 
 
 Necessário aprovar antes do MVP entrar em produção:
 
-### 7.1 Template `pacote_chegou` (utility)
+### 7.1 Template `pacote_chegou` (utility) — APROVAÇÃO EM ANÁLISE NA META
 ```
-[{{1}}] Olá {{2}}! 📦
-
-Seu pacote chegou na administração. Está em: *{{3}}*.
-
-Para retirar, apresente o QR Code abaixo na portaria — pode passar para outra pessoa retirar por você se quiser.
-
-Qualquer dúvida, responda esta mensagem.
+Olá {{1}}! Sua encomenda chegou no {{2}} e já está disponível na portaria.
+Mostre a imagem em anexo ao porteiro para a retirada.
 ```
-**Anexo:** imagem do QR Code.
+- `{{1}}` = nome do morador
+- `{{2}}` = nome do condomínio
+- **Header:** imagem (QR Code 1200×628 com nome do condomínio)
+- **Submetido em:** 2026-05-08 16h25 — categoria Utility, idioma pt_BR
 
-### 7.2 Template `codigo_ml_recebido` (utility / resposta)
+### 7.2 Template `palavra_chave_recebida` (utility / resposta — story 7.x)
 ```
-[{{1}}] Recebemos seu código de retirada: *{{2}}*
+Recebemos sua palavra-chave: *{{1}}*
 
-Vai ficar disponível para a portaria assim que o pacote chegar. Não precisa fazer mais nada agora.
+Vai ficar disponível pra portaria assim que o entregador pedir. Não precisa fazer mais nada agora.
+```
+
+### 7.2.1 Template `morador_nao_cadastrado` (utility / resposta — story 7.x)
+```
+Olá! Apenas moradores cadastrados no sistema podem enviar palavras-chave de entrega.
+Procure o síndico do seu prédio pra cadastrar seu telefone.
 ```
 
 ### 7.3 Template `pacote_retirado` (utility — opcional, decisão futura)

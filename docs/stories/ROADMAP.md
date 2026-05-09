@@ -168,6 +168,64 @@
 
 ---
 
+## Epics pós-MVP (capturados em 2026-05-08)
+
+> **Detalhe completo:** PRD §3.8-§3.12 + decisões em `docs/planning/2026-05-08-decisoes.md`.
+
+### Epic 7 — Palavra-chave de entrega via WhatsApp (P1 atual)
+
+**Objetivo:** morador cadastrado envia palavra-chave (ex: ML) via WhatsApp; aparece pra portaria quando entregador pede.
+
+| # | Story | Status |
+|---|-------|--------|
+| 7.1 | Worker `processIncomingMessage` consome `WhatsAppMessage inbound` (4.4) e extrai palavra-chave via regex+LLM | Draft |
+| 7.2 | Persiste `palavra_chave_pendente` + auto-reply via template aprovado | Draft |
+| 7.3 | Tela `/portaria/palavras-chave` com filtros (apto, bloco, morador, data) — aba admin read-only | Draft |
+| 7.4 | Banner sugestão durante chegada do pacote ("vincular palavra-chave?") | Draft |
+| 7.5 | Cron diário expira palavras-chave > 30d | Draft |
+| 7.6 | Templates Meta `palavra_chave_recebida` + `morador_nao_cadastrado` submetidos | Draft |
+
+### Epic 10 — Hierarquia operacional (recomendado primeiro pós-MVP)
+
+**Objetivo:** introduzir `admin_master` + `admin_funcionario` + flag `condominio.tem_administracao` que altera fluxo da chegada.
+
+| # | Story | Status |
+|---|-------|--------|
+| 10.1 | Refactor enum `Role`: `admin` → `admin_master`, novo `admin_funcionario`. Migration de dados + atualização de guards | Draft |
+| 10.2 | Schema: `condominio.tem_administracao` + status `aguardando_organizacao` + status `em_administracao` | Draft |
+| 10.3 | Toggle no formulário super-admin de criação/edição de condomínio | Draft |
+| 10.4 | Fluxo bifurcado na chegada: porteiro confirma → vai pra admin organizar (se com adm) ou organiza direto (sem adm) | Draft |
+| 10.5 | Tela `/administracao/organizar` (admin escolhe setor/posição → dispara WhatsApp) | Draft |
+| 10.6 | Botão "Enviar pra administração" no detalhe do pacote (transição pra `em_administracao`) + tela `/administracao/em-transito` | Draft |
+| 10.7 | Bipe entrega flexível: porteiro pode bipar pacote `em_administracao` com aviso de confirmação | Draft |
+
+### Epic 11 — UX admin refinado
+
+**Objetivo:** Torres/Blocos como entidade + busca global + filtros padronizados.
+
+| # | Story | Status |
+|---|-------|--------|
+| 11.1 | Modelo `Bloco` (entidade) + migration extraindo de `unidade.bloco` string | Draft |
+| 11.2 | UI `/admin/blocos` hierárquica (lista de blocos → drill down apartamentos → moradores) | Draft |
+| 11.3 | Renomear menu "Unidades" → "Torres/Blocos" | Draft |
+| 11.4 | Componente `<GlobalSearch />` com `⌘K`/`Ctrl+K` no header admin | Draft |
+| 11.5 | Filtros padronizados em todas as listas admin | Draft |
+
+### Epic 12 — Operação SaaS madura (renomeado de "9")
+
+**Objetivo:** Dashboard cross-tenant + governança completa de condomínios + audit log abrangente.
+
+| # | Story | Status |
+|---|-------|--------|
+| 12.1 | Dashboard `/super-admin` com KPIs (condomínios ativos, admins ativos, pacotes pendentes 24h, usuários por role) | Draft |
+| 12.2 | Desativar/reativar condomínio (super-admin) + bloqueio de login dos users vinculados | Draft |
+| 12.3 | CRUD usuários (super-admin) — listar cross-tenant, criar admin_master de qualquer cond, editar role, soft delete | Draft |
+| 12.4 | Audit log abrangente — middleware que captura toda mutation + before/after diff | Draft |
+| 12.5 | UI `/super-admin/audit` com filtros (ator, ação, recurso, período, condomínio) | Draft |
+| 12.6 | UI `/admin/audit` (admin_master vê só do próprio condomínio) | Draft |
+
+---
+
 ## Sequência sugerida de execução
 
 **Onda 1 (semanas 1-2):** Epic 1 completo (fundação).
