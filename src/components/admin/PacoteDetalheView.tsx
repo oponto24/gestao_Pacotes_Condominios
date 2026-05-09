@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PacoteStatusBadge } from '@/components/admin/PacoteStatusBadge';
 import { PacoteTimeline } from '@/components/admin/PacoteTimeline';
 import { WhatsAppNotificationsBlock } from '@/components/admin/WhatsAppNotificationsBlock';
+import { EnviarParaAdministracaoButton } from '@/components/admin/EnviarParaAdministracaoButton';
 import type { PacoteDetail } from '@/lib/db/pacote-admin-detail';
 
 interface Props {
@@ -56,6 +57,11 @@ export function PacoteDetalheView({ pacote }: Props) {
           Pacote
         </h1>
         <PacoteStatusBadge status={pacote.status} />
+        {pacote.status === 'aguardando_retirada' && (
+          <div className="ml-auto">
+            <EnviarParaAdministracaoButton pacoteId={pacote.id} />
+          </div>
+        )}
       </div>
 
       {isPendente && (
