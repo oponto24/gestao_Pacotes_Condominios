@@ -85,6 +85,52 @@ export interface OrganizarPacoteResult {
   already_organized: boolean;
 }
 
+/**
+ * Story 10.5: lista pacotes em status `aguardando_organizacao` do tenant.
+ * Tela `/administracao/organizar` consome.
+ */
+export interface PacoteAguardandoOrganizacao {
+  id: string;
+  recebido_em: Date | null;
+  nome_destinatario_etiqueta: string | null;
+  unidade_id: string | null;
+  unidade_label: string | null;
+  destinatario_nome: string | null;
+  funcionario_recebedor_nome: string | null;
+}
+
+export async function listPacotesAguardandoOrganizacao(
+  ctx: OrganizarCtx,
+): Promise<PacoteAguardandoOrganizacao[]> {
+  return withTenantContext(ctx, async (tx) => {
+    const pacotes = await tx.pacote.findMany({
+      where: { status: 'aguardando_organizacao' },
+      orderBy: { recebido_em: 'asc' },
+      select: {
+        id: true,
+        recebido_em: true,
+        nome_destinatario_etiqueta: true,
+        unidade_id: true,
+        unidade: { select: { identificador: true, bloco: true } },
+        destinatario: { select: { nome: true } },
+        funcionario_recebedor: { select: { nome: true } },
+      },
+    });
+
+    return pacotes.map((p) => ({
+      id: p.id,
+      recebido_em: p.recebido_em,
+      nome_destinatario_etiqueta: p.nome_destinatario_etiqueta,
+      unidade_id: p.unidade_id,
+      unidade_label: p.unidade
+        ? `${p.unidade.bloco ? `Bloco ${p.unidade.bloco} · ` : ''}${p.unidade.identificador}`
+        : null,
+      destinatario_nome: p.destinatario?.nome ?? null,
+      funcionario_recebedor_nome: p.funcionario_recebedor?.nome ?? null,
+    }));
+  });
+}
+
 export async function organizarPacote(
   ctx: OrganizarCtx,
   pacoteId: string,
