@@ -165,6 +165,20 @@ export async function processSendWhatsApp(
           sent_at: new Date(),
         },
       });
+
+      // Decisão produto 2026-05-09: agenda primeiro lembrete pra +24h.
+      // Cron `enviarLembretes` reagendará automaticamente. Pausa via webhook
+      // quando morador responder.
+      const now = new Date();
+      const proximoLembrete = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      await tx.pacote.update({
+        where: { id: pacote_id },
+        data: {
+          ultimo_lembrete_em: now,
+          proximo_lembrete_em: proximoLembrete,
+          lembretes_pausados: false,
+        },
+      });
     });
 
     log.info({ pacote_id, wamid: sendResult.wamid, mock: sendResult.mock }, 'sendWhatsApp: enviado');

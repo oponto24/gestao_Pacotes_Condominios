@@ -332,6 +332,15 @@ model Pacote {
   qr_image_path   String?   @db.VarChar(500) // path no storage da imagem 1200x628 (story 4.2)
   qr_consumido_em DateTime?
 
+  // Lembretes 24h (decisão produto 2026-05-09)
+  // - Cron diário envia template QR a cada 24h sem retirada
+  // - Se morador responde no WhatsApp, lembretes pausam e admin agenda próximo
+  ultimo_lembrete_em      DateTime? // timestamp do último envio
+  proximo_lembrete_em     DateTime? // próximo envio agendado (cron lê este campo)
+  lembretes_pausados      Boolean   @default(false) // true após morador responder; admin reagenda manual
+  lembretes_pausados_em   DateTime? // quando virou pausado
+  lembretes_pausados_motivo String? @db.VarChar(500) // ex: "morador respondeu mensagem"
+
   // Recebimento
   funcionario_recebedor_id String?   @db.Uuid
   recebido_em              DateTime? // timestamp servidor (FR-019)

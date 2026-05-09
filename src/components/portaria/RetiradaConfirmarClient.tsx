@@ -71,6 +71,23 @@ export function RetiradaConfirmarClient({ pacote }: Props) {
         </p>
       </header>
 
+      {/* Decisão produto 2026-05-09: aviso quando pacote está em rota administração */}
+      {pacote.status === 'em_administracao' && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3"
+        >
+          <Building2 className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden />
+          <div>
+            <p className="text-sm font-medium">Pacote estava com a administração</p>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              Este pacote foi enviado pra entrega via administração. Confirme se você
+              é o responsável por finalizar a entrega antes de prosseguir.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3 rounded-lg border border-border bg-background p-4">
         <div className="flex items-start gap-3">
           <User className="mt-0.5 size-5 text-primary" aria-hidden />
