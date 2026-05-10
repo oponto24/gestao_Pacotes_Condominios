@@ -23,14 +23,15 @@ describe('AdminSidebar', () => {
     }
   });
 
-  it('renderiza items principais (Pacotes, Cadastros expandido, Sair)', () => {
+  it('renderiza items principais (Pacotes, Cadastros expandido)', () => {
     render(<AdminSidebar />);
     expect(screen.getByRole('link', { name: /Pacotes/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Cadastros/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Setores/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Unidades/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Moradores/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sair/ })).toBeInTheDocument();
+    // Logout consolidado no UserMenu do AdminHeader (achado U2)
+    expect(screen.queryByRole('button', { name: /Sair/ })).not.toBeInTheDocument();
   });
 
   it('item ativo recebe aria-current=page', () => {

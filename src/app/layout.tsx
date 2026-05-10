@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Montserrat } from 'next/font/google';
-import { ClerkProvider, Show, UserButton } from '@clerk/nextjs';
+import { ClerkProvider } from '@clerk/nextjs';
 import { Toaster } from 'sonner';
-import { Logo } from '@/components/brand/Logo';
 import { ImpersonateBanner } from '@/components/super-admin/ImpersonateBanner';
 import './globals.css';
 
@@ -43,15 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" className={montserrat.variable}>
       <body className="font-sans antialiased">
         <ClerkProvider>
-          {/* Header global só pra signed-in. Signed-out vê a LandingPage com header próprio. */}
-          <Show when="signed-in">
-            <header className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
-              <Logo size="sm" />
-              <div className="flex items-center gap-2">
-                <UserButton />
-              </div>
-            </header>
-          </Show>
+          {/* Sem chrome global — cada área (admin, portaria, super-admin, administracao)
+              renderiza seu próprio header. Evita header duplicado em mobile (achado U1)
+              e centraliza o ponto de logout por área (achado U2). */}
           <ImpersonateBanner />
           <main>{children}</main>
           <Toaster position="top-right" richColors closeButton />
