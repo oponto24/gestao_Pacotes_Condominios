@@ -8,6 +8,7 @@
  * 4. Soft delete via `deleted_at` (NFR-031 LGPD) — NUNCA DELETE físico
  */
 import { withTenant } from '@/server/db-tenant';
+import { assertMoradorQuota } from '@/lib/db/quotas';
 import { normalizarNome } from '@/lib/text/normalize';
 import type { MoradorCreateInput, MoradorUpdateInput } from '@/lib/validators/morador';
 
@@ -90,6 +91,7 @@ export function findMoradorByTelefone(telefone: string, excludeId?: string) {
  */
 export function createMorador(data: MoradorCreateInput, condominioId: string) {
   return withTenant(async (tx) => {
+    await assertMoradorQuota(tx, condominioId);
     if (data.is_principal) {
       await tx.morador.updateMany({
         where: { unidade_id: data.unidade_id, is_principal: true, deleted_at: null },

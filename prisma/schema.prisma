@@ -116,6 +116,11 @@ model Condominio {
   /// da admin)? Define se a organização do pacote é feita pelo porteiro (false) ou
   /// pela administração (true). Default false preserva fluxo atual.
   tem_administracao Boolean  @default(false)
+  /// Quotas por condomínio (story quotas-001). Defaults generosos pro MVP.
+  /// Validados no create de unidade/morador/pacote. NULL = ilimitado (super-admin override).
+  max_unidades     Int?      @default(200)
+  max_moradores    Int?      @default(600)
+  max_pacotes_30d  Int?      @default(2000)
   created_at       DateTime  @default(now())
   updated_at       DateTime  @updatedAt
   deleted_at       DateTime?

@@ -9,6 +9,7 @@
  * `IS NULL` no SQL).
  */
 import { withTenant } from '@/server/db-tenant';
+import { assertUnidadeQuota } from '@/lib/db/quotas';
 import type { UnidadeCreateInput, UnidadeUpdateInput } from '@/lib/validators/unidade';
 
 export interface ListUnidadesParams {
@@ -80,8 +81,9 @@ export function findUnidadeByIdentificador(
 }
 
 export function createUnidade(data: UnidadeCreateInput, condominioId: string) {
-  return withTenant((tx) =>
-    tx.unidade.create({
+  return withTenant(async (tx) => {
+    await assertUnidadeQuota(tx, condominioId);
+    return tx.unidade.create({
       data: {
         condominio_id: condominioId,
         identificador: data.identificador,
@@ -89,8 +91,8 @@ export function createUnidade(data: UnidadeCreateInput, condominioId: string) {
         observacoes: data.observacoes ?? null,
         ativo: true,
       },
-    }),
-  );
+    });
+  });
 }
 
 export function updateUnidade(id: string, data: UnidadeUpdateInput) {
