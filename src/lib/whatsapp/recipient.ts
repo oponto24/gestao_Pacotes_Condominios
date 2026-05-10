@@ -1,4 +1,4 @@
-import { db } from '@/lib/db';
+import { withSuperAdmin } from '@/lib/db-super-admin';
 import { nameSimilarity, normalizeName } from '@/lib/matching/normalize-name';
 
 /**
@@ -79,27 +79,29 @@ function firstLastNameKey(normalized: string): string | null {
  * Bypassa RLS — caller (worker) é responsável pelo isolamento.
  */
 export async function chooseRecipient(pacoteId: string): Promise<Recipient | null> {
-  const pacote = await db.pacote.findUnique({
-    where: { id: pacoteId },
-    select: {
-      id: true,
-      nome_destinatario_etiqueta: true,
-      ia_extracao_raw: true,
-      unidade: {
-        select: {
-          moradores: {
-            where: { ativo: true, deleted_at: null },
-            select: {
-              id: true,
-              nome: true,
-              telefone: true,
-              is_principal: true,
+  const pacote = await withSuperAdmin((tx) =>
+    tx.pacote.findUnique({
+      where: { id: pacoteId },
+      select: {
+        id: true,
+        nome_destinatario_etiqueta: true,
+        ia_extracao_raw: true,
+        unidade: {
+          select: {
+            moradores: {
+              where: { ativo: true, deleted_at: null },
+              select: {
+                id: true,
+                nome: true,
+                telefone: true,
+                is_principal: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+  );
 
   if (!pacote || !pacote.unidade) return null;
 

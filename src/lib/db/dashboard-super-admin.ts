@@ -1,10 +1,11 @@
 /**
  * Helpers de dashboard `/super-admin` (Onda 1 — Apple polish).
  *
- * Sem RLS — caller já validou role super_admin no layout.
+ * Bypass RLS via `withSuperAdmin` — caller já validou role super_admin
+ * no layout, mas precisamos do bypass pra ler tabelas multi-tenant.
  */
 
-import { db } from '@/lib/db';
+import { withSuperAdmin } from '@/lib/db-super-admin';
 
 export interface SuperAdminStats {
   condominiosAtivos: number;
@@ -29,15 +30,17 @@ export async function getSuperAdminStats(): Promise<SuperAdminStats> {
     adminMasters,
     adminFuncs,
     porteiros,
-  ] = await Promise.all([
-    db.condominio.count({ where: { ativo: true, deleted_at: null } }),
-    db.user.count({ where: { ativo: true } }),
-    db.pacote.count({ where: { created_at: { gte: ontem } } }),
-    db.pacote.count({ where: { status: 'pendente_identificacao' } }),
-    db.user.count({ where: { ativo: true, role: 'admin_master' } }),
-    db.user.count({ where: { ativo: true, role: 'admin_funcionario' } }),
-    db.user.count({ where: { ativo: true, role: 'porteiro' } }),
-  ]);
+  ] = await withSuperAdmin((tx) =>
+    Promise.all([
+      tx.condominio.count({ where: { ativo: true, deleted_at: null } }),
+      tx.user.count({ where: { ativo: true } }),
+      tx.pacote.count({ where: { created_at: { gte: ontem } } }),
+      tx.pacote.count({ where: { status: 'pendente_identificacao' } }),
+      tx.user.count({ where: { ativo: true, role: 'admin_master' } }),
+      tx.user.count({ where: { ativo: true, role: 'admin_funcionario' } }),
+      tx.user.count({ where: { ativo: true, role: 'porteiro' } }),
+    ]),
+  );
 
   return {
     condominiosAtivos: conds,
@@ -60,12 +63,14 @@ export interface RecentCondominio {
 }
 
 export async function getRecentCondominios(limit = 5): Promise<RecentCondominio[]> {
-  return db.condominio.findMany({
-    where: { ativo: true, deleted_at: null },
-    orderBy: { created_at: 'desc' },
-    take: limit,
-    select: { id: true, nome: true, cidade: true, estado: true, created_at: true },
-  });
+  return withSuperAdmin((tx) =>
+    tx.condominio.findMany({
+      where: { ativo: true, deleted_at: null },
+      orderBy: { created_at: 'desc' },
+      take: limit,
+      select: { id: true, nome: true, cidade: true, estado: true, created_at: true },
+    }),
+  );
 }
 
 export interface RecentAuditEntry {
@@ -76,18 +81,21 @@ export interface RecentAuditEntry {
 }
 
 export async function getRecentAuditEntries(limit = 5): Promise<RecentAuditEntry[]> {
-  const items = await db.auditLog.findMany({
-    orderBy: { created_at: 'desc' },
-    take: limit,
-    select: { id: true, acao: true, created_at: true, user_id: true },
+  const { items, users } = await withSuperAdmin(async (tx) => {
+    const items = await tx.auditLog.findMany({
+      orderBy: { created_at: 'desc' },
+      take: limit,
+      select: { id: true, acao: true, created_at: true, user_id: true },
+    });
+    const userIds = [...new Set(items.map((i) => i.user_id).filter(Boolean) as string[])];
+    const users = userIds.length
+      ? await tx.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, email: true },
+        })
+      : [];
+    return { items, users };
   });
-  const userIds = [...new Set(items.map((i) => i.user_id).filter(Boolean) as string[])];
-  const users = userIds.length
-    ? await db.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, email: true },
-      })
-    : [];
   const emailById = new Map(users.map((u) => [u.id, u.email]));
   return items.map((i) => ({
     id: i.id.toString(),

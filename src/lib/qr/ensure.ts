@@ -1,4 +1,4 @@
-import { db } from '@/lib/db';
+import { withSuperAdmin } from '@/lib/db-super-admin';
 import { generateQrImage } from './generator';
 import { saveQrImage } from './store';
 
@@ -20,16 +20,18 @@ export interface EnsureQrResult {
  * tenant context separadamente.
  */
 export async function ensureQrForPacote(pacoteId: string): Promise<EnsureQrResult> {
-  const pacote = await db.pacote.findUnique({
-    where: { id: pacoteId },
-    select: {
-      id: true,
-      condominio_id: true,
-      qr_token: true,
-      qr_image_path: true,
-      condominio: { select: { nome: true } },
-    },
-  });
+  const pacote = await withSuperAdmin((tx) =>
+    tx.pacote.findUnique({
+      where: { id: pacoteId },
+      select: {
+        id: true,
+        condominio_id: true,
+        qr_token: true,
+        qr_image_path: true,
+        condominio: { select: { nome: true } },
+      },
+    }),
+  );
   if (!pacote) {
     throw new Error(`Pacote ${pacoteId} não encontrado`);
   }
@@ -53,10 +55,12 @@ export async function ensureQrForPacote(pacoteId: string): Promise<EnsureQrResul
 
   const saved = await saveQrImage(pacote.condominio_id, pacote.id, buffer);
 
-  await db.pacote.update({
-    where: { id: pacote.id },
-    data: { qr_image_path: saved.storageKey },
-  });
+  await withSuperAdmin((tx) =>
+    tx.pacote.update({
+      where: { id: pacote.id },
+      data: { qr_image_path: saved.storageKey },
+    }),
+  );
 
   return {
     qrToken: pacote.qr_token,
