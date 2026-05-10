@@ -12,6 +12,7 @@ import {
   Layers,
   Package,
   ShieldCheck,
+  UserCheck,
   UserCog,
   Users,
 } from 'lucide-react';
@@ -40,7 +41,7 @@ const EQUIPE: NavGroup = {
   icon: <ShieldCheck className="h-4 w-4" aria-hidden />,
   storageKey: 'aiox.adminSidebar.equipeOpen',
   items: [
-    { href: '/admin/equipe', label: 'Admins', icon: <ShieldCheck className="h-4 w-4" aria-hidden /> },
+    { href: '/admin/equipe', label: 'Admins', icon: <UserCheck className="h-4 w-4" aria-hidden /> },
     { href: '/admin/funcionarios', label: 'Porteiros', icon: <UserCog className="h-4 w-4" aria-hidden /> },
   ],
 };
