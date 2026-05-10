@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { withTenant } from '@/server/db-tenant';
 import type { TenantTx } from '@/server/db-tenant';
+import { assertPacote30dQuota } from '@/lib/db/quotas';
 
 /**
  * Gera token random URL-safe de 64 chars para assinar o QR Code do pacote.
@@ -49,12 +50,14 @@ export function createPacoteRascunho(
   input: CreatePacoteRascunhoInput,
 ): Promise<CreatePacoteRascunhoResult> {
   return withTenant(async (tx) => {
+    await assertPacote30dQuota(tx, input.condominioId);
     return createPacoteRascunhoWithTx(tx, input);
   });
 }
 
 /**
  * Versão exposta para tests integration que setam contexto manualmente.
+ * Não checa quota — o caller via API (`createPacoteRascunho`) já fez.
  */
 export async function createPacoteRascunhoWithTx(
   tx: TenantTx,
