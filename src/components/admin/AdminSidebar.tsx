@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { SignOutButton } from '@clerk/nextjs';
 import {
   ChevronDown,
   ChevronRight,
@@ -11,7 +10,6 @@ import {
   Home,
   LayoutDashboard,
   Layers,
-  LogOut,
   Package,
   ShieldCheck,
   UserCog,
@@ -171,17 +169,7 @@ export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
         </div>
       )}
 
-      <div className="mt-auto pt-4">
-        <SignOutButton redirectUrl="/">
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-danger/10 hover:text-danger"
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            Sair
-          </button>
-        </SignOutButton>
-      </div>
+      {/* Logout consolidado no UserMenu do AdminHeader (achado U2). */}
     </nav>
   );
 }
