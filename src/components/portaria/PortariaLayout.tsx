@@ -35,7 +35,7 @@ export function PortariaLayout({ condominioNome, userNome, children }: PortariaL
       {/* Header fixo */}
       <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs uppercase tracking-wide text-text-secondary">
+          <p className="truncate text-xs font-medium text-text-secondary">
             {condominioNome}
           </p>
           <p className="truncate text-sm font-semibold text-foreground">{userNome}</p>

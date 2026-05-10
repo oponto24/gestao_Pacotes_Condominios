@@ -92,7 +92,7 @@ export function RetiradaConfirmarClient({ pacote }: Props) {
         <div className="flex items-start gap-3">
           <User className="mt-0.5 size-5 text-primary" aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="text-xs uppercase tracking-wide text-text-secondary">Destinatário</p>
+            <p className="text-xs font-medium text-text-secondary">Destinatário</p>
             <p className="text-lg font-semibold">{destinatarioNome}</p>
           </div>
         </div>
@@ -100,7 +100,7 @@ export function RetiradaConfirmarClient({ pacote }: Props) {
         <div className="flex items-start gap-3">
           <Building2 className="mt-0.5 size-5 text-accent" aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="text-xs uppercase tracking-wide text-text-secondary">Unidade</p>
+            <p className="text-xs font-medium text-text-secondary">Unidade</p>
             <p className="font-medium">{unidadeLabel}</p>
           </div>
         </div>
@@ -109,7 +109,7 @@ export function RetiradaConfirmarClient({ pacote }: Props) {
           <div className="flex items-start gap-3">
             <MapPin className="mt-0.5 size-5 text-text-secondary" aria-hidden />
             <div className="min-w-0 flex-1">
-              <p className="text-xs uppercase tracking-wide text-text-secondary">Onde está</p>
+              <p className="text-xs font-medium text-text-secondary">Onde está</p>
               <p className="font-medium">
                 {pacote.setor?.nome ?? '—'}
                 {pacote.posicao && ` · ${pacote.posicao}`}

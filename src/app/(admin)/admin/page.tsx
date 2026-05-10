@@ -71,7 +71,7 @@ export default async function AdminDashboardPage() {
       </section>
 
       <section aria-labelledby="atalhos-heading">
-        <h2 id="atalhos-heading" className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
+        <h2 id="atalhos-heading" className="text-base font-semibold text-text-secondary">
           Atalhos
         </h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -98,7 +98,7 @@ export default async function AdminDashboardPage() {
 
       <section aria-labelledby="recentes-heading">
         <div className="flex items-baseline justify-between">
-          <h2 id="recentes-heading" className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
+          <h2 id="recentes-heading" className="text-base font-semibold text-text-secondary">
             Atividade recente
           </h2>
           <Link

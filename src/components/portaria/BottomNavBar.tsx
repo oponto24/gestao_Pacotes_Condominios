@@ -79,11 +79,13 @@ export function BottomNavBar() {
               fabBaseClass,
               override.variant === 'success'
                 ? 'bg-success text-white hover:bg-success/90'
-                : 'animate-pulse bg-primary text-primary-foreground ring-4 ring-primary/40 hover:bg-primary-dark hover:animate-none',
+                // Apple HIG (achado UX U8): sem animate-pulse infinito.
+                // Ring permanente já chama atenção sem cansar o olho.
+                : 'bg-primary text-primary-foreground ring-4 ring-primary/30 hover:bg-primary-dark',
             )}
           >
             {override.icon}
-            <span className="text-[10px] font-bold uppercase tracking-wide">
+            <span className="text-[11px] font-semibold">
               {override.label}
             </span>
           </button>
@@ -100,7 +102,7 @@ export function BottomNavBar() {
             )}
           >
             {CHEGADA.icon}
-            <span className="text-[10px] font-bold uppercase tracking-wide">
+            <span className="text-[11px] font-semibold">
               {CHEGADA.label}
             </span>
           </Link>
