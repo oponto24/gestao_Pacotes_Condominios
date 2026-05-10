@@ -1,14 +1,16 @@
 import type { Job } from 'bullmq';
 import { Prisma } from '@prisma/client';
-import { db } from '@/lib/db';
+import { withSuperAdmin } from '@/lib/db-super-admin';
 import { loggerForJob } from '@/lib/logger';
+import { normalizePhone } from '@/lib/validators/_shared';
 import type { MetaWebhookValue } from '@/lib/meta-whatsapp/webhook';
 
 /**
  * Job `processWhatsappWebhook` (story 4.4).
  *
  * Recebe um `value` parseado do webhook Meta e atualiza/cria mensagens.
- * Usa client global (bypass RLS) — webhooks são cross-tenant.
+ * Bypassa RLS via `withSuperAdmin` — webhooks são cross-tenant e o lookup
+ * de morador atravessa tenants pelo telefone E.164.
  *
  * Idempotência:
  *  - Status updates: lookup por meta_message_id, regride status apenas se não estiver mais avançado.
@@ -71,37 +73,39 @@ async function handleStatusUpdate(
   status: NonNullable<MetaWebhookValue['statuses']>[number],
   log: ReturnType<typeof loggerForJob>,
 ): Promise<boolean> {
-  const existing = await db.whatsAppMessage.findUnique({
-    where: { meta_message_id: status.id },
-    select: { id: true, status: true },
-  });
+  return withSuperAdmin(async (tx) => {
+    const existing = await tx.whatsAppMessage.findUnique({
+      where: { meta_message_id: status.id },
+      select: { id: true, status: true },
+    });
 
-  if (!existing) {
-    log.warn({ meta_message_id: status.id, status: status.status }, 'webhook status: mensagem não encontrada — skip');
-    return false;
-  }
-
-  // Idempotência — não regride status (delivered → sent é ignorado)
-  const currentRank = STATUS_RANK[existing.status] ?? 0;
-  const incomingRank = STATUS_RANK[status.status] ?? 0;
-  if (incomingRank < currentRank && status.status !== 'failed') {
-    return false;
-  }
-
-  const data: Prisma.WhatsAppMessageUpdateInput = { status: status.status };
-  const ts = new Date(parseInt(status.timestamp, 10) * 1000);
-  if (status.status === 'sent') data.sent_at = ts;
-  else if (status.status === 'delivered') data.delivered_at = ts;
-  else if (status.status === 'read') data.read_at = ts;
-  else if (status.status === 'failed') {
-    data.failed_at = ts;
-    if (status.errors?.[0]) {
-      data.failure_reason = `${status.errors[0].code}: ${status.errors[0].title}`.slice(0, 500);
+    if (!existing) {
+      log.warn({ meta_message_id: status.id, status: status.status }, 'webhook status: mensagem não encontrada — skip');
+      return false;
     }
-  }
 
-  await db.whatsAppMessage.update({ where: { id: existing.id }, data });
-  return true;
+    // Idempotência — não regride status (delivered → sent é ignorado)
+    const currentRank = STATUS_RANK[existing.status] ?? 0;
+    const incomingRank = STATUS_RANK[status.status] ?? 0;
+    if (incomingRank < currentRank && status.status !== 'failed') {
+      return false;
+    }
+
+    const data: Prisma.WhatsAppMessageUpdateInput = { status: status.status };
+    const ts = new Date(parseInt(status.timestamp, 10) * 1000);
+    if (status.status === 'sent') data.sent_at = ts;
+    else if (status.status === 'delivered') data.delivered_at = ts;
+    else if (status.status === 'read') data.read_at = ts;
+    else if (status.status === 'failed') {
+      data.failed_at = ts;
+      if (status.errors?.[0]) {
+        data.failure_reason = `${status.errors[0].code}: ${status.errors[0].title}`.slice(0, 500);
+      }
+    }
+
+    await tx.whatsAppMessage.update({ where: { id: existing.id }, data });
+    return true;
+  });
 }
 
 async function handleInboundMessage(
@@ -109,31 +113,41 @@ async function handleInboundMessage(
   value: MetaWebhookValue,
   log: ReturnType<typeof loggerForJob>,
 ): Promise<'created' | 'duplicate' | 'skipped'> {
-  // Idempotência — Meta pode reentregar
-  const existing = await db.whatsAppMessage.findUnique({
-    where: { meta_message_id: message.id },
-    select: { id: true },
-  });
-  if (existing) return 'duplicate';
+  // Meta envia `from` em formato sem '+' (ex: "5511988108784").
+  // Moradores estão salvos em E.164 ("+5511988108784") — normalizamos pra casar.
+  const fromNormalized = normalizePhone(message.from);
 
-  // Lookup morador pelo telefone
-  const morador = await db.morador.findFirst({
-    where: { telefone: message.from, ativo: true, deleted_at: null },
-    select: { id: true, condominio_id: true },
-    orderBy: { updated_at: 'desc' },
+  const lookup = await withSuperAdmin(async (tx) => {
+    const existing = await tx.whatsAppMessage.findUnique({
+      where: { meta_message_id: message.id },
+      select: { id: true },
+    });
+    if (existing) return { kind: 'duplicate' as const };
+
+    const morador = await tx.morador.findFirst({
+      where: { telefone: fromNormalized, ativo: true, deleted_at: null },
+      select: { id: true, condominio_id: true },
+      orderBy: { updated_at: 'desc' },
+    });
+
+    const whatsappNumber = await tx.whatsAppNumber.findFirst({
+      where: {
+        phone_number_id: value.metadata?.phone_number_id ?? '',
+      },
+      select: { id: true, display_phone: true },
+    });
+
+    return { kind: 'fresh' as const, morador, whatsappNumber };
   });
+
+  if (lookup.kind === 'duplicate') return 'duplicate';
+
+  const { morador, whatsappNumber } = lookup;
 
   if (!morador) {
-    log.info({ from: message.from }, 'webhook inbound: telefone não cadastrado');
+    log.info({ from: fromNormalized }, 'webhook inbound: telefone não cadastrado');
   }
 
-  // Lookup número WhatsApp pelo phone_number_id do payload
-  const whatsappNumber = await db.whatsAppNumber.findFirst({
-    where: {
-      phone_number_id: value.metadata?.phone_number_id ?? '',
-    },
-    select: { id: true, display_phone: true },
-  });
   if (!whatsappNumber) {
     log.warn(
       { phone_number_id: value.metadata?.phone_number_id },
@@ -149,20 +163,22 @@ async function handleInboundMessage(
     return 'skipped';
   }
 
-  const created = await db.whatsAppMessage.create({
-    data: {
-      condominio_id: condominioId,
-      whatsapp_number_id: whatsappNumber.id,
-      meta_message_id: message.id,
-      direction: 'inbound',
-      status: 'delivered',
-      to_phone: whatsappNumber.display_phone,
-      from_phone: message.from,
-      body_text: message.text?.body ?? null,
-      morador_id: morador?.id ?? null,
-    },
-    select: { id: true },
-  });
+  const created = await withSuperAdmin((tx) =>
+    tx.whatsAppMessage.create({
+      data: {
+        condominio_id: condominioId,
+        whatsapp_number_id: whatsappNumber.id,
+        meta_message_id: message.id,
+        direction: 'inbound',
+        status: 'delivered',
+        to_phone: whatsappNumber.display_phone,
+        from_phone: fromNormalized,
+        body_text: message.text?.body ?? null,
+        morador_id: morador?.id ?? null,
+      },
+      select: { id: true },
+    }),
+  );
 
   // Epic 7: enfileira processamento de palavra-chave se morador identificado
   if (morador?.id) {
@@ -181,19 +197,21 @@ async function handleInboundMessage(
     // Decisão produto 2026-05-09: pausar lembretes 24h dos pacotes pendentes
     // do morador. Admin do condomínio reagenda manualmente quando apropriado.
     try {
-      const result = await db.pacote.updateMany({
-        where: {
-          condominio_id: condominioId,
-          status: 'aguardando_retirada',
-          destinatario_id: morador.id,
-          lembretes_pausados: false,
-        },
-        data: {
-          lembretes_pausados: true,
-          lembretes_pausados_em: new Date(),
-          lembretes_pausados_motivo: 'morador_respondeu_whatsapp',
-        },
-      });
+      const result = await withSuperAdmin((tx) =>
+        tx.pacote.updateMany({
+          where: {
+            condominio_id: condominioId,
+            status: 'aguardando_retirada',
+            destinatario_id: morador.id,
+            lembretes_pausados: false,
+          },
+          data: {
+            lembretes_pausados: true,
+            lembretes_pausados_em: new Date(),
+            lembretes_pausados_motivo: 'morador_respondeu_whatsapp',
+          },
+        }),
+      );
       if (result.count > 0) {
         log.info(
           { morador_id: morador.id, pacotes_pausados: result.count },
