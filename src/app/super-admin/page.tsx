@@ -101,7 +101,7 @@ export default async function SuperAdminDashboardPage() {
           <div className="flex items-baseline justify-between">
             <h2
               id="conds-heading"
-              className="text-sm font-semibold uppercase tracking-wide text-text-secondary"
+              className="text-base font-semibold text-text-secondary"
             >
               Condomínios recentes
             </h2>
@@ -144,7 +144,7 @@ export default async function SuperAdminDashboardPage() {
           <div className="flex items-baseline justify-between">
             <h2
               id="audit-heading"
-              className="text-sm font-semibold uppercase tracking-wide text-text-secondary"
+              className="text-base font-semibold text-text-secondary"
             >
               Eventos recentes
             </h2>

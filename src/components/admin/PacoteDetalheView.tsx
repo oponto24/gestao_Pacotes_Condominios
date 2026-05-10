@@ -27,7 +27,7 @@ function formatTs(d: Date | null): string {
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-text-secondary">{label}</dt>
+      <dt className="text-xs font-medium text-text-secondary">{label}</dt>
       <dd className="mt-0.5 text-sm font-medium">{value || '—'}</dd>
     </div>
   );
@@ -123,7 +123,7 @@ export function PacoteDetalheView({ pacote }: Props) {
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Coluna esquerda: dados */}
         <section className="space-y-4 rounded-lg border border-border bg-background p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
+          <h2 className="text-base font-semibold text-text-secondary">
             Dados do pacote
           </h2>
           <dl className="grid grid-cols-2 gap-3">
@@ -152,7 +152,7 @@ export function PacoteDetalheView({ pacote }: Props) {
           </dl>
 
           <div className="border-t border-border pt-3">
-            <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-text-secondary">
+            <h3 className="mb-2 text-base font-semibold text-text-secondary">
               Auditoria
             </h3>
             <dl className="grid grid-cols-2 gap-3">
@@ -175,7 +175,7 @@ export function PacoteDetalheView({ pacote }: Props) {
         {/* Coluna direita: foto + timeline */}
         <section className="space-y-4">
           <div className="rounded-lg border border-border bg-background p-4">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">
+            <h2 className="mb-3 text-base font-semibold text-text-secondary">
               Foto da etiqueta
             </h2>
             {pacote.foto_storage_path ? (
@@ -194,7 +194,7 @@ export function PacoteDetalheView({ pacote }: Props) {
           />
 
           <div className="rounded-lg border border-border bg-background p-4">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">
+            <h2 className="mb-3 text-base font-semibold text-text-secondary">
               Histórico
             </h2>
             <PacoteTimeline eventos={pacote.eventos} />

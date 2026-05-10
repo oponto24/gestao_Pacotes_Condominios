@@ -85,7 +85,7 @@ export function WhatsAppNotificationsBlock({ pacoteId, pacoteStatus, messages }:
   return (
     <div className="rounded-lg border border-border bg-background p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
+        <h2 className="text-base font-semibold text-text-secondary">
           Notificações WhatsApp
         </h2>
         {canResend && (

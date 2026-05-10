@@ -32,8 +32,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Apple HIG / WCAG (achado UX U5): pinch-zoom disponível pra acessibilidade.
+  // Sem userScalable=false. maximumScale alto pra suportar baixa visão sem
+  // permitir zoom-in acidental que destruísse layout.
+  maximumScale: 5,
   themeColor: '#FDC800',
 };
 

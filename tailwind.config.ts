@@ -69,6 +69,12 @@ const config: Config = {
       fontSize: {
         // base 16px enforced (legibilidade mobile)
         base: ['16px', { lineHeight: '24px' }],
+        // Hierarquia semantica Apple HIG (achado UX U6) — usar nos titulos
+        // de pagina/secao em vez de text-2xl/3xl arbitrarios.
+        body: ['17px', { lineHeight: '24px', letterSpacing: '-0.01em' }],
+        subtitle: ['22px', { lineHeight: '28px', letterSpacing: '-0.015em', fontWeight: '600' }],
+        title: ['28px', { lineHeight: '34px', letterSpacing: '-0.02em', fontWeight: '600' }],
+        display: ['34px', { lineHeight: '40px', letterSpacing: '-0.025em', fontWeight: '700' }],
       },
       spacing: {
         // Alvos de toque mobile (UX_SPEC §2.4)
@@ -78,9 +84,16 @@ const config: Config = {
         'btn-sm': '40px',
       },
       borderRadius: {
-        sm: '4px',
-        md: '8px',
-        lg: '12px',
+        // Apple HIG (achado UX U7): cantos mais generosos
+        sm: '8px',
+        md: '12px',
+        lg: '16px',
+        xl: '20px',
+      },
+      boxShadow: {
+        // Apple HIG (achado UX U7): sombra hairline sutil — fica leve em mobile
+        apple: '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06)',
+        'apple-md': '0 4px 12px -2px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04)',
       },
     },
   },
