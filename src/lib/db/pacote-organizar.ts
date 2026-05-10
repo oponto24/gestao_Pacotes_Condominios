@@ -158,6 +158,18 @@ export async function organizarPacote(
       );
     }
 
+    // Story 10.4: em condomínio com admin, só admin organiza (FR-082).
+    // Porteiro sem permissão deveria parar em aguardando_organizacao.
+    const condominio = await tx.condominio.findFirst({
+      where: { id: ctx.condominioId },
+      select: { tem_administracao: true },
+    });
+    if (condominio?.tem_administracao && ctx.role === 'porteiro') {
+      throw new ValidationError(
+        'Em condomínio com administração, só admin pode organizar pacote',
+      );
+    }
+
     // Idempotência
     if (
       pacote.status === 'aguardando_retirada' &&
