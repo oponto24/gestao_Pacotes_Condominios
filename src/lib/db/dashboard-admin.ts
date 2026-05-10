@@ -1,10 +1,11 @@
 /**
  * Helpers de dashboard `/admin` (Onda 1 — Apple polish).
  *
- * Tenant-scoped: caller já chamou `setTenantContext()`. Aqui só consulta.
+ * Tenant-scoped via `withTenant` — wrappa cada query no contexto RLS do
+ * request. Não depende do caller ter setado contexto na conexão.
  */
 
-import { db } from '@/lib/db';
+import { withTenant } from '@/server/db-tenant';
 
 export interface AdminDashboardStats {
   aguardandoRetirada: number;
@@ -16,31 +17,33 @@ export interface AdminDashboardStats {
 export async function getAdminDashboardStats(condominioId: string): Promise<AdminDashboardStats> {
   const seteDiasAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [aguardando, pendentes, retirados7d, retiradosComTempo] = await Promise.all([
-    db.pacote.count({
-      where: { condominio_id: condominioId, status: 'aguardando_retirada' },
-    }),
-    db.pacote.count({
-      where: { condominio_id: condominioId, status: 'pendente_identificacao' },
-    }),
-    db.pacote.count({
-      where: {
-        condominio_id: condominioId,
-        status: 'retirado',
-        retirado_em: { gte: seteDiasAtras },
-      },
-    }),
-    db.pacote.findMany({
-      where: {
-        condominio_id: condominioId,
-        status: 'retirado',
-        retirado_em: { gte: seteDiasAtras, not: null },
-        recebido_em: { not: null },
-      },
-      select: { recebido_em: true, retirado_em: true },
-      take: 200,
-    }),
-  ]);
+  const [aguardando, pendentes, retirados7d, retiradosComTempo] = await withTenant((tx) =>
+    Promise.all([
+      tx.pacote.count({
+        where: { condominio_id: condominioId, status: 'aguardando_retirada' },
+      }),
+      tx.pacote.count({
+        where: { condominio_id: condominioId, status: 'pendente_identificacao' },
+      }),
+      tx.pacote.count({
+        where: {
+          condominio_id: condominioId,
+          status: 'retirado',
+          retirado_em: { gte: seteDiasAtras },
+        },
+      }),
+      tx.pacote.findMany({
+        where: {
+          condominio_id: condominioId,
+          status: 'retirado',
+          retirado_em: { gte: seteDiasAtras, not: null },
+          recebido_em: { not: null },
+        },
+        select: { recebido_em: true, retirado_em: true },
+        take: 200,
+      }),
+    ]),
+  );
 
   let tempoMedioRetiradaH: number | null = null;
   if (retiradosComTempo.length > 0) {
@@ -67,18 +70,20 @@ export async function getAdminRecentPacotes(
   condominioId: string,
   limit = 8,
 ): Promise<AdminRecentPacote[]> {
-  const items = await db.pacote.findMany({
-    where: { condominio_id: condominioId },
-    orderBy: { created_at: 'desc' },
-    take: limit,
-    select: {
-      id: true,
-      status: true,
-      created_at: true,
-      destinatario: { select: { nome: true } },
-      unidade: { select: { identificador: true, bloco: true } },
-    },
-  });
+  const items = await withTenant((tx) =>
+    tx.pacote.findMany({
+      where: { condominio_id: condominioId },
+      orderBy: { created_at: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        status: true,
+        created_at: true,
+        destinatario: { select: { nome: true } },
+        unidade: { select: { identificador: true, bloco: true } },
+      },
+    }),
+  );
 
   return items.map((p) => ({
     id: p.id,
