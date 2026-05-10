@@ -36,12 +36,20 @@ export function CapturaPageClient() {
   async function uploadPacote(photo: CapturedPhoto, codigo: string) {
     dispatch({ type: 'submit_started' });
 
+    // Timeout de 60s pra evitar spinner infinito em rede móvel ruim.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60_000);
+
     try {
       const formData = new FormData();
       formData.set('file', photo.blob, 'foto.jpg');
       if (codigo) formData.set('codigo_rastreio', codigo);
 
-      const res = await fetch('/api/pacotes', { method: 'POST', body: formData });
+      const res = await fetch('/api/pacotes', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
       const body = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         pacote_id?: string;
@@ -58,8 +66,17 @@ export function CapturaPageClient() {
 
       router.push(`/chegada/confirmar/${body.pacote_id}`);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Falha no envio';
+      let message: string;
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        message = 'Conexão lenta — upload demorou demais. Tente de novo.';
+      } else if (e instanceof TypeError) {
+        message = 'Sem conexão com o servidor. Verifique sua internet.';
+      } else {
+        message = e instanceof Error ? e.message : 'Falha no envio';
+      }
       dispatch({ type: 'submit_failed', message });
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
