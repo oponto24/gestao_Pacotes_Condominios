@@ -10,7 +10,7 @@ import path from 'node:path';
 import { extractLabelFromImage } from '../src/lib/ai/extract-label';
 
 async function main() {
-  const file = process.argv[2] ?? 'pacote_teste.jpeg';
+  const file = process.argv[2] ?? 'scripts/dev/fixtures/etiquetas/pacote_teste.jpeg';
   const filePath = path.resolve(__dirname, '..', file);
   const buffer = await readFile(filePath);
 

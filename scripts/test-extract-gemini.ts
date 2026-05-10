@@ -16,11 +16,11 @@ import { LABEL_EXTRACTION_SYSTEM_PROMPT } from '../src/lib/ai/prompts/label-extr
 const ROOT = path.resolve(__dirname, '..');
 
 const SAMPLES: Array<{ file: string; label: string }> = [
-  { file: 'modelos_de_etiquetas/magalu.jpeg', label: 'Magalu' },
-  { file: 'modelos_de_etiquetas/melhorEnvio1.jpeg', label: 'Melhor Envio 1 (SEDEX)' },
-  { file: 'modelos_de_etiquetas/melhorEnvio2.jpeg', label: 'Melhor Envio 2 (PAC)' },
-  { file: 'modelos_de_etiquetas/superFrete.jpeg', label: 'SuperFrete (Loggi)' },
-  { file: 'pacote_teste.jpeg', label: 'Pacote real (ML Flex)' },
+  { file: 'scripts/dev/fixtures/etiquetas/magalu.jpeg', label: 'Magalu' },
+  { file: 'scripts/dev/fixtures/etiquetas/melhorEnvio1.jpeg', label: 'Melhor Envio 1 (SEDEX)' },
+  { file: 'scripts/dev/fixtures/etiquetas/melhorEnvio2.jpeg', label: 'Melhor Envio 2 (PAC)' },
+  { file: 'scripts/dev/fixtures/etiquetas/superFrete.jpeg', label: 'SuperFrete (Loggi)' },
+  { file: 'scripts/dev/fixtures/etiquetas/pacote_teste.jpeg', label: 'Pacote real (ML Flex)' },
 ];
 
 // Pricing (USD por 1M tokens)
