@@ -1,5 +1,5 @@
 import type { Job } from 'bullmq';
-import { db } from '@/lib/db';
+import { withSuperAdmin } from '@/lib/db-super-admin';
 import { sendTemplate } from '@/lib/meta-whatsapp';
 import { parsePalavraChave } from '@/lib/whatsapp/parse-palavra-chave';
 import { loggerForJob } from '@/lib/logger';
@@ -34,17 +34,19 @@ export async function processPalavraChave(
 ): Promise<{ ok: true; codigo_id?: string; skipped_reason?: string }> {
   const log = loggerForJob(job).child({ scope: 'palavraChave' });
 
-  const message = await db.whatsAppMessage.findUnique({
-    where: { id: job.data.whatsapp_message_id },
-    select: {
-      id: true,
-      direction: true,
-      condominio_id: true,
-      morador_id: true,
-      from_phone: true,
-      body_text: true,
-    },
-  });
+  const message = await withSuperAdmin((tx) =>
+    tx.whatsAppMessage.findUnique({
+      where: { id: job.data.whatsapp_message_id },
+      select: {
+        id: true,
+        direction: true,
+        condominio_id: true,
+        morador_id: true,
+        from_phone: true,
+        body_text: true,
+      },
+    }),
+  );
 
   if (!message) return { ok: true, skipped_reason: 'message_not_found' };
   if (message.direction !== 'inbound') {
@@ -64,33 +66,41 @@ export async function processPalavraChave(
   }
 
   // Idempotência: se já existe palavra-chave pendente igual pra esse morador,
-  // skipa (Meta pode reentregar inbound mesmo com nosso dedupe por meta_message_id)
-  const existing = await db.codigoMlPendente.findFirst({
-    where: {
-      morador_id: message.morador_id,
-      codigo: parsed.codigo,
-      status: 'pendente',
-    },
-    select: { id: true },
-  });
-  if (existing) {
-    return { ok: true, codigo_id: existing.id, skipped_reason: 'duplicate_pendente' };
-  }
-
+  // skipa (Meta pode reentregar inbound mesmo com nosso dedupe por meta_message_id).
+  // Lookup + create na mesma transação pra evitar race entre 2 entregas paralelas.
   const expira = new Date(Date.now() + EXPIRACAO_DIAS * 24 * 60 * 60 * 1000);
 
-  const created = await db.codigoMlPendente.create({
-    data: {
-      condominio_id: message.condominio_id,
-      morador_id: message.morador_id,
-      codigo: parsed.codigo,
-      descricao: parsed.descricao,
-      mensagem_origem_id: message.id,
-      status: 'pendente',
-      expira_em: expira,
-    },
-    select: { id: true },
+  const result = await withSuperAdmin(async (tx) => {
+    const existing = await tx.codigoMlPendente.findFirst({
+      where: {
+        morador_id: message.morador_id!,
+        codigo: parsed.codigo,
+        status: 'pendente',
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      return { kind: 'duplicate' as const, id: existing.id };
+    }
+    const created = await tx.codigoMlPendente.create({
+      data: {
+        condominio_id: message.condominio_id,
+        morador_id: message.morador_id!,
+        codigo: parsed.codigo,
+        descricao: parsed.descricao,
+        mensagem_origem_id: message.id,
+        status: 'pendente',
+        expira_em: expira,
+      },
+      select: { id: true },
+    });
+    return { kind: 'created' as const, id: created.id };
   });
+
+  if (result.kind === 'duplicate') {
+    return { ok: true, codigo_id: result.id, skipped_reason: 'duplicate_pendente' };
+  }
+  const created = { id: result.id };
 
   log.info(
     { codigo_id: created.id, codigo: parsed.codigo, morador_id: message.morador_id },

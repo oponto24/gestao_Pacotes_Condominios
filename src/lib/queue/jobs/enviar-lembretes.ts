@@ -1,5 +1,5 @@
 import type { Job } from 'bullmq';
-import { db } from '@/lib/db';
+import { withSuperAdmin } from '@/lib/db-super-admin';
 import { ensureQrForPacote } from '@/lib/qr';
 import { sendTemplate, MetaApiError } from '@/lib/meta-whatsapp';
 import { chooseRecipient } from '@/lib/whatsapp/recipient';
@@ -39,21 +39,23 @@ export async function processEnviarLembretes(
   const agora = new Date();
   const proximo = new Date(agora.getTime() + PROXIMO_LEMBRETE_HORAS * 60 * 60 * 1000);
 
-  // Busca cross-tenant — bypassa RLS via prisma client global
-  const pacotes = await db.pacote.findMany({
-    where: {
-      status: 'aguardando_retirada',
-      lembretes_pausados: false,
-      proximo_lembrete_em: { lte: agora },
-      qr_consumido_em: null,
-    },
-    select: {
-      id: true,
-      condominio_id: true,
-      condominio: { select: { nome: true } },
-    },
-    take: 100, // limite por execução (cron roda a cada 1h, evita avalanche)
-  });
+  // Busca cross-tenant — bypass RLS via SET LOCAL is_super_admin
+  const pacotes = await withSuperAdmin((tx) =>
+    tx.pacote.findMany({
+      where: {
+        status: 'aguardando_retirada',
+        lembretes_pausados: false,
+        proximo_lembrete_em: { lte: agora },
+        qr_consumido_em: null,
+      },
+      select: {
+        id: true,
+        condominio_id: true,
+        condominio: { select: { nome: true } },
+      },
+      take: 100, // limite por execução (cron roda a cada 1h, evita avalanche)
+    }),
+  );
 
   let sent = 0;
   let errors = 0;
@@ -63,14 +65,16 @@ export async function processEnviarLembretes(
       const recipient = await chooseRecipient(pacote.id);
       if (!recipient) {
         log.warn({ pacote_id: pacote.id }, 'lembrete: sem destinatário, skip');
-        await db.pacote.update({
-          where: { id: pacote.id },
-          data: {
-            lembretes_pausados: true,
-            lembretes_pausados_em: agora,
-            lembretes_pausados_motivo: 'sem_destinatario',
-          },
-        });
+        await withSuperAdmin((tx) =>
+          tx.pacote.update({
+            where: { id: pacote.id },
+            data: {
+              lembretes_pausados: true,
+              lembretes_pausados_em: agora,
+              lembretes_pausados_motivo: 'sem_destinatario',
+            },
+          }),
+        );
         continue;
       }
 
@@ -84,13 +88,15 @@ export async function processEnviarLembretes(
         bodyParams: [recipient.nome, pacote.condominio.nome],
       });
 
-      await db.pacote.update({
-        where: { id: pacote.id },
-        data: {
-          ultimo_lembrete_em: agora,
-          proximo_lembrete_em: proximo,
-        },
-      });
+      await withSuperAdmin((tx) =>
+        tx.pacote.update({
+          where: { id: pacote.id },
+          data: {
+            ultimo_lembrete_em: agora,
+            proximo_lembrete_em: proximo,
+          },
+        }),
+      );
 
       sent++;
     } catch (err) {
@@ -98,10 +104,12 @@ export async function processEnviarLembretes(
       const reason = err instanceof MetaApiError ? `${err.code}: ${err.userFacing}` : (err as Error).message;
       log.error({ pacote_id: pacote.id, err: reason }, 'lembrete: falha no envio');
       // Em caso de erro Meta, agendar pra +1h e tentar de novo (não pausar)
-      await db.pacote.update({
-        where: { id: pacote.id },
-        data: { proximo_lembrete_em: new Date(agora.getTime() + 60 * 60 * 1000) },
-      });
+      await withSuperAdmin((tx) =>
+        tx.pacote.update({
+          where: { id: pacote.id },
+          data: { proximo_lembrete_em: new Date(agora.getTime() + 60 * 60 * 1000) },
+        }),
+      );
     }
   }
 
