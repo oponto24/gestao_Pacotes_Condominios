@@ -1,5 +1,4 @@
-import { SignOutButton } from '@clerk/nextjs';
-import { LogOut } from 'lucide-react';
+import { UserMenu } from '@/components/admin/UserMenu';
 import { BottomNavBar } from './BottomNavBar';
 import { BottomNavProvider } from './BottomNavContext';
 
@@ -15,21 +14,16 @@ import { BottomNavProvider } from './BottomNavContext';
 interface PortariaLayoutProps {
   condominioNome: string;
   userNome: string;
+  userEmail?: string | null;
   children: React.ReactNode;
 }
 
-function getIniciais(nome: string): string {
-  return nome
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? '')
-    .join('') || 'P';
-}
-
-export function PortariaLayout({ condominioNome, userNome, children }: PortariaLayoutProps) {
-  const iniciais = getIniciais(userNome);
-
+export function PortariaLayout({
+  condominioNome,
+  userNome,
+  userEmail,
+  children,
+}: PortariaLayoutProps) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header fixo */}
@@ -40,23 +34,9 @@ export function PortariaLayout({ condominioNome, userNome, children }: PortariaL
           </p>
           <p className="truncate text-sm font-semibold text-foreground">{userNome}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span
-            aria-hidden
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 text-sm font-semibold text-accent"
-          >
-            {iniciais}
-          </span>
-          <SignOutButton>
-            <button
-              type="button"
-              aria-label="Sair"
-              className="flex h-9 w-9 items-center justify-center rounded-md text-text-secondary hover:bg-muted hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4" aria-hidden />
-            </button>
-          </SignOutButton>
-        </div>
+        {/* UserMenu compartilhado (achado UX U14): mesmo padrão do /admin,
+            /super-admin e /administracao. Inclui avatar, nome, email e Sair. */}
+        <UserMenu nome={userNome} email={userEmail} />
       </header>
 
       {/* Main scrollable — pb-24 deixa espaço pra bottom nav (~56px + folga) */}

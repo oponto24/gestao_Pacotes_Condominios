@@ -11,15 +11,15 @@ vi.mock('@clerk/nextjs', () => ({
 }));
 
 describe('PortariaLayout', () => {
-  it('renderiza condominio nome + user nome + iniciais', () => {
+  it('renderiza condominio nome + user nome + iniciais (via UserMenu)', () => {
     render(
       <PortariaLayout condominioNome="Ed. Aurora" userNome="João Silva">
         <p>Conteúdo</p>
       </PortariaLayout>,
     );
     expect(screen.getByText('Ed. Aurora')).toBeInTheDocument();
-    expect(screen.getByText('João Silva')).toBeInTheDocument();
-    // Iniciais "JS"
+    expect(screen.getAllByText('João Silva').length).toBeGreaterThan(0); // header + UserMenu
+    // UserMenu mostra iniciais "JS" no avatar
     expect(screen.getByText('JS')).toBeInTheDocument();
   });
 
@@ -42,21 +42,23 @@ describe('PortariaLayout', () => {
     expect(screen.getByRole('link', { name: /Chegada/ })).toBeInTheDocument();
   });
 
-  it('iniciais padrão "P" quando nome único curto', () => {
+  it('iniciais "MA" quando nome único curto (UserMenu pega 2 letras)', () => {
     render(
       <PortariaLayout condominioNome="X" userNome="Maria">
         <p>x</p>
       </PortariaLayout>,
     );
-    expect(screen.getByText('M')).toBeInTheDocument();
+    // UserMenu calcula initials("Maria") = "MA" (slice(0,2) do primeiro nome)
+    expect(screen.getByText('MA')).toBeInTheDocument();
   });
 
-  it('botão Sair com aria-label', () => {
+  it('UserMenu expõe item Sair acessível via menuitem', () => {
     render(
       <PortariaLayout condominioNome="X" userNome="Y">
         <p>x</p>
       </PortariaLayout>,
     );
-    expect(screen.getByRole('button', { name: /sair/i })).toBeInTheDocument();
+    // UserMenu renderiza Sair como menuitem (open via summary click)
+    expect(screen.getByRole('menuitem', { name: /sair/i })).toBeInTheDocument();
   });
 });

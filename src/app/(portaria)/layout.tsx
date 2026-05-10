@@ -55,13 +55,14 @@ export default async function PortariaServerLayout({
 
   const user = await db.user.findUnique({
     where: { id: ctx.userId },
-    select: { nome: true },
+    select: { nome: true, email: true },
   });
 
   return (
     <PortariaLayout
       condominioNome={condominio.nome}
       userNome={user?.nome ?? 'Porteiro'}
+      userEmail={user?.email ?? null}
     >
       {children}
     </PortariaLayout>
