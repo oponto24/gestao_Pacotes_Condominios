@@ -126,9 +126,14 @@ export async function confirmarRetirada(
       };
     }
 
-    if (pacote.status !== 'aguardando_retirada') {
+    // Aceita aguardando_retirada (portaria) e em_administracao (rota administração).
+    // Bate com loadPacoteByQrToken acima, que já abre a tela pros dois.
+    if (
+      pacote.status !== 'aguardando_retirada' &&
+      pacote.status !== 'em_administracao'
+    ) {
       throw new ValidationError(
-        `Pacote não está aguardando retirada (status: ${pacote.status})`,
+        `Pacote não está pronto pra retirada (status: ${pacote.status})`,
       );
     }
 
