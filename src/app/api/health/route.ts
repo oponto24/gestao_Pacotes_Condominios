@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { checkDb, checkRedis, aggregateStatus } from '@/lib/health';
-import { version } from '../../../../package.json';
+
+// Próxima evolução: Dockerfile passa --build-arg APP_VERSION=... e setamos
+// como ENV no stage runner. Por ora cai no fallback 'dev'. Evita warning
+// Next 15 sobre import direto do package.json (que copia tudo pro bundle).
+const version = process.env.APP_VERSION ?? 'dev';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
