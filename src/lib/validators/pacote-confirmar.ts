@@ -23,6 +23,7 @@ export const pacoteConfirmarInputSchema = z.object({
     .min(1, 'Nome do destinatário é obrigatório')
     .max(200, 'Nome muito longo (max 200)'),
   endereco: optStr(500),
+  bairro: optStr(100),
   cep: z.preprocess(
     (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
     z

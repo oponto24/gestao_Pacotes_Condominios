@@ -6,6 +6,7 @@ const UUID = '00000000-0000-4000-8000-000000000000';
 const valid = {
   nome_destinatario: 'João Silva',
   endereco: 'Rua das Flores, 123',
+  bairro: 'Centro',
   cep: '74650-100',
   complemento: 'AP 1304',
   remetente: 'Loja XYZ',

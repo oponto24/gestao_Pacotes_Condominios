@@ -34,6 +34,7 @@ export function IAExtractionForm({ pacote }: Props) {
   const router = useRouter();
   const [nome, setNome] = useState(pacote.nome_destinatario_etiqueta ?? '');
   const [endereco, setEndereco] = useState(pacote.endereco_etiqueta ?? '');
+  const [bairro, setBairro] = useState(pacote.bairro_etiqueta ?? '');
   const [cep, setCep] = useState(pacote.cep_etiqueta ?? '');
   const [complemento, setComplemento] = useState(pacote.complemento_etiqueta ?? '');
   const [remetente, setRemetente] = useState(pacote.remetente ?? '');
@@ -75,6 +76,7 @@ export function IAExtractionForm({ pacote }: Props) {
         body: JSON.stringify({
           nome_destinatario: nome.trim(),
           endereco: endereco.trim() || null,
+          bairro: bairro.trim() || null,
           cep: cep.trim() || null,
           complemento: complemento.trim() || null,
           remetente: remetente.trim() || null,
@@ -212,54 +214,62 @@ export function IAExtractionForm({ pacote }: Props) {
         </Select>
       </div>
 
-      <details className="rounded-lg border border-border bg-background">
-        <summary className="cursor-pointer p-3 text-sm font-medium">
-          Mais detalhes (endereço, CEP, complemento, remetente)
-        </summary>
-        <div className="space-y-3 border-t border-border p-3">
-          <div className="space-y-1">
-            <Label htmlFor="endereco">Endereço</Label>
-            <Input
-              id="endereco"
-              value={endereco}
-              onChange={(e) => setEndereco(e.target.value)}
-              maxLength={500}
-              disabled={submitting}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="cep">CEP</Label>
-            <Input
-              id="cep"
-              value={cep}
-              onChange={(e) => setCep(e.target.value)}
-              placeholder="00000-000"
-              maxLength={9}
-              disabled={submitting}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="complemento">Complemento</Label>
-            <Input
-              id="complemento"
-              value={complemento}
-              onChange={(e) => setComplemento(e.target.value)}
-              maxLength={200}
-              disabled={submitting}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="remetente">Remetente</Label>
-            <Input
-              id="remetente"
-              value={remetente}
-              onChange={(e) => setRemetente(e.target.value)}
-              maxLength={200}
-              disabled={submitting}
-            />
-          </div>
+      {/* Campos detalhados visíveis por padrão (2026-05-11): porteiro confere
+          tudo de uma vez sem precisar abrir collapse. Reduz erro silencioso
+          ao confirmar pacote sem revisar bairro/CEP/complemento. */}
+      <div className="space-y-3 rounded-lg border border-border bg-background p-3">
+        <div className="space-y-1">
+          <Label htmlFor="endereco">Endereço</Label>
+          <Input
+            id="endereco"
+            value={endereco}
+            onChange={(e) => setEndereco(e.target.value)}
+            maxLength={500}
+            disabled={submitting}
+          />
         </div>
-      </details>
+        <div className="space-y-1">
+          <Label htmlFor="bairro">Bairro</Label>
+          <Input
+            id="bairro"
+            value={bairro}
+            onChange={(e) => setBairro(e.target.value)}
+            maxLength={100}
+            disabled={submitting}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cep">CEP</Label>
+          <Input
+            id="cep"
+            value={cep}
+            onChange={(e) => setCep(e.target.value)}
+            placeholder="00000-000"
+            maxLength={9}
+            disabled={submitting}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="complemento">Complemento</Label>
+          <Input
+            id="complemento"
+            value={complemento}
+            onChange={(e) => setComplemento(e.target.value)}
+            maxLength={200}
+            disabled={submitting}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="remetente">Remetente</Label>
+          <Input
+            id="remetente"
+            value={remetente}
+            onChange={(e) => setRemetente(e.target.value)}
+            maxLength={200}
+            disabled={submitting}
+          />
+        </div>
+      </div>
 
       {error && (
         <div

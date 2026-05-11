@@ -99,6 +99,7 @@ export async function processExtractLabel(
   const iaJson = extraction.json as Record<string, unknown>;
   const iaNome = (iaJson.nome_destinatario as string | null | undefined) ?? null;
   const iaEndereco = (iaJson.endereco as string | null | undefined) ?? null;
+  const iaBairro = (iaJson.bairro as string | null | undefined) ?? null;
   const iaCep = (iaJson.cep as string | null | undefined) ?? null;
   const iaComplemento = (iaJson.complemento as string | null | undefined) ?? null;
   const iaRemetente = (iaJson.remetente as string | null | undefined) ?? null;
@@ -128,6 +129,7 @@ export async function processExtractLabel(
       // Campos textuais extraídos (servem pra UI da 3.8 e auditoria)
       nome_destinatario_etiqueta: iaNome,
       endereco_etiqueta: iaEndereco,
+      bairro_etiqueta: iaBairro,
       cep_etiqueta: iaCep,
       complemento_etiqueta: iaComplemento,
       remetente: iaRemetente,
