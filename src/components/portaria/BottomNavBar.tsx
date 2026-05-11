@@ -57,8 +57,35 @@ export function BottomNavBar() {
 
   // FAB central — quando override está setado por uma página (ex: CapturaPage
   // após captura de foto), vira botão de ação contextual em vez de link.
+  //
+  // Visual (PR-2 redesign): gradiente vertical OKLCH + glow shadow + hairline
+  // interna branca pra sensação táctil. Tokens em globals.css.
   const fabBaseClass =
-    'relative -top-5 flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-full shadow-lg transition-all disabled:opacity-60';
+    'relative -top-5 flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-full ' +
+    'transition-[background,box-shadow,transform] duration-300 ease-out ' +
+    'shadow-[0_8px_24px_-4px_var(--fab-glow)] ' +
+    'before:pointer-events-none before:absolute before:inset-0 before:rounded-full ' +
+    "before:bg-[linear-gradient(180deg,oklch(1_0_0/0.25),oklch(1_0_0/0)_45%)] before:content-['']" +
+    ' disabled:opacity-60';
+
+  // Gradient backgrounds via inline style — Tailwind arbitrary values com
+  // var(--token) funcionam, mas inline mantém o source da paleta legível.
+  const fabDefaultStyle = {
+    backgroundImage:
+      'linear-gradient(180deg, var(--fab-default-from), var(--fab-default-to))',
+  } as const;
+  const fabSuccessStyle = {
+    backgroundImage:
+      'linear-gradient(180deg, var(--fab-success-from), var(--fab-success-to))',
+    boxShadow: '0 10px 28px -4px var(--fab-glow-success)',
+  } as const;
+  // Variante "active" (em /chegada sem override) — gradiente um pouco mais
+  // intenso pra sinalizar "você está aqui, a ação primária é esta".
+  const fabActiveStyle = {
+    backgroundImage:
+      'linear-gradient(180deg, var(--fab-action-from), var(--fab-action-to))',
+    boxShadow: '0 10px 28px -4px var(--fab-glow)',
+  } as const;
 
   return (
     <nav
@@ -75,18 +102,17 @@ export function BottomNavBar() {
             onClick={override.onClick}
             disabled={override.disabled}
             aria-label={override.ariaLabel ?? override.label}
-            className={cn(
-              fabBaseClass,
-              override.variant === 'success'
-                ? 'bg-success text-white hover:bg-success/90'
-                // Apple HIG (achado UX U8): sem animate-pulse infinito.
-                // Ring permanente já chama atenção sem cansar o olho.
-                : 'bg-primary text-primary-foreground ring-4 ring-primary/30 hover:bg-primary-dark',
-            )}
+            aria-busy={override.disabled || undefined}
+            className={cn(fabBaseClass, 'text-white')}
+            style={
+              override.variant === 'success' ? fabSuccessStyle : fabDefaultStyle
+            }
           >
-            {override.icon}
-            <span className="text-[11px] font-semibold">
-              {override.label}
+            <span className="relative z-[1] flex flex-col items-center gap-0.5">
+              {override.icon}
+              <span className="text-[11px] font-semibold tracking-wide">
+                {override.label}
+              </span>
             </span>
           </button>
         ) : (
@@ -94,16 +120,14 @@ export function BottomNavBar() {
             href={CHEGADA.href}
             aria-current={chegadaActive ? 'page' : undefined}
             aria-label={CHEGADA.label}
-            className={cn(
-              fabBaseClass,
-              chegadaActive
-                ? 'bg-primary-dark text-primary-foreground ring-4 ring-primary/30'
-                : 'bg-primary text-primary-foreground hover:bg-primary-dark',
-            )}
+            className={cn(fabBaseClass, 'text-white')}
+            style={chegadaActive ? fabActiveStyle : fabDefaultStyle}
           >
-            {CHEGADA.icon}
-            <span className="text-[11px] font-semibold">
-              {CHEGADA.label}
+            <span className="relative z-[1] flex flex-col items-center gap-0.5">
+              {CHEGADA.icon}
+              <span className="text-[11px] font-semibold tracking-wide">
+                {CHEGADA.label}
+              </span>
             </span>
           </Link>
         )}
