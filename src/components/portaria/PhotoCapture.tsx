@@ -135,6 +135,10 @@ export const PhotoCapture = forwardRef<PhotoCaptureHandle, PhotoCaptureProps>(
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const flashRef = useRef<HTMLDivElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    // Ref pra callbacks instáveis do parent — evita re-render loop que cancelava
+    // getUserMedia repetidamente quando parent passava `onError={(msg)=>...}` inline.
+    const onErrorRef = useRef(onError);
+    onErrorRef.current = onError;
 
     // Notifica parent a cada mudança de state — driver do FAB.
     useEffect(() => {
@@ -232,7 +236,7 @@ export const PhotoCapture = forwardRef<PhotoCaptureHandle, PhotoCaptureProps>(
           const errName = err instanceof DOMException ? err.name : 'UnknownError';
           const message = ERROR_MESSAGES[errName] ?? 'Falha ao acessar a câmera.';
           dispatch({ type: 'error', message });
-          onError?.(message);
+          onErrorRef.current?.(message);
         }
       }
 
@@ -241,7 +245,9 @@ export const PhotoCapture = forwardRef<PhotoCaptureHandle, PhotoCaptureProps>(
       return () => {
         cancelled = true;
       };
-    }, [state.kind, videoConstraints, onError]);
+      // onError NÃO entra no deps — usamos onErrorRef.current pra não re-rodar
+      // o efeito (e cancelar getUserMedia) toda vez que parent re-renderiza.
+    }, [state.kind, videoConstraints]);
 
     useEffect(() => {
       if (state.kind !== 'streaming') return;
@@ -282,7 +288,7 @@ export const PhotoCapture = forwardRef<PhotoCaptureHandle, PhotoCaptureProps>(
       if (!sw || !sh) {
         const message = 'Câmera ainda inicializando. Aguarde um instante e tente de novo.';
         dispatch({ type: 'error', message });
-        onError?.(message);
+        onErrorRef.current?.(message);
         return;
       }
 
@@ -294,7 +300,7 @@ export const PhotoCapture = forwardRef<PhotoCaptureHandle, PhotoCaptureProps>(
       if (!ctx) {
         const message = 'Falha ao capturar foto. Recarregue a página.';
         dispatch({ type: 'error', message });
-        onError?.(message);
+        onErrorRef.current?.(message);
         return;
       }
       ctx.drawImage(video, 0, 0, w, h);
@@ -319,13 +325,14 @@ export const PhotoCapture = forwardRef<PhotoCaptureHandle, PhotoCaptureProps>(
       if (!blob) {
         const message = 'Falha ao serializar a foto.';
         dispatch({ type: 'error', message });
-        onError?.(message);
+        onErrorRef.current?.(message);
         return;
       }
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
       dispatch({ type: 'capture_done', blob, dataUrl });
-    }, [state, onError]);
+      // onError fora do deps — usa ref estável (igual ao useEffect do request)
+    }, [state]);
 
     const handleRetake = useCallback(() => {
       dispatch({ type: 'retake' });
