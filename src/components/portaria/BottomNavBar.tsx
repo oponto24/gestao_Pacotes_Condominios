@@ -1,10 +1,11 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AlertCircle, Camera, QrCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useBottomNav } from './BottomNavContext';
+import { useBottomNav, type FabState } from './BottomNavContext';
 
 /**
  * Bottom nav fixa da portaria (story 3.1 + Onda 1 polish).
@@ -59,7 +60,8 @@ export function BottomNavBar() {
   // após captura de foto), vira botão de ação contextual em vez de link.
   //
   // Visual (PR-2 redesign): gradiente vertical OKLCH + glow shadow + hairline
-  // interna branca pra sensação táctil. Tokens em globals.css.
+  // interna branca pra sensação táctil. PR-3: state machine completa via
+  // lookup `fabStateStyle[state]`. Tokens em globals.css.
   const fabBaseClass =
     'relative -top-5 flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-full ' +
     'transition-[background,box-shadow,transform] duration-300 ease-out ' +
@@ -68,24 +70,46 @@ export function BottomNavBar() {
     "before:bg-[linear-gradient(180deg,oklch(1_0_0/0.25),oklch(1_0_0/0)_45%)] before:content-['']" +
     ' disabled:opacity-60';
 
-  // Gradient backgrounds via inline style — Tailwind arbitrary values com
-  // var(--token) funcionam, mas inline mantém o source da paleta legível.
-  const fabDefaultStyle = {
-    backgroundImage:
-      'linear-gradient(180deg, var(--fab-default-from), var(--fab-default-to))',
-  } as const;
-  const fabSuccessStyle = {
-    backgroundImage:
-      'linear-gradient(180deg, var(--fab-success-from), var(--fab-success-to))',
-    boxShadow: '0 10px 28px -4px var(--fab-glow-success)',
-  } as const;
-  // Variante "active" (em /chegada sem override) — gradiente um pouco mais
-  // intenso pra sinalizar "você está aqui, a ação primária é esta".
-  const fabActiveStyle = {
-    backgroundImage:
-      'linear-gradient(180deg, var(--fab-action-from), var(--fab-action-to))',
-    boxShadow: '0 10px 28px -4px var(--fab-glow)',
-  } as const;
+  // Lookup state → estilo visual. Único ponto de verdade pro look do FAB.
+  // - idle-route: gradiente padrão (link em outras rotas)
+  // - idle-page: gradiente intenso + halo pulse (chamando ação primária)
+  // - streaming: shutter branco (referência iOS de "tirar foto")
+  // - captured: gradiente verde sucesso
+  // - submitting: padrão disabled (parent renderiza spinner via icon)
+  const fabStateStyle: Record<FabState, CSSProperties> = {
+    'idle-route': {
+      backgroundImage:
+        'linear-gradient(180deg, var(--fab-default-from), var(--fab-default-to))',
+    },
+    'idle-page': {
+      backgroundImage:
+        'linear-gradient(180deg, var(--fab-action-from), var(--fab-action-to))',
+      boxShadow: '0 10px 28px -4px var(--fab-glow)',
+    },
+    streaming: {
+      backgroundColor: 'var(--fab-capture)',
+      boxShadow:
+        '0 8px 24px -4px oklch(0 0 0 / 0.25), inset 0 1px 0 oklch(1 0 0 / 0.5)',
+    },
+    captured: {
+      backgroundImage:
+        'linear-gradient(180deg, var(--fab-success-from), var(--fab-success-to))',
+      boxShadow: '0 10px 28px -4px var(--fab-glow-success)',
+    },
+    submitting: {
+      backgroundImage:
+        'linear-gradient(180deg, var(--fab-default-from), var(--fab-default-to))',
+    },
+  };
+
+  // Estados com texto branco (default). Streaming usa foreground pq fundo é branco.
+  const fabStateTextClass: Record<FabState, string> = {
+    'idle-route': 'text-white',
+    'idle-page': 'text-white',
+    streaming: 'text-foreground',
+    captured: 'text-white',
+    submitting: 'text-white',
+  };
 
   return (
     <nav
@@ -103,25 +127,37 @@ export function BottomNavBar() {
             disabled={override.disabled}
             aria-label={override.ariaLabel ?? override.label}
             aria-busy={override.disabled || undefined}
-            className={cn(fabBaseClass, 'text-white')}
-            style={
-              override.variant === 'success' ? fabSuccessStyle : fabDefaultStyle
-            }
+            className={cn(
+              fabBaseClass,
+              fabStateTextClass[override.state],
+              // Halo pulse só em idle-page (chamando ação) e captured (sucesso fresco).
+              // Apple HIG: pulse em estado iminente OK, pulse em neutro cansa.
+              override.state === 'idle-page' && 'animate-fab-halo',
+              // Streaming: ring branco externo simula shutter da câmera iOS.
+              override.state === 'streaming' &&
+                'outline outline-4 outline-offset-2 outline-white/55',
+            )}
+            style={fabStateStyle[override.state]}
           >
             <span className="relative z-[1] flex flex-col items-center gap-0.5">
               {override.icon}
-              <span className="text-[11px] font-semibold tracking-wide">
-                {override.label}
-              </span>
+              {override.label && (
+                <span className="text-[11px] font-semibold tracking-wide">
+                  {override.label}
+                </span>
+              )}
             </span>
           </button>
         ) : (
+          // Sem override: link pra /chegada. Caso típico = idle-route (outra rota).
+          // Quando em /chegada sem override (race condition no mount do CapturaPageClient),
+          // mostra estado idle-page como hint visual.
           <Link
             href={CHEGADA.href}
             aria-current={chegadaActive ? 'page' : undefined}
             aria-label={CHEGADA.label}
             className={cn(fabBaseClass, 'text-white')}
-            style={chegadaActive ? fabActiveStyle : fabDefaultStyle}
+            style={chegadaActive ? fabStateStyle['idle-page'] : fabStateStyle['idle-route']}
           >
             <span className="relative z-[1] flex flex-col items-center gap-0.5">
               {CHEGADA.icon}

@@ -1,10 +1,19 @@
+import { createRef } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { PhotoCapture } from '@/components/portaria/PhotoCapture';
+import { render, screen, waitFor, act } from '@testing-library/react';
+import {
+  PhotoCapture,
+  type PhotoCaptureHandle,
+  type PhotoCaptureKind,
+} from '@/components/portaria/PhotoCapture';
 
 /**
  * Mocks de getUserMedia + canvas.toBlob para tests do PhotoCapture.
- * Foco: state machine + cleanup correto de tracks (anti-regressão de leak).
+ *
+ * **PR-3 refactor:** PhotoCapture virou controlled component (forwardRef).
+ * Os testes agora chamam métodos via ref em vez de clicar botões internos —
+ * que foram movidos pro FAB (BottomNavBar). Mantém cobertura da state machine
+ * e do cleanup de tracks (anti-regressão de leak).
  */
 
 class FakeTrack {
@@ -38,14 +47,12 @@ beforeEach(() => {
     writable: true,
   });
 
-  // Mock vibrate (não suportado em jsdom)
   Object.defineProperty(navigator, 'vibrate', {
     value: vi.fn(() => true),
     configurable: true,
     writable: true,
   });
 
-  // Mock canvas.toBlob (jsdom retorna null por padrão)
   HTMLCanvasElement.prototype.toBlob = function (
     callback: BlobCallback,
     type?: string,
@@ -59,12 +66,10 @@ beforeEach(() => {
     return `data:${type ?? 'image/jpeg'};base64,ZmFrZQ==`;
   };
 
-  // Mock getContext para retornar objeto que aceita drawImage
   HTMLCanvasElement.prototype.getContext = vi.fn(
     () => ({ drawImage: vi.fn() }) as unknown as RenderingContext,
   ) as typeof HTMLCanvasElement.prototype.getContext;
 
-  // videoWidth/Height fallback
   Object.defineProperty(HTMLVideoElement.prototype, 'videoWidth', {
     get: () => 1920,
     configurable: true,
@@ -79,24 +84,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('PhotoCapture state machine', () => {
-  it('renderiza estado idle com placeholder + botão "Iniciar câmera"', () => {
+describe('PhotoCapture state machine (ref-based API)', () => {
+  it('renderiza estado idle com placeholder no visor (sem botão interno)', () => {
     render(<PhotoCapture onCapture={vi.fn()} />);
     expect(screen.getByText(/Posicione a etiqueta aqui/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Iniciar câmera/ })).toBeInTheDocument();
+    // PR-3: não há mais botão "Iniciar câmera" interno — é o FAB que dirige
+    expect(
+      screen.queryByRole('button', { name: /Iniciar câmera/ }),
+    ).not.toBeInTheDocument();
   });
 
-  it('idle → streaming quando getUserMedia resolve', async () => {
+  it('idle → streaming quando ref.startCamera() resolve', async () => {
     lastStream = new FakeStream();
     getUserMediaMock.mockResolvedValue(lastStream);
 
-    render(<PhotoCapture onCapture={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Iniciar câmera/ }));
+    const ref = createRef<PhotoCaptureHandle>();
+    render(<PhotoCapture ref={ref} onCapture={vi.fn()} />);
+
+    act(() => {
+      ref.current?.startCamera();
+    });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Tirar foto/ })).toBeInTheDocument();
+      expect(screen.getByText(/Câmera ligada/)).toBeInTheDocument();
     });
-    expect(screen.getByText(/Câmera ligada/)).toBeInTheDocument();
   });
 
   it('idle → error quando permissão negada (NotAllowedError)', async () => {
@@ -105,67 +116,136 @@ describe('PhotoCapture state machine', () => {
       new DOMException('Permission denied', 'NotAllowedError'),
     );
 
-    render(<PhotoCapture onCapture={vi.fn()} onError={onError} />);
-    fireEvent.click(screen.getByRole('button', { name: /Iniciar câmera/ }));
+    const ref = createRef<PhotoCaptureHandle>();
+    render(<PhotoCapture ref={ref} onCapture={vi.fn()} onError={onError} />);
+
+    act(() => {
+      ref.current?.startCamera();
+    });
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
     });
     expect(screen.getByText(/Sem acesso à câmera/)).toBeInTheDocument();
     expect(onError).toHaveBeenCalledWith(expect.stringContaining('Sem acesso'));
-    expect(screen.getByRole('button', { name: /Tentar novamente/ })).toBeInTheDocument();
+    // Estado terminal `error` mantém botão interno "Tentar novamente"
+    expect(
+      screen.getByRole('button', { name: /Tentar novamente/ }),
+    ).toBeInTheDocument();
   });
 
-  it('streaming → captured ao clicar "Tirar foto", chama onCapture com Blob+dataUrl quando confirma', async () => {
+  it('streaming → captured ao ref.capture(); chama onCapture com Blob+dataUrl em ref.confirm()', async () => {
     const onCapture = vi.fn();
     lastStream = new FakeStream();
     getUserMediaMock.mockResolvedValue(lastStream);
 
-    render(<PhotoCapture onCapture={onCapture} />);
-    fireEvent.click(screen.getByRole('button', { name: /Iniciar câmera/ }));
-    await waitFor(() => screen.getByRole('button', { name: /Tirar foto/ }));
+    const ref = createRef<PhotoCaptureHandle>();
+    render(<PhotoCapture ref={ref} onCapture={onCapture} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Tirar foto/ }));
+    act(() => {
+      ref.current?.startCamera();
+    });
+    await waitFor(() => screen.getByText(/Câmera ligada/));
 
-    await waitFor(() => screen.getByRole('button', { name: /Usar essa foto/ }));
-    expect(screen.getByRole('button', { name: /Refazer foto/ })).toBeInTheDocument();
+    await act(async () => {
+      await ref.current?.capture();
+    });
+
     expect(navigator.vibrate).toHaveBeenCalledWith(50);
 
-    fireEvent.click(screen.getByRole('button', { name: /Usar essa foto/ }));
+    act(() => {
+      ref.current?.confirm();
+    });
+
     expect(onCapture).toHaveBeenCalledTimes(1);
     const [blob, dataUrl] = onCapture.mock.calls[0];
     expect(blob).toBeInstanceOf(Blob);
     expect(dataUrl).toContain('data:image/jpeg');
   });
 
-  it('captured → streaming ao clicar "Refazer foto"', async () => {
+  it('captured → streaming ao ref.retake()', async () => {
     lastStream = new FakeStream();
     getUserMediaMock.mockResolvedValue(lastStream);
 
-    render(<PhotoCapture onCapture={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Iniciar câmera/ }));
-    await waitFor(() => screen.getByRole('button', { name: /Tirar foto/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Tirar foto/ }));
-    await waitFor(() => screen.getByRole('button', { name: /Refazer foto/ }));
+    const ref = createRef<PhotoCaptureHandle>();
+    const onStateChange = vi.fn<[PhotoCaptureKind], void>();
+    render(
+      <PhotoCapture
+        ref={ref}
+        onCapture={vi.fn()}
+        onStateChange={onStateChange}
+      />,
+    );
 
-    // Mock NOVO stream para o retake
+    act(() => {
+      ref.current?.startCamera();
+    });
+    await waitFor(() =>
+      expect(onStateChange).toHaveBeenCalledWith('streaming'),
+    );
+
+    await act(async () => {
+      await ref.current?.capture();
+    });
+    await waitFor(() =>
+      expect(onStateChange).toHaveBeenCalledWith('captured'),
+    );
+
     const newStream = new FakeStream();
     getUserMediaMock.mockResolvedValue(newStream);
 
-    fireEvent.click(screen.getByRole('button', { name: /Refazer foto/ }));
+    act(() => {
+      ref.current?.retake();
+    });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Tirar foto/ })).toBeInTheDocument();
+      expect(onStateChange).toHaveBeenLastCalledWith('streaming');
     });
+  });
+
+  it('notifica onStateChange a cada transição', async () => {
+    lastStream = new FakeStream();
+    getUserMediaMock.mockResolvedValue(lastStream);
+
+    const onStateChange = vi.fn<[PhotoCaptureKind], void>();
+    const ref = createRef<PhotoCaptureHandle>();
+    render(
+      <PhotoCapture
+        ref={ref}
+        onCapture={vi.fn()}
+        onStateChange={onStateChange}
+      />,
+    );
+
+    // Mount: idle
+    expect(onStateChange).toHaveBeenCalledWith('idle');
+
+    act(() => {
+      ref.current?.startCamera();
+    });
+    await waitFor(() =>
+      expect(onStateChange).toHaveBeenCalledWith('streaming'),
+    );
+
+    await act(async () => {
+      await ref.current?.capture();
+    });
+    await waitFor(() =>
+      expect(onStateChange).toHaveBeenCalledWith('captured'),
+    );
   });
 
   it('cleanup: para tracks no unmount (anti-leak)', async () => {
     lastStream = new FakeStream();
     getUserMediaMock.mockResolvedValue(lastStream);
 
-    const { unmount } = render(<PhotoCapture onCapture={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Iniciar câmera/ }));
-    await waitFor(() => screen.getByRole('button', { name: /Tirar foto/ }));
+    const ref = createRef<PhotoCaptureHandle>();
+    const { unmount } = render(<PhotoCapture ref={ref} onCapture={vi.fn()} />);
+
+    act(() => {
+      ref.current?.startCamera();
+    });
+    await waitFor(() => screen.getByText(/Câmera ligada/));
 
     const track = lastStream!.tracks[0];
     expect(track.stop).not.toHaveBeenCalled();
@@ -178,34 +258,48 @@ describe('PhotoCapture state machine', () => {
     lastStream = new FakeStream();
     getUserMediaMock.mockResolvedValue(lastStream);
 
-    render(<PhotoCapture onCapture={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Iniciar câmera/ }));
-    await waitFor(() => screen.getByRole('button', { name: /Tirar foto/ }));
+    const ref = createRef<PhotoCaptureHandle>();
+    render(<PhotoCapture ref={ref} onCapture={vi.fn()} />);
+
+    act(() => {
+      ref.current?.startCamera();
+    });
+    await waitFor(() => screen.getByText(/Câmera ligada/));
 
     const track = lastStream!.tracks[0];
-    fireEvent.click(screen.getByRole('button', { name: /Tirar foto/ }));
-    await waitFor(() => screen.getByRole('button', { name: /Refazer foto/ }));
+    await act(async () => {
+      await ref.current?.capture();
+    });
 
     expect(track.stop).toHaveBeenCalled();
   });
 
-  it('cleanup: para tracks ao entrar em error', async () => {
+  it('cleanup: para tracks ao entrar em error após retake falhar', async () => {
     lastStream = new FakeStream();
-    // Primeira chamada OK, segunda falha (simulando re-request com erro)
     getUserMediaMock.mockResolvedValue(lastStream);
 
-    render(<PhotoCapture onCapture={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Iniciar câmera/ }));
-    await waitFor(() => screen.getByRole('button', { name: /Tirar foto/ }));
+    const ref = createRef<PhotoCaptureHandle>();
+    render(<PhotoCapture ref={ref} onCapture={vi.fn()} />);
+
+    act(() => {
+      ref.current?.startCamera();
+    });
+    await waitFor(() => screen.getByText(/Câmera ligada/));
 
     const track = lastStream!.tracks[0];
     expect(track.stop).not.toHaveBeenCalled();
 
-    // Simula um retake que falha
-    getUserMediaMock.mockRejectedValue(new DOMException('User cancelled', 'NotAllowedError'));
-    fireEvent.click(screen.getByRole('button', { name: /Tirar foto/ }));
-    await waitFor(() => screen.getByRole('button', { name: /Refazer foto/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Refazer foto/ }));
+    await act(async () => {
+      await ref.current?.capture();
+    });
+
+    // Re-request falha
+    getUserMediaMock.mockRejectedValue(
+      new DOMException('User cancelled', 'NotAllowedError'),
+    );
+    act(() => {
+      ref.current?.retake();
+    });
 
     await waitFor(() => screen.getByRole('alert'));
     expect(track.stop).toHaveBeenCalled();
