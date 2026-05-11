@@ -109,6 +109,24 @@ export function CapturaPageClient() {
     [router],
   );
 
+  // Callbacks pro PhotoCapture — useCallback estabiliza referência pra evitar
+  // re-render loop que cancelava getUserMedia. Bug observado em prod: parent
+  // re-renderiza → nova onError ref → useEffect[onError] re-roda → cancela
+  // request em curso → "Solicitando câmera…" travado.
+  const handlePhotoCaptured = useCallback(
+    (blob: Blob, dataUrl: string) => {
+      setCameraError(null);
+      dispatch({
+        type: 'photo_captured',
+        photo: { blob, dataUrl, sizeKb: Math.round(blob.size / 1024) },
+      });
+    },
+    [],
+  );
+  const handlePhotoError = useCallback((msg: string) => {
+    setCameraError(msg);
+  }, []);
+
   // Handlers do FAB — dirige PhotoCapture via ref.
   const handleOpenCamera = useCallback(() => {
     photoRef.current?.startCamera();
@@ -244,14 +262,8 @@ export function CapturaPageClient() {
 
       <PhotoCapture
         ref={photoRef}
-        onCapture={(blob, dataUrl) => {
-          setCameraError(null);
-          dispatch({
-            type: 'photo_captured',
-            photo: { blob, dataUrl, sizeKb: Math.round(blob.size / 1024) },
-          });
-        }}
-        onError={(msg) => setCameraError(msg)}
+        onCapture={handlePhotoCaptured}
+        onError={handlePhotoError}
         onStateChange={setPhotoCaptureKind}
         disabled={isSubmitting}
         debugDownload={process.env.NODE_ENV !== 'production'}
