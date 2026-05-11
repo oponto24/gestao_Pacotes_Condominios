@@ -10,6 +10,7 @@ import {
   Check,
   Loader2,
   RotateCcw,
+  ImagePlus,
   ChevronDown,
 } from 'lucide-react';
 import {
@@ -132,6 +133,9 @@ export function CapturaPageClient() {
   // Handlers do FAB — dirige PhotoCapture via ref.
   const handleOpenCamera = useCallback(() => {
     photoRef.current?.startCamera();
+  }, []);
+  const handleOpenGallery = useCallback(() => {
+    photoRef.current?.openGallery();
   }, []);
   const handleCapture = useCallback(() => {
     void photoRef.current?.capture();
@@ -313,6 +317,25 @@ export function CapturaPageClient() {
           {microcopy}
         </p>
       )}
+
+      {/* Anexar da galeria — alternativa à câmera. Visível apenas antes da
+          captura (idle/requesting/error de câmera) — depois de tirar foto
+          o user usa Refazer foto pra trocar. */}
+      {(photoCaptureKind === 'idle' ||
+        photoCaptureKind === 'requesting' ||
+        photoCaptureKind === 'error') &&
+        state.kind === 'idle' && (
+          <button
+            type="button"
+            onClick={handleOpenGallery}
+            disabled={isSubmitting}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-sm font-medium text-text-secondary transition-colors hover:bg-muted/40"
+            aria-label="Anexar foto da galeria"
+          >
+            <ImagePlus className="size-4" aria-hidden />
+            Anexar da galeria
+          </button>
+        )}
 
       {/* Banner de erro de upload — preserva foto + código pra retry via FAB */}
       {state.kind === 'error' && (

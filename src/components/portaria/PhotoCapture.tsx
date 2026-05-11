@@ -44,6 +44,8 @@ export interface PhotoCaptureHandle {
   retake: () => void;
   /** Dispara onCapture com o blob/dataUrl atuais. Só funciona em `captured`. */
   confirm: () => void;
+  /** Abre picker da galeria. Foto selecionada é processada igual à capturada. */
+  openGallery: () => void;
 }
 
 interface PhotoCaptureProps {
@@ -135,6 +137,7 @@ export const PhotoCapture = forwardRef<PhotoCaptureHandle, PhotoCaptureProps>(
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const flashRef = useRef<HTMLDivElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
     // Ref pra callbacks instáveis do parent — evita re-render loop que cancelava
     // getUserMedia repetidamente quando parent passava `onError={(msg)=>...}` inline.
     const onErrorRef = useRef(onError);
@@ -347,6 +350,72 @@ export const PhotoCapture = forwardRef<PhotoCaptureHandle, PhotoCaptureProps>(
       dispatch({ type: 'reset' });
     }, []);
 
+    // Abre o picker nativo (iPhone mostra galeria + opção câmera).
+    // Trigger sintético via .click() funciona em todos os browsers modernos
+    // dentro do user gesture do FAB.
+    const handleOpenGallery = useCallback(() => {
+      if (disabled) return;
+      fileInputRef.current?.click();
+    }, [disabled]);
+
+    // Processa arquivo escolhido na galeria — mesmo pipeline da câmera
+    // (resize 1920px + JPEG 0.85) pra evitar upload de iPhone 12MP cru (5+MB).
+    const handleFileSelected = useCallback(
+      async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        // Limpa value pro onChange disparar de novo se user escolher mesmo arquivo
+        e.target.value = '';
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+          const message = 'Arquivo precisa ser uma imagem.';
+          dispatch({ type: 'error', message });
+          onErrorRef.current?.(message);
+          return;
+        }
+
+        // Para qualquer stream ativo antes de processar (libera câmera se estava ligada)
+        stopStream(streamRef.current);
+        streamRef.current = null;
+
+        try {
+          const dataUrlOriginal = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
+            reader.readAsDataURL(file);
+          });
+
+          const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const i = new Image();
+            i.onload = () => resolve(i);
+            i.onerror = () => reject(new Error('Falha ao decodificar imagem'));
+            i.src = dataUrlOriginal;
+          });
+
+          const { w, h } = fitInBox(img.naturalWidth, img.naturalHeight, 1920);
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('Canvas indisponível');
+          ctx.drawImage(img, 0, 0, w, h);
+
+          const blob = await new Promise<Blob | null>((resolve) =>
+            canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.85),
+          );
+          if (!blob) throw new Error('Falha ao serializar a foto.');
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          dispatch({ type: 'capture_done', blob, dataUrl });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Falha ao processar imagem.';
+          dispatch({ type: 'error', message });
+          onErrorRef.current?.(message);
+        }
+      },
+      [],
+    );
+
     useImperativeHandle(
       ref,
       () => ({
@@ -354,12 +423,28 @@ export const PhotoCapture = forwardRef<PhotoCaptureHandle, PhotoCaptureProps>(
         capture: handleCaptureClick,
         retake: handleRetake,
         confirm: handleConfirm,
+        openGallery: handleOpenGallery,
       }),
-      [handleStart, handleCaptureClick, handleRetake, handleConfirm],
+      [
+        handleStart,
+        handleCaptureClick,
+        handleRetake,
+        handleConfirm,
+        handleOpenGallery,
+      ],
     );
 
     return (
       <div className="space-y-3">
+        {/* Input file invisível — galeria via openGallery() */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileSelected}
+          aria-hidden
+        />
         {/* Visor 4:3 com placeholder/preview/captura sobrepostos */}
         <div
           className={cn(
