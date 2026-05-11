@@ -19,6 +19,24 @@ import {
  * Quando override é null, BottomNavBar volta ao comportamento padrão (link).
  */
 
+/**
+ * State do FAB central — alinhado com a state machine da spec
+ * `docs/design/fab-chegada-spec.md`. Em PR-2/3 vai dirigir o estilo visual
+ * (gradientes/halo/shutter/spinner) via lookup. PR-1 só introduz o tipo.
+ *
+ * - `idle-route`: outra rota da portaria → link pra `/chegada`
+ * - `idle-page`: em `/chegada`, câmera desligada → "Abrir câmera"
+ * - `streaming`: câmera ativa → "Capturar" (shutter)
+ * - `captured`: foto pronta → "Usar foto"
+ * - `submitting`: upload em andamento → spinner disabled
+ */
+export type FabState =
+  | 'idle-route'
+  | 'idle-page'
+  | 'streaming'
+  | 'captured'
+  | 'submitting';
+
 export interface BottomNavCenterOverride {
   /** Texto exibido abaixo do ícone (curto — máx ~10 chars). */
   label: string;
@@ -28,8 +46,17 @@ export interface BottomNavCenterOverride {
   onClick: () => void;
   /** Aria-label completo (default: label). */
   ariaLabel?: string;
-  /** Variante visual — default: igual ao FAB Chegada (amarelo). */
+  /**
+   * Variante visual — legado (PR-1 mantém pra backward compat). Será removido
+   * em PR-3 quando `state` for o único driver.
+   * @deprecated Use `state` em PR-3+
+   */
   variant?: 'default' | 'success';
+  /**
+   * State da máquina de estados (spec FAB). Opcional em PR-1 — ainda não
+   * dirige estilo. PR-2 começa a usar pra escolher gradiente/animação.
+   */
+  state?: FabState;
   /** Desabilita interação (mostra spinner via parent). */
   disabled?: boolean;
 }
@@ -78,12 +105,13 @@ export function useBottomNavOverride(
   const onClick = override?.onClick;
   const ariaLabel = override?.ariaLabel;
   const variant = override?.variant;
+  const state = override?.state;
   const disabled = override?.disabled;
 
   const stableOverride = useMemo<BottomNavCenterOverride | null>(() => {
     if (!label || !icon || !onClick) return null;
-    return { label, icon, onClick, ariaLabel, variant, disabled };
-  }, [label, icon, onClick, ariaLabel, variant, disabled]);
+    return { label, icon, onClick, ariaLabel, variant, state, disabled };
+  }, [label, icon, onClick, ariaLabel, variant, state, disabled]);
 
   const apply = useCallback(() => {
     setOverride(stableOverride);
