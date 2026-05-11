@@ -20,6 +20,19 @@
     --radius: 0.75rem;
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
+
+    /* FAB Chegada — paleta tactile (spec docs/design/fab-chegada-spec.md).
+       OKLCH escolhido pela percepção uniforme de luminosidade (gradientes não escurecem
+       no meio do caminho como em HSL). Suporte universal em browsers atuais. */
+    --fab-default-from: oklch(0.58 0.18 255);
+    --fab-default-to: oklch(0.48 0.22 265);
+    --fab-action-from: oklch(0.62 0.21 250);
+    --fab-action-to: oklch(0.42 0.24 260);
+    --fab-capture: oklch(0.98 0 0);
+    --fab-success-from: oklch(0.65 0.18 145);
+    --fab-success-to: oklch(0.5 0.21 150);
+    --fab-glow: oklch(0.58 0.18 255 / 0.4);
+    --fab-glow-success: oklch(0.65 0.18 145 / 0.4);
   }
 }
 
