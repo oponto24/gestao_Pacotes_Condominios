@@ -95,8 +95,10 @@ export function useBottomNavOverride(
   const disabled = override?.disabled;
 
   const stableOverride = useMemo<BottomNavCenterOverride | null>(() => {
-    if (!state || !label || !icon || !onClick) return null;
-    return { state, label, icon, onClick, ariaLabel, disabled };
+    // `label` é intencionalmente '' no state 'streaming' (só shutter visual).
+    // String vazia falha truthy check — não usar `!label` no guard.
+    if (!state || !icon || !onClick) return null;
+    return { state, label: label ?? '', icon, onClick, ariaLabel, disabled };
   }, [state, label, icon, onClick, ariaLabel, disabled]);
 
   const apply = useCallback(() => {
