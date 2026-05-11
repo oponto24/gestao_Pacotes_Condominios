@@ -12,22 +12,18 @@ import {
 /**
  * Override do botão FAB central da bottom nav.
  *
- * Páginas podem registrar uma ação contextual que substitui temporariamente
- * o link `/chegada` enquanto a action faz sentido (ex: na tela de captura,
- * após tirar a foto, FAB vira "Usar foto" e dispara confirm).
- *
- * Quando override é null, BottomNavBar volta ao comportamento padrão (link).
+ * Páginas registram uma ação contextual com `state` da state machine
+ * (spec `docs/design/fab-chegada-spec.md`). Quando override é null,
+ * BottomNavBar volta pro comportamento padrão (link → `/chegada`).
  */
 
 /**
- * State do FAB central — alinhado com a state machine da spec
- * `docs/design/fab-chegada-spec.md`. Em PR-2/3 vai dirigir o estilo visual
- * (gradientes/halo/shutter/spinner) via lookup. PR-1 só introduz o tipo.
+ * State do FAB central — state machine completa do fluxo Chegada.
  *
  * - `idle-route`: outra rota da portaria → link pra `/chegada`
- * - `idle-page`: em `/chegada`, câmera desligada → "Abrir câmera"
- * - `streaming`: câmera ativa → "Capturar" (shutter)
- * - `captured`: foto pronta → "Usar foto"
+ * - `idle-page`: em `/chegada`, câmera desligada → "Abrir câmera" (halo pulse)
+ * - `streaming`: câmera ativa → "Capturar" (shutter branco)
+ * - `captured`: foto pronta → "Usar foto" (gradiente verde)
  * - `submitting`: upload em andamento → spinner disabled
  */
 export type FabState =
@@ -38,7 +34,9 @@ export type FabState =
   | 'submitting';
 
 export interface BottomNavCenterOverride {
-  /** Texto exibido abaixo do ícone (curto — máx ~10 chars). */
+  /** State da máquina de estados — driver do estilo visual. */
+  state: FabState;
+  /** Texto exibido abaixo do ícone (curto — máx ~10 chars). Vazio em `streaming` (só shutter). */
   label: string;
   /** Ícone (lucide ou qualquer ReactNode). */
   icon: React.ReactNode;
@@ -46,18 +44,7 @@ export interface BottomNavCenterOverride {
   onClick: () => void;
   /** Aria-label completo (default: label). */
   ariaLabel?: string;
-  /**
-   * Variante visual — legado (PR-1 mantém pra backward compat). Será removido
-   * em PR-3 quando `state` for o único driver.
-   * @deprecated Use `state` em PR-3+
-   */
-  variant?: 'default' | 'success';
-  /**
-   * State da máquina de estados (spec FAB). Opcional em PR-1 — ainda não
-   * dirige estilo. PR-2 começa a usar pra escolher gradiente/animação.
-   */
-  state?: FabState;
-  /** Desabilita interação (mostra spinner via parent). */
+  /** Desabilita interação (usado em `submitting`). */
   disabled?: boolean;
 }
 
@@ -90,7 +77,7 @@ export function useBottomNav(): BottomNavContextValue {
  * Uso:
  *   useBottomNavOverride(
  *     state.kind === 'captured'
- *       ? { label: 'Usar foto', icon: <Check />, onClick: handleConfirm }
+ *       ? { state: 'captured', label: 'Usar foto', icon: <Check />, onClick: handleConfirm }
  *       : null
  *   );
  */
@@ -100,18 +87,17 @@ export function useBottomNavOverride(
   const { setOverride } = useBottomNav();
   // Memoize as fields individually pra evitar setState em cada render quando
   // o objeto é literal inline mas valores são iguais.
+  const state = override?.state;
   const label = override?.label;
   const icon = override?.icon;
   const onClick = override?.onClick;
   const ariaLabel = override?.ariaLabel;
-  const variant = override?.variant;
-  const state = override?.state;
   const disabled = override?.disabled;
 
   const stableOverride = useMemo<BottomNavCenterOverride | null>(() => {
-    if (!label || !icon || !onClick) return null;
-    return { label, icon, onClick, ariaLabel, variant, state, disabled };
-  }, [label, icon, onClick, ariaLabel, variant, state, disabled]);
+    if (!state || !label || !icon || !onClick) return null;
+    return { state, label, icon, onClick, ariaLabel, disabled };
+  }, [state, label, icon, onClick, ariaLabel, disabled]);
 
   const apply = useCallback(() => {
     setOverride(stableOverride);
