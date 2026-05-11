@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, LayoutDashboard, ScrollText, Users } from 'lucide-react';
+import { Building2, LayoutDashboard, ScrollText, Users, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -15,6 +15,7 @@ const ITEMS: NavItem[] = [
   { href: '/super-admin', label: 'Visão geral', icon: LayoutDashboard },
   { href: '/super-admin/condominios', label: 'Condomínios', icon: Building2 },
   { href: '/super-admin/users', label: 'Usuários', icon: Users },
+  { href: '/super-admin/financas', label: 'Finanças', icon: Wallet },
   { href: '/super-admin/audit', label: 'Audit log', icon: ScrollText },
 ];
 

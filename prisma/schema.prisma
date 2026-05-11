@@ -499,3 +499,21 @@ model CodigoMlPendente {
   @@index([condominio_id, status, expira_em])
   @@map("codigo_ml_pendente")
 }
+
+/// Despesa do app (registro financeiro global — não vinculado a tenant).
+/// Usado pela super-admin pra controlar custos de infra, IA, telecom, etc.
+model Despesa {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  servico       String   @db.VarChar(200) // ex: "KVM 2 — srv1650118.hstgr.cloud"
+  descricao     String?  @db.Text
+  id_pagamento  String?  @db.VarChar(100) // ID da transação no provedor
+  id_assinatura String?  @db.VarChar(100) // ID da subscription/recurring
+  /// Valor em BRL. Nullable pra casos "alguém comprou e ainda não tem nota fiscal".
+  valor_brl  Decimal? @db.Decimal(10, 2)
+  pago_em    DateTime @db.Date
+  criado_em  DateTime @default(now())
+  atualizado_em DateTime @default(now()) @updatedAt
+
+  @@index([pago_em(sort: Desc)])
+  @@map("despesa")
+}
