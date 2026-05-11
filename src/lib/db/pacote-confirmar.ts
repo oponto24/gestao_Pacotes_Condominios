@@ -30,6 +30,7 @@ export interface PacoteForConfirmar {
   ia_confianca: number | null;
   nome_destinatario_etiqueta: string | null;
   endereco_etiqueta: string | null;
+  bairro_etiqueta: string | null;
   cep_etiqueta: string | null;
   complemento_etiqueta: string | null;
   remetente: string | null;
@@ -68,6 +69,7 @@ export async function loadPacoteForConfirmar(
         ia_extracao_raw: true,
         nome_destinatario_etiqueta: true,
         endereco_etiqueta: true,
+        bairro_etiqueta: true,
         cep_etiqueta: true,
         complemento_etiqueta: true,
         remetente: true,
@@ -131,6 +133,7 @@ export async function loadPacoteForConfirmar(
       ia_confianca: pacote.ia_confianca ? Number(pacote.ia_confianca) : null,
       nome_destinatario_etiqueta: pacote.nome_destinatario_etiqueta,
       endereco_etiqueta: pacote.endereco_etiqueta,
+      bairro_etiqueta: pacote.bairro_etiqueta,
       cep_etiqueta: pacote.cep_etiqueta,
       complemento_etiqueta: pacote.complemento_etiqueta,
       remetente: pacote.remetente,
@@ -221,6 +224,7 @@ export async function confirmarPacote(
       data: {
         nome_destinatario_etiqueta: input.nome_destinatario,
         endereco_etiqueta: input.endereco,
+        bairro_etiqueta: input.bairro,
         cep_etiqueta: input.cep,
         complemento_etiqueta: input.complemento,
         remetente: input.remetente,

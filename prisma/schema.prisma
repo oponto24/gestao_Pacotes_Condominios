@@ -318,6 +318,7 @@ model Pacote {
   // Dados extraídos pela IA (após confirmação)
   nome_destinatario_etiqueta String? @db.VarChar(200)
   endereco_etiqueta          String? @db.VarChar(500)
+  bairro_etiqueta            String? @db.VarChar(100)
   cep_etiqueta               String? @db.VarChar(9)
   complemento_etiqueta       String? @db.VarChar(200) // "AP 1304 bloco3"
   remetente                  String? @db.VarChar(200)
