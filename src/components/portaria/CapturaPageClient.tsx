@@ -64,7 +64,14 @@ export function CapturaPageClient() {
         navigator.vibrate(200);
       }
 
-      router.push(`/chegada/confirmar/${body.pacote_id}`);
+      // Hard navigation em vez de router.push: evita "Failed to find Server Action"
+      // quando o client tem chunks de um deploy antigo (Safari mobile cacheia agressivo).
+      // O custo de repaint compensa não travar o porteiro com spinner eterno.
+      if (typeof window !== 'undefined') {
+        window.location.assign(`/chegada/confirmar/${body.pacote_id}`);
+      } else {
+        router.push(`/chegada/confirmar/${body.pacote_id}`);
+      }
     } catch (e) {
       let message: string;
       if (e instanceof DOMException && e.name === 'AbortError') {
