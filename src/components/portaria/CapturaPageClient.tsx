@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Package,
@@ -50,6 +50,8 @@ export function CapturaPageClient() {
     useState<PhotoCaptureKind>('idle');
 
   const photoRef = useRef<PhotoCaptureHandle | null>(null);
+  // Dedupe pra evitar upload duplo do mesmo blob (strict mode dev roda effect 2x).
+  const submittedFor = useRef<Blob | null>(null);
 
   const codigoInvalido = !isCodigoValid(state.codigo);
   const isSubmitting = state.kind === 'submitting';
@@ -134,19 +136,36 @@ export function CapturaPageClient() {
   const handleCapture = useCallback(() => {
     void photoRef.current?.capture();
   }, []);
+  // "Usar foto": dispara confirm() do PhotoCapture, que via onCapture →
+  // handlePhotoCaptured → dispatch photo_captured. Upload automático segue
+  // via useEffect[state.kind==='photo_taken'].
   const handleUsePhoto = useCallback(() => {
-    if (state.kind !== 'photo_taken' || codigoInvalido) return;
-    void uploadPacote(state.photo, state.codigo.trim());
-  }, [state, codigoInvalido, uploadPacote]);
+    if (codigoInvalido) return;
+    photoRef.current?.confirm();
+  }, [codigoInvalido]);
   const handleRetryUpload = useCallback(() => {
     if (state.kind !== 'error' || codigoInvalido) return;
     void uploadPacote(state.photo, state.codigo.trim());
   }, [state, codigoInvalido, uploadPacote]);
   const handleRetakePhoto = useCallback(() => {
     if (state.kind === 'submitting') return;
+    submittedFor.current = null;
     dispatch({ type: 'photo_cleared' });
     photoRef.current?.retake();
   }, [state.kind]);
+
+  // Auto-upload após o user confirmar explicitamente (FAB "Usar foto").
+  // O confirm() dispara onCapture → handlePhotoCaptured → state.kind='photo_taken'.
+  // Aqui detectamos a transição e disparamos uploadPacote 1x (dedupe via ref).
+  // Diferente do auto-submit antigo (que rodava direto após capture sem confirm),
+  // este só roda DEPOIS do gesto explícito do porteiro.
+  useEffect(() => {
+    if (state.kind !== 'photo_taken') return;
+    if (codigoInvalido) return;
+    if (submittedFor.current === state.photo.blob) return;
+    submittedFor.current = state.photo.blob;
+    void uploadPacote(state.photo, state.codigo.trim());
+  }, [state, codigoInvalido, uploadPacote]);
 
   // Driver do FAB — registra override baseado no estado combinado.
   // Ordem de precedência: parent state primeiro (submitting/error/photo_taken)
@@ -173,6 +192,19 @@ export function CapturaPageClient() {
       };
     }
     if (state.kind === 'photo_taken') {
+      // Já confirmou + upload em curso (vai entrar em submitting na próxima render).
+      // Mostrar "Usar foto" enquanto o effect dispara uploadPacote.
+      return {
+        state: 'captured' as const,
+        label: 'Usar foto',
+        icon: <Check className="size-6" aria-hidden />,
+        onClick: () => undefined,
+        ariaLabel: 'Foto confirmada',
+        disabled: true,
+      };
+    }
+    // PhotoCapture com foto pronta mas ainda sem confirm — FAB pra confirmar.
+    if (photoCaptureKind === 'captured') {
       return {
         state: 'captured' as const,
         label: 'Usar foto',
@@ -208,7 +240,8 @@ export function CapturaPageClient() {
   const microcopy = (() => {
     if (state.kind === 'submitting') return 'Enviando foto… · não feche o app';
     if (state.kind === 'error') return null; // erro mostrado em banner separado
-    if (state.kind === 'photo_taken')
+    if (state.kind === 'photo_taken') return 'Enviando…';
+    if (photoCaptureKind === 'captured')
       return 'Toque em Usar foto pra enviar ↓';
     if (photoCaptureKind === 'streaming')
       return 'Enquadre a etiqueta e toque em capturar ↓';
@@ -216,8 +249,10 @@ export function CapturaPageClient() {
     return 'Toque em Abrir câmera abaixo ↓';
   })();
 
-  // "Refazer foto" link visível quando há foto ou após erro (não em streaming).
+  // "Refazer foto" link visível quando há foto pronta (PhotoCapture captured),
+  // após confirm (state photo_taken/submitting/error). Não em streaming/idle.
   const showRetakeLink =
+    photoCaptureKind === 'captured' ||
     state.kind === 'photo_taken' ||
     state.kind === 'submitting' ||
     state.kind === 'error';
