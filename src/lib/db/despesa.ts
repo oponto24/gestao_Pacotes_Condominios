@@ -64,6 +64,33 @@ export async function criarDespesa(input: CriarDespesaInput): Promise<DespesaRow
   };
 }
 
+export async function atualizarDespesa(
+  id: string,
+  input: CriarDespesaInput,
+): Promise<DespesaRow> {
+  const row = await db.despesa.update({
+    where: { id },
+    data: {
+      servico: input.servico,
+      descricao: input.descricao,
+      id_pagamento: input.id_pagamento,
+      id_assinatura: input.id_assinatura,
+      valor_brl: input.valor_brl ? new Prisma.Decimal(input.valor_brl) : null,
+      pago_em: input.pago_em,
+    },
+  });
+  return {
+    id: row.id,
+    servico: row.servico,
+    descricao: row.descricao,
+    id_pagamento: row.id_pagamento,
+    id_assinatura: row.id_assinatura,
+    valor_brl: row.valor_brl ? Number(row.valor_brl) : null,
+    pago_em: row.pago_em,
+    criado_em: row.criado_em,
+  };
+}
+
 export async function removerDespesa(id: string): Promise<void> {
   await db.despesa.delete({ where: { id } });
 }
