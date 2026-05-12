@@ -1,7 +1,7 @@
-import { Wallet, Sparkles, Plus } from 'lucide-react';
+import { Wallet, Sparkles } from 'lucide-react';
 import { listDespesas } from '@/lib/db/despesa';
 import { getIaUsageSummary, USD_TO_BRL } from '@/lib/ia-cost';
-import { DespesaForm } from './DespesaForm';
+import { DespesasManager, type DespesaItem } from './DespesasManager';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,10 +15,6 @@ function fmtUSD(v: number): string {
   return v.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
-function fmtDate(d: Date): string {
-  return d.toLocaleDateString('pt-BR');
-}
-
 export default async function FinancasPage() {
   const [despesas, iaUsage] = await Promise.all([
     listDespesas(),
@@ -30,6 +26,18 @@ export default async function FinancasPage() {
     0,
   );
   const totalComIa = totalManual + iaUsage.totalCostBrl;
+
+  // Serializa Date pra ISO string pro client component (Server→Client boundary
+  // não passa Date direto sem warning. Truncamos pra YYYY-MM-DD pq pago_em é DATE).
+  const despesaItems: DespesaItem[] = despesas.map((d) => ({
+    id: d.id,
+    servico: d.servico,
+    descricao: d.descricao,
+    id_pagamento: d.id_pagamento,
+    id_assinatura: d.id_assinatura,
+    valor_brl: d.valor_brl,
+    pago_em: d.pago_em.toISOString().slice(0, 10),
+  }));
 
   return (
     <div className="space-y-6">
@@ -80,61 +88,8 @@ export default async function FinancasPage() {
         </div>
       </section>
 
-      {/* Form pra adicionar despesa */}
-      <section className="rounded-lg border border-border bg-background p-4">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-          <Plus className="size-4" aria-hidden /> Adicionar despesa
-        </h2>
-        <DespesaForm />
-      </section>
-
-      {/* Tabela de despesas */}
-      <section className="rounded-lg border border-border bg-background">
-        <h2 className="border-b border-border p-4 text-sm font-semibold">
-          Despesas registradas
-        </h2>
-        {despesas.length === 0 ? (
-          <p className="p-4 text-sm text-text-secondary">Nenhuma despesa.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/30 text-left text-xs uppercase tracking-wide text-text-secondary">
-                <tr>
-                  <th className="p-3">Serviço</th>
-                  <th className="p-3">ID pagamento</th>
-                  <th className="p-3">ID assinatura</th>
-                  <th className="p-3">Pago em</th>
-                  <th className="p-3 text-right">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {despesas.map((d) => (
-                  <tr key={d.id} className="border-b border-border/50 last:border-0">
-                    <td className="p-3">
-                      <div className="font-medium">{d.servico}</div>
-                      {d.descricao && (
-                        <div className="mt-0.5 text-xs text-text-secondary">
-                          {d.descricao}
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-3 font-mono text-xs">
-                      {d.id_pagamento ?? '—'}
-                    </td>
-                    <td className="p-3 font-mono text-xs">
-                      {d.id_assinatura ?? '—'}
-                    </td>
-                    <td className="p-3 text-xs">{fmtDate(d.pago_em)}</td>
-                    <td className="p-3 text-right font-mono text-sm">
-                      {fmtBRL(d.valor_brl)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      {/* Form (add/edit) + tabela com botões — client component */}
+      <DespesasManager despesas={despesaItems} />
 
       {/* Custo IA detalhado */}
       <section className="rounded-lg border border-border bg-background">
