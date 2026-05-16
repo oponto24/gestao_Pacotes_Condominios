@@ -55,11 +55,31 @@
 
 ## Fase 4 — Verificacao Final
 
-- [ ] `npm run lint` passa
-- [ ] `npm run typecheck` passa
-- [ ] `npm run build` passa
-- [ ] Git status limpo, commit final
+- [x] `npm run lint` passa
+- [x] `npm run typecheck` passa
+- [x] `npm run build` passa
+- [x] 450/450 testes passando
+- [x] Git commit: `1db4571`
 
 ---
 
-**Estimativa:** Execucao completa nesta sessao.
+**Status:** CONCLUIDO em 2026-05-16
+
+## Decisoes tomadas
+
+| Item | Decisao | Motivo |
+|------|---------|--------|
+| `.antigravity/`, `.codex/`, `.cursor/`, `.gemini/` | Movidos para `.ai-tools/` (gitignored) | Separar configs AI do projeto |
+| `.claude/` | Mantido na raiz | Necessario pro Claude Code funcionar |
+| `.clerk/` | Mantido na raiz | Necessario pro Clerk SDK |
+| `AGENTS.md` | Mantido (paths atualizados) | Entrypoint do Codex CLI (PO vetou remocao) |
+| `docs/cleanup/` | Mantido integralmente | Trail de governanca da sprint de cleanup anterior |
+| `docs/legacy/discovery-2026-05/` | Ja estava consolidado | Auditoria anterior ja moveu |
+| `docs/planning/2026-05-08-decisoes.md` | Removido | Duplicata do ADR em `docs/decisions/` |
+| `docs/planning/novos-requirements.md` | Mantido | Documento ativo com requirements futuros |
+| `docs/planning/naming-brainstorm.md` | Mantido | Brainstorm ativo, pendente discussao com socios |
+| `docs/design/` | Mantido | Spec FAB aprovada e ativa |
+| `docs/qa/` | Mantido integralmente | Gates, specs e test designs ativos |
+| `scripts/test-extract-*.ts` | Movidos para `scripts/dev/` | Consolidar com fixtures, corrigir import paths |
+| `storage/` (raiz, vazia) | Removida | Docker usa volume nomeado, nao bind-mount |
+| `CHANGELOG.md` | Mantido | Historico macro do projeto |
