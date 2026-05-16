@@ -1,7 +1,7 @@
 # Roadmap de Stories — Gestão de Pacotes em Condomínios
 
 > **Owner:** River (AIOX Scrum Master)
-> **Última atualização:** 2026-05-08
+> **Última atualização:** 2026-05-15
 > **PRD:** `docs/prd/PRD.md` | **Architecture:** `docs/architecture/ARCHITECTURE.md` | **Schema:** `docs/architecture/database/SCHEMA.md` | **UX:** `docs/ux/UX_SPEC.md`
 
 ---
@@ -9,11 +9,14 @@
 ## Visão geral
 
 **Total:** 60+ stories distribuídas em 12 épicos.
-**Progresso atual (2026-05-09 sessão noturna Orion):** **~50 stories Done** · **312 tests passing** · MVP em produção https://condominios.oponto24.com.br · Epics 1-6 + 4 done, Epic 7 core, Epic 10 completo, Epic 11.1 e 12.1 done
+**Progresso atual (2026-05-15 sessão Orion):** **~50 stories Done** · **312 tests passing** · MVP em produção https://condominios.oponto24.com.br · Epics 1-6 + 4 done, Epic 7 core, Epic 10 completo, Epic 11.1 e 12.1 done · **WhatsApp produção ativo** (chip dedicado + template aprovado + envio testado)
 **Bloqueios externos restantes:**
-- Aprovação Meta do template `pacote_chegou` (smoke real do envio WhatsApp)
-- Compra de chip dedicado WhatsApp pra produção (sandbox = 90d/5 destinatários)
-- Etapa 6 do runbook setup-meta-whatsapp (configurar webhook URL no painel Meta) — só pós-deploy
+- ~~Aprovação Meta do template `pacote_chegou`~~ ✅ Aprovado (2026-05-15)
+- ~~Compra de chip dedicado WhatsApp pra produção~~ ✅ Chip +55 11 99440-8930 ativo, WABA `1017715357824074`
+- ~~Configurar webhook URL no painel Meta~~ ✅ Webhook ativo e validado
+- RLS em produção — migration pronta (`20260510160000_enable_rls_prod`), falta deploy na VPS
+- Rotacionar 6 secrets expostos em chat anterior
+- Migrar Clerk dev → prod (keys de desenvolvimento)
 
 **Convenção de numeração:** `{epic}.{story}` — ex: `1.1`, `3.4`.
 **Convenção de branch:** `feature/{epic}.{story}-slug` — ex: `feature/1.1-init-monorepo`.
@@ -97,10 +100,11 @@
 
 **Bundle:** PR #59 (`feature/epic-4-whatsapp`) — 7 stories, 47 unit tests novos, 401/401 suite verde.
 
-**Pendências externas (não bloqueiam merge):**
-- ⏳ Aprovação Meta do template `pacote_chegou` (submetido 2026-05-08 16h25)
-- ⏳ Pós-deploy: configurar webhook URL no painel Meta (Etapa 6 do runbook)
-- ⏳ Chip dedicado WhatsApp pra produção real
+**Pendências externas — TODAS RESOLVIDAS (2026-05-15):**
+- ✅ Template `pacote_chegou` aprovado pela Meta
+- ✅ Webhook configurado e validado em produção
+- ✅ Chip dedicado +55 11 99440-8930 (WABA `1017715357824074`) ativo
+- ✅ Envio real testado e confirmado (2026-05-15)
 
 **Débitos LOW (registrados nos QA Results das stories):**
 - E2E Playwright reenviar fluxo (spec documentado em `docs/qa/e2e-specs/reenviar-whatsapp.md`, falta install Playwright)
@@ -239,20 +243,28 @@
 
 ---
 
-## Próximas ações (2026-05-08)
+## Próximas ações (2026-05-15)
 
-1. **User:** revisar PR #59 (Epic 4 + débitos LOW + 4.6b UI) e mergear quando confortável
-2. **@devops (Gage):** após merge, rodar `prisma migrate deploy` em prod (aplica `qr_image_path`) e verificar workers reiniciam
-3. **User:** aguardar e-mail Meta com aprovação do template `pacote_chegou`
-4. **User + @devops:** Etapa 6 do runbook setup-meta-whatsapp — configurar webhook URL `https://condominios.oponto24.com.br/api/webhooks/meta-whatsapp` + verify_token no painel Meta
-5. **User:** comprar chip dedicado WhatsApp Business + criar nova WABA produção (não-sandbox)
-6. **Pré-prod:** rotacionar 6 secrets vazados em chat (Anthropic key, Google key, senha VPS, Clerk dev→prod, Meta App Secret, Meta Access Token)
+### Concluído nesta sessão
+- ✅ Git restaurado (corrompido pela cópia do Google Drive)
+- ✅ Ambiente dev configurado em PC novo (Docker Desktop + WSL + Postgres + Redis)
+- ✅ WhatsApp produção ativado: chip dedicado, template aprovado, WABA atualizada, token atualizado na VPS, envio testado com sucesso
+- ✅ SSH configurado para novo PC → VPS
+- ✅ Containers reiniciados em prod com novas credenciais
 
-### Próximas frentes possíveis (priorizar com user)
+### Ações pendentes (prioridade)
+1. **Deploy RLS em prod** — migration `20260510160000_enable_rls_prod` pronta. Bloqueador pra 2º cliente (multi-tenant real). Ver `docs/stories/rls-001-ligar-em-prod.story.md`
+2. **Rotacionar 6 secrets** expostos em chat anterior (Anthropic, Google, senha VPS, Clerk, Meta App Secret, Meta Access Token)
+3. **Migrar Clerk dev → prod** — keys de desenvolvimento, limite MAU, branding
+4. **Storage offsite do backup** — hoje backup só na própria VPS
 
-- **Epic 7 — Código ML via WhatsApp:** webhook handler 4.4 já registra mensagens inbound; falta parser regex+LLM de código ML + UI banner amarelo na tela organizar
-- **Epic 8 — Cadastros hierárquicos** (8.5-8.7): super-admin → admin de cond → admins/porteiros do mesmo cond
-- **Pós-MVP:** decisões de produto (admin master vs comum, billing/Asaas, trial)
+### Próximas frentes de dev (priorizar com user)
+
+- **Epic 7 — Palavra-chave via WhatsApp** (7.2-7.6): webhook handler 4.4 já registra mensagens inbound; falta parser regex+LLM + UI + cron expiração
+- **Epic 8 — Operação SaaS** (8.1-8.7): super-admin layout, impersonar, cadastrar admins/porteiros
+- **Epic 11 — UX refinado** (11.2-11.5): blocos hierárquicos, busca global, filtros
+- **Epic 12 — SaaS maduro** (12.2-12.6): audit log, desativar condomínio, CRUD users
+- **Naming do produto** — brainstorm em `docs/planning/naming-brainstorm-2026-05-15.md`, pendente decisão com sócios
 
 ### Backlog UX (descoberto durante smoke 2.6 — 2026-05-07)
 

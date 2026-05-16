@@ -46,6 +46,9 @@ next-env.d.ts
 # clerk configuration (can include secrets)
 /.clerk/
 
+# AI tool configs (antigravity, codex, cursor, gemini) — consolidated
+.ai-tools/
+
 # Claude Code per-project memory
 .claude/projects/
 

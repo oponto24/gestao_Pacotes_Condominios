@@ -1,6 +1,6 @@
 # Pré-produção — Checklist pra primeiro cliente pagante
 
-Status snapshot 2026-05-10. Atualizar conforme itens forem fechados.
+Status snapshot 2026-05-15. Atualizar conforme itens forem fechados.
 
 ## ✅ Já endereçado
 
@@ -8,13 +8,11 @@ Status snapshot 2026-05-10. Atualizar conforme itens forem fechados.
 - [x] **Quotas por condomínio** — `max_unidades=200`, `max_moradores=600`, `max_pacotes_30d=2000` (defaults MVP, NULL = ilimitado).
 - [x] **Backup automático do DB** — `pg_dump` diário às 03h UTC, retenção 7d/4w/3m em `/var/backups/gestao-pacotes/`. Cron ativo. **Pendente storage offsite (S3/R2).**
 - [x] **Erro Clerk no startup** — diagnóstico: prerender de rota static, não afeta runtime. Sem fix necessário.
+- [x] **Chip dedicado WhatsApp** — +55 11 99440-8930 registrado como WhatsApp Business. Phone Number ID `1084364871431519`, WABA `1017715357824074` (modo LIVE, status CONNECTED). Template `pacote_chegou` aprovado. Método de pagamento configurado. Envio real testado e confirmado em 2026-05-15. Detalhes em `docs/runbooks/setup-meta-whatsapp.md`.
+- [x] **Webhook Meta WhatsApp** — configurado em `https://condominios.oponto24.com.br/api/webhooks/meta-whatsapp`, validado por Meta (challenge OK), inscrito em `messages` + `message_template_status_update`.
+- [x] **Token e WABA atualizados na VPS** — `.env.prod` com META_ACCESS_TOKEN, META_WABA_ID e META_PHONE_NUMBER_ID de produção. Containers reiniciados 2026-05-15.
 
 ## 🚧 Bloqueante pra primeiro cliente real
-
-### Chip dedicado WhatsApp
-- **Por quê**: Sem isso, Epic 4 inteiro morto. `META_PHONE_NUMBER_ID` em prod aponta pro Test Number da Meta (+1 555-638-8239 NOT_VERIFIED) — qualquer template retorna 133010.
-- **O que fazer**: Comprar chip pré-pago R$30 (ou número virtual TotalVoice/Twilio). Seguir Etapa 3 do `docs/runbooks/setup-meta-whatsapp.md`. Atualizar `META_PHONE_NUMBER_ID` em `.env.prod`. `docker compose restart app worker`.
-- **Quem**: usuário (ação operacional, não código)
 
 ### Migrar Clerk dev → prod
 - **Por quê**: Hoje usa keys de desenvolvimento da Clerk. Limite de MAU + branding "Powered by Clerk" + restrições de envio de email.
@@ -31,7 +29,7 @@ Histórico de chat anterior expôs 6 keys. Em ordem de criticidade:
 | Senha root VPS | VPS shell | `passwd root` + atualizar `~/.ssh/...` se documentada |
 | `CLERK_SECRET_KEY` | Endereçado junto com Clerk dev→prod acima |
 | `META_APP_SECRET` | developers.facebook.com → App → Basic | Reset em "Show", atualizar `.env.prod` |
-| `META_ACCESS_TOKEN` | Idem (System User → Generate New Token) |
+| `META_ACCESS_TOKEN` | Idem (System User → Generate New Token) — atualizado 2026-05-15 mas precisa rotação formal |
 
 Validar com `curl /api/health` após cada rotação.
 
@@ -96,8 +94,8 @@ Achados U4, U10, U12, U13 da auditoria UX 2026-05-10:
 
 ## Sequência sugerida de execução
 
-1. **Agora**: chip WhatsApp (operacional, paralelo)
-2. **Esta semana**: rotação dos 6 secrets + Clerk dev→prod
+1. ~~**Agora**: chip WhatsApp~~ ✅ Concluído 2026-05-15
+2. **Agora**: rotação dos 6 secrets + Clerk dev→prod
 3. **Antes de cobrar**: storage offsite do backup + alerting básico (Healthchecks.io)
 4. **Mês 1 de cobrança**: billing automatizado + self-signup com aprovação
 5. **Mês 2+**: quotas por plano, observability completa, subdomínio por cliente

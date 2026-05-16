@@ -45,10 +45,10 @@ Este arquivo define as instrucoes do projeto para o Codex CLI.
 ## Agent Shortcuts
 
 Preferencia de ativacao no Codex CLI:
-1. Use `/skills` e selecione `aiox-<agent-id>` vindo de `.codex/skills` (ex.: `aiox-architect`)
+1. Use `/skills` e selecione `aiox-<agent-id>` vindo de `.ai-tools/codex/skills` (ex.: `aiox-architect`)
 2. Se preferir, use os atalhos abaixo (`@architect`, `/architect`, etc.)
 
-Interprete os atalhos abaixo carregando o arquivo correspondente em `.aiox-core/development/agents/` (fallback: `.codex/agents/`), renderize o greeting via `generate-greeting.js` e assuma a persona ate `*exit`:
+Interprete os atalhos abaixo carregando o arquivo correspondente em `.aiox-core/development/agents/` (fallback: `.ai-tools/codex/agents/`), renderize o greeting via `generate-greeting.js` e assuma a persona ate `*exit`:
 
 - `@architect`, `/architect`, `/architect.md` -> `.aiox-core/development/agents/architect.md`
 - `@dev`, `/dev`, `/dev.md` -> `.aiox-core/development/agents/dev.md`

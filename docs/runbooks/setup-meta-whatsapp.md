@@ -1,33 +1,42 @@
 # Setup Meta WhatsApp Business — Estado e operação
 
-> **Status (2026-05-08):** Etapas 1-6 ✅ concluídas. Sistema integrado e webhook ativo em produção.
-> **Pendente externo:** aprovação do template `pacote_chegou` pela Meta + chip dedicado pra produção real (sandbox = 90d / 5 destinatários).
+> **Status (2026-05-15):** Todas as etapas concluídas. WhatsApp em produção com chip dedicado. Envio real testado e confirmado.
 
 ---
 
-## Credenciais (referenciar no `.env.prod`)
+## Credenciais ativas em produção (`.env.prod`)
 
-| Variável | Valor sandbox atual | Quando trocar |
-|----------|---------------------|---------------|
-| `META_APP_ID` | `2194393834738443` | Nunca (público, app id) |
-| `META_APP_SECRET` | em `.env.prod` (rotacionar antes de prod real) | Antes do piloto pago |
-| `META_PHONE_NUMBER_ID` | `1138774412646193` (sandbox) | Quando comprar chip dedicado |
-| `META_WABA_ID` | `1446111150585784` (sandbox `Test WhatsApp Business Account`) | Quando comprar chip dedicado |
-| `META_ACCESS_TOKEN` | em `.env.prod` (token permanente do System User `ponto24-api`) | Antes do piloto pago (rotacionar) |
+| Variável | Valor produção | Notas |
+|----------|---------------|-------|
+| `META_APP_ID` | `2194393834738443` | Público, App ID |
+| `META_APP_SECRET` | em `.env.prod` | ⚠️ Rotacionar antes do piloto pago |
+| `META_PHONE_NUMBER_ID` | `1084364871431519` | Chip dedicado +55 11 99440-8930 |
+| `META_WABA_ID` | `1017715357824074` | WABA produção "Ponto 24 Pacotes (Condominios)" |
+| `META_ACCESS_TOKEN` | em `.env.prod` | Atualizado 2026-05-15 |
 | `META_API_VERSION` | `v25.0` | Quando Meta deprecar |
-| `META_WEBHOOK_VERIFY_TOKEN` | em `.env.prod` (gerado com `openssl rand -hex 32`) | Antes do piloto pago |
-| `META_DISABLED` | `false` em prod, `true` em CI/dev sem credencial | — |
+| `META_WEBHOOK_VERIFY_TOKEN` | em `.env.prod` | Gerado com `openssl rand -hex 32` |
+| `META_DISABLED` | `false` | `true` em CI/dev sem credencial |
+
+### Credenciais sandbox (legado, manter como referência)
+
+| Variável | Valor sandbox |
+|----------|--------------|
+| `META_PHONE_NUMBER_ID_SANDBOX` | `1138774412646193` |
+| `META_WABA_ID_SANDBOX` | `1446111150585784` |
 
 ---
 
-## Etapas concluídas (resumo histórico)
+## Etapas concluídas
 
 1. ✅ **Business Manager Ponto24** verificado — 2026-05-08
 2. ✅ **App `Gestao de Pacotes Condominios`** criado (App ID `2194393834738443`) com produto WhatsApp adicionado
-3. ✅ **Phone Number ID sandbox** ativo (válido por 90 dias, max 5 destinatários cadastrados manualmente)
-4. ✅ **System User `ponto24-api`** com Admin role, ativos atribuídos (App + WABA), token permanente gerado
-5. ⏳ **Template `pacote_chegou`** submetido à Meta em 2026-05-08 16h25 (Utility / pt_BR / header imagem). Aguarda aprovação (geralmente 1h, max 24h)
-6. ✅ **Webhook configurado** em `https://condominios.oponto24.com.br/api/webhooks/meta-whatsapp` em 2026-05-08 22h15 — validado por Meta (challenge ping retornou OK), inscrito em `messages` + `message_template_status_update`
+3. ✅ **Chip dedicado comprado** — +55 11 99440-8930 registrado como WhatsApp Business, Phone Number ID `1084364871431519` — 2026-05-15
+4. ✅ **WABA produção criada** — `1017715357824074`, nome verificado "Ponto 24 Pacotes (Condominios)", status CONNECTED, modo LIVE
+5. ✅ **Template `pacote_chegou`** aprovado pela Meta (Utility / pt_BR / header imagem) — ID `26618717394464267`
+6. ✅ **Webhook configurado** em `https://condominios.oponto24.com.br/api/webhooks/meta-whatsapp` — validado por Meta (challenge ping OK), inscrito em `messages` + `message_template_status_update`
+7. ✅ **Método de pagamento** configurado no WABA — cartão adicionado 2026-05-15
+8. ✅ **Envio real testado** — template `pacote_chegou` enviado com sucesso para +55 11 98810-8784 e +55 11 94039-8377 — 2026-05-15
+9. ✅ **Token e WABA atualizados na VPS** — `.env.prod` atualizado, containers `app` + `worker` reiniciados — 2026-05-15
 
 ---
 
@@ -42,18 +51,35 @@ curl -s "https://condominios.oponto24.com.br/api/webhooks/meta-whatsapp?hub.mode
 curl -s -w "%{http_code}\n" "https://condominios.oponto24.com.br/api/webhooks/meta-whatsapp?hub.mode=subscribe&hub.verify_token=ERRADO&hub.challenge=x"
 # → Forbidden403
 
-# Smoke envio template (requer template aprovado + destinatário cadastrado no sandbox)
-npm run smoke:meta -- --to=5511XXXXXXXXX --template=hello_world --lang=en_US
-# → wamid.HBgM... (id da mensagem entregue)
+# Smoke envio template (requer destinatário com WhatsApp)
+curl -s -X POST "https://graph.facebook.com/v25.0/1084364871431519/messages" \
+  -H "Authorization: Bearer $META_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messaging_product": "whatsapp",
+    "to": "5511XXXXXXXXX",
+    "type": "template",
+    "template": {
+      "name": "pacote_chegou",
+      "language": { "code": "pt_BR" },
+      "components": [
+        { "type": "header", "parameters": [{ "type": "image", "image": { "link": "https://condominios.oponto24.com.br/icons/icon-512.png" } }] },
+        { "type": "body", "parameters": [{ "type": "text", "text": "Nome" }, { "type": "text", "text": "Condominio" }] }
+      ]
+    }
+  }'
+# → {"messaging_product":"whatsapp","contacts":[...],"messages":[{"id":"wamid.HBg...","message_status":"accepted"}]}
 ```
 
 ---
 
 ## Checklist pré-piloto pago
 
-- [ ] Template `pacote_chegou` aprovado pela Meta
-- [ ] Chip dedicado WhatsApp Business comprado
-- [ ] Nova WABA produção criada (não-sandbox), `META_PHONE_NUMBER_ID` + `META_WABA_ID` atualizados
+- [x] Template `pacote_chegou` aprovado pela Meta
+- [x] Chip dedicado WhatsApp Business comprado
+- [x] WABA produção criada, `META_PHONE_NUMBER_ID` + `META_WABA_ID` atualizados
+- [x] Método de pagamento configurado no WABA
+- [x] Envio real testado e confirmado
 - [ ] `META_APP_SECRET`, `META_ACCESS_TOKEN`, `META_WEBHOOK_VERIFY_TOKEN` rotacionados
 - [ ] Verificação de negócio Meta (CNPJ + cartão CNPJ) submetida
 - [ ] Templates `palavra_chave_recebida` + `morador_nao_cadastrado` submetidos (E7)
@@ -76,3 +102,23 @@ npm run smoke:meta -- --to=5511XXXXXXXXX --template=hello_world --lang=en_US
 - **Provider:** Meta Cloud API direto (sem BSP) — mais barato, oficial, free tier real (CON-003).
 - **Categoria de templates:** Utility (transacional, mais barato e aprova mais rápido que Marketing).
 - **Aspect ratio do header:** 1.91:1 (1200×628) — evita corte do QR no preview WhatsApp.
+- **Nota sobre imagem no template:** A URL da imagem DEVE retornar HTTP 200. URLs com 404 fazem a Meta aceitar a mensagem (`accepted`) mas NÃO entregar ao destinatário silenciosamente. Descoberto em 2026-05-15.
+
+---
+
+## Troubleshooting
+
+### Mensagem aceita mas não entrega
+1. Verificar `health_status` do número: `GET /v25.0/{PHONE_NUMBER_ID}?fields=health_status`
+2. Se `WABA.can_send_message = BLOCKED` com erro 141006 → problema no método de pagamento
+3. Se imagem do header retorna 404 → Meta descarta silenciosamente. Confirmar URL antes de enviar
+4. Envio de texto simples funciona sem janela de 24h se for template — se texto simples chega mas template não, problema é no template
+
+### Verificar status da conta
+```bash
+# Health check completo
+curl -s "https://graph.facebook.com/v25.0/1084364871431519?fields=health_status&access_token=$META_ACCESS_TOKEN"
+
+# Templates aprovados
+curl -s "https://graph.facebook.com/v25.0/1017715357824074/message_templates?access_token=$META_ACCESS_TOKEN"
+```
