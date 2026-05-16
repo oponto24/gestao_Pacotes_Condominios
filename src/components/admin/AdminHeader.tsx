@@ -4,6 +4,7 @@ import { Building2, Menu } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { UserMenu } from './UserMenu';
+import { GlobalSearch } from './GlobalSearch';
 
 type RoleLabel = 'admin_master' | 'admin_funcionario' | 'porteiro' | 'super_admin';
 
@@ -54,7 +55,8 @@ export function AdminHeader({
           </Badge>
         </div>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
+          <GlobalSearch />
           <UserMenu nome={userNome} email={userEmail} />
         </div>
       </div>

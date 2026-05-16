@@ -1,9 +1,18 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Search, Star, Users, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -14,7 +23,6 @@ import {
 } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Star, Users } from 'lucide-react';
 import {
   MoradorForm,
   type MoradorFormInitial,
@@ -56,6 +64,32 @@ export function MoradoresListClient({
   const [, startTransition] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<MoradorFormInitial | null>(null);
+  const [q, setQ] = useState('');
+  const [blocoFilter, setBlocoFilter] = useState('__all__');
+
+  // Derive unique blocos from unidades for the filter dropdown
+  const blocos = useMemo(() => {
+    const set = new Set<string>();
+    unidades.forEach((u) => { if (u.bloco) set.add(u.bloco); });
+    return Array.from(set).sort();
+  }, [unidades]);
+
+  // Client-side filtering
+  const filteredRows = useMemo(() => {
+    let result = rows;
+    if (q.trim().length >= 2) {
+      const lower = q.trim().toLowerCase();
+      result = result.filter(
+        (m) =>
+          m.nome.toLowerCase().includes(lower) ||
+          m.telefone.toLowerCase().includes(lower),
+      );
+    }
+    if (blocoFilter !== '__all__') {
+      result = result.filter((m) => m.unidade.bloco === blocoFilter);
+    }
+    return result;
+  }, [rows, q, blocoFilter]);
 
   function toggleParam(key: string, currentValue: boolean) {
     const next = new URLSearchParams(params);
@@ -129,14 +163,58 @@ export function MoradoresListClient({
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {/* Filtros */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search
+            className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-text-secondary"
+            aria-hidden
+          />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por nome ou telefone…"
+            className="pl-8 pr-8"
+            maxLength={100}
+          />
+          {q && (
+            <button
+              type="button"
+              aria-label="Limpar busca"
+              onClick={() => setQ('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-foreground"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          )}
+        </div>
+        {blocos.length > 0 && (
+          <Select value={blocoFilter} onValueChange={setBlocoFilter}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Bloco" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os blocos</SelectItem>
+              {blocos.map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {filteredRows.length === 0 ? (
         <EmptyState
           icon={<Users className="h-12 w-12" aria-hidden />}
-          title="Nenhum morador cadastrado"
+          title={q || blocoFilter !== '__all__' ? 'Nenhum morador encontrado' : 'Nenhum morador cadastrado'}
           description={
-            unidades.length === 0
-              ? 'Cadastre primeiro uma Unidade para depois adicionar moradores.'
-              : 'Cadastre o morador principal de cada unidade. Eles vão receber notificações WhatsApp.'
+            q || blocoFilter !== '__all__'
+              ? 'Tente ajustar os filtros de busca.'
+              : unidades.length === 0
+                ? 'Cadastre primeiro uma Unidade para depois adicionar moradores.'
+                : 'Cadastre o morador principal de cada unidade. Eles vão receber notificações WhatsApp.'
           }
           action={
             unidades.length > 0 ? (
@@ -170,7 +248,7 @@ export function MoradoresListClient({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((m) => {
+            {filteredRows.map((m) => {
               const arquivado = !!m.deleted_at;
               return (
                 <TableRow key={m.id}>

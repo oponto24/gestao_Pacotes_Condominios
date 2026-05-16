@@ -28,7 +28,7 @@ describe('AdminSidebar', () => {
     expect(screen.getByRole('link', { name: /Pacotes/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Cadastros/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Setores/ })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Unidades/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Torres\/Blocos/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Moradores/ })).toBeInTheDocument();
     // Logout consolidado no UserMenu do AdminHeader (achado U2)
     expect(screen.queryByRole('button', { name: /Sair/ })).not.toBeInTheDocument();

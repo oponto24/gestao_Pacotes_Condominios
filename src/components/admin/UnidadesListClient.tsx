@@ -1,9 +1,18 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Home, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -14,7 +23,6 @@ import {
 } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Home } from 'lucide-react';
 import { UnidadeForm, type UnidadeFormInitial } from './UnidadeForm';
 
 export interface UnidadeRow {
@@ -38,6 +46,32 @@ export function UnidadesListClient({ rows, total, includeInativas }: Props) {
   const [, startTransition] = useTransition();
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<UnidadeFormInitial | null>(null);
+  const [q, setQ] = useState('');
+  const [blocoFilter, setBlocoFilter] = useState('__all__');
+
+  // Derive unique blocos for filter dropdown
+  const blocos = useMemo(() => {
+    const set = new Set<string>();
+    rows.forEach((u) => { if (u.bloco) set.add(u.bloco); });
+    return Array.from(set).sort();
+  }, [rows]);
+
+  // Client-side filtering
+  const filteredRows = useMemo(() => {
+    let result = rows;
+    if (q.trim().length >= 2) {
+      const lower = q.trim().toLowerCase();
+      result = result.filter(
+        (u) =>
+          u.identificador.toLowerCase().includes(lower) ||
+          (u.bloco && u.bloco.toLowerCase().includes(lower)),
+      );
+    }
+    if (blocoFilter !== '__all__') {
+      result = result.filter((u) => u.bloco === blocoFilter);
+    }
+    return result;
+  }, [rows, q, blocoFilter]);
 
   function toggleInativas() {
     const next = new URLSearchParams(params);
@@ -92,11 +126,57 @@ export function UnidadesListClient({ rows, total, includeInativas }: Props) {
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {/* Filtros */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search
+            className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-text-secondary"
+            aria-hidden
+          />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por identificador ou bloco…"
+            className="pl-8 pr-8"
+            maxLength={100}
+          />
+          {q && (
+            <button
+              type="button"
+              aria-label="Limpar busca"
+              onClick={() => setQ('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-foreground"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          )}
+        </div>
+        {blocos.length > 0 && (
+          <Select value={blocoFilter} onValueChange={setBlocoFilter}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Bloco" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos os blocos</SelectItem>
+              {blocos.map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {filteredRows.length === 0 ? (
         <EmptyState
           icon={<Home className="h-12 w-12" aria-hidden />}
-          title="Nenhuma unidade cadastrada"
-          description="Cadastre as unidades (apartamentos/casas) do condomínio. Os porteiros vão associar pacotes a elas."
+          title={q || blocoFilter !== '__all__' ? 'Nenhuma unidade encontrada' : 'Nenhuma unidade cadastrada'}
+          description={
+            q || blocoFilter !== '__all__'
+              ? 'Tente ajustar os filtros de busca.'
+              : 'Cadastre as unidades (apartamentos/casas) do condomínio. Os porteiros vão associar pacotes a elas.'
+          }
           action={
             <Sheet open={createOpen} onOpenChange={setCreateOpen}>
               <SheetTrigger asChild>
@@ -122,7 +202,7 @@ export function UnidadesListClient({ rows, total, includeInativas }: Props) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((u) => {
+            {filteredRows.map((u) => {
               const semVinculos = u._count.moradores === 0 && u._count.pacotes === 0;
               const label = u.bloco ? `${u.bloco} • ${u.identificador}` : u.identificador;
               return (
