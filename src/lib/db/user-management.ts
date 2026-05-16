@@ -121,3 +121,74 @@ export async function listAllAdmins(): Promise<
 export function isPending(clerk_id: string): boolean {
   return clerk_id.startsWith('pending_clerk_link_');
 }
+
+// --- Story 12.3: CRUD usuarios cross-tenant (super-admin) ---
+
+export interface ListAllUsersParams {
+  page: number;
+  pageSize: number;
+  role?: CreatableRole;
+  condominioId?: string;
+  status?: 'ativo' | 'pendente' | 'inativo';
+  q?: string;
+}
+
+export async function listAllUsers(params: ListAllUsersParams) {
+  const where: Prisma.UserWhereInput = {
+    role: { not: 'super_admin' },
+    ...(params.role ? { role: params.role } : {}),
+    ...(params.condominioId ? { condominio_id: params.condominioId } : {}),
+    ...(params.q
+      ? {
+          OR: [
+            { nome: { contains: params.q, mode: 'insensitive' } },
+            { email: { contains: params.q, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
+  };
+
+  // Status filter
+  if (params.status === 'ativo') {
+    where.ativo = true;
+    where.clerk_id = { not: { startsWith: 'pending_clerk_link_' } };
+  } else if (params.status === 'pendente') {
+    where.clerk_id = { startsWith: 'pending_clerk_link_' };
+  } else if (params.status === 'inativo') {
+    where.ativo = false;
+  }
+
+  const [items, total] = await Promise.all([
+    db.user.findMany({
+      where,
+      include: { condominio: { select: { nome: true } } },
+      orderBy: [{ condominio_id: 'asc' }, { created_at: 'desc' }],
+      skip: (params.page - 1) * params.pageSize,
+      take: params.pageSize,
+    }),
+    db.user.count({ where }),
+  ]);
+
+  return { items, total, page: params.page, pageSize: params.pageSize };
+}
+
+export interface UpdateUserInput {
+  nome?: string;
+  role?: CreatableRole;
+  ativo?: boolean;
+}
+
+export async function updateUser(id: string, data: UpdateUserInput) {
+  return db.user.update({
+    where: { id },
+    data: {
+      ...(data.nome !== undefined && { nome: data.nome.trim() }),
+      ...(data.role !== undefined && { role: data.role }),
+      ...(data.ativo !== undefined && { ativo: data.ativo }),
+    },
+  });
+}
+
+export async function getUserById(id: string) {
+  return db.user.findUnique({ where: { id } });
+}

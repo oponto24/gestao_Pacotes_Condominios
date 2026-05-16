@@ -3,12 +3,43 @@ import { loggerForRequest } from '@/lib/logger';
 import { handleApiError } from '@/lib/api/handle-error';
 import { getTenantContext } from '@/server/middleware/tenant';
 import { ForbiddenError, ValidationError } from '@/server/errors';
-import { userCreateSuperAdminSchema } from '@/lib/validators/user-create';
-import { createPendingUser } from '@/lib/db/user-management';
+import { userCreateSuperAdminSchema, userListQuerySchema } from '@/lib/validators/user-create';
+import { createPendingUser, listAllUsers } from '@/lib/db/user-management';
 import { writeAuditLog } from '@/lib/audit/write-log';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+/**
+ * GET /api/super-admin/users (story 12.3)
+ * Lista todos os usuarios (exceto super_admin) com filtros paginados.
+ */
+export async function GET(req: Request) {
+  const log = loggerForRequest(req).child({ scope: 'super-admin:list-users' });
+  try {
+    const ctx = await getTenantContext();
+    if (ctx.kind !== 'super_admin') {
+      throw new ForbiddenError('Apenas super-admin');
+    }
+
+    const url = new URL(req.url);
+    const query = userListQuerySchema.parse(Object.fromEntries(url.searchParams));
+
+    const result = await listAllUsers({
+      page: query.page,
+      pageSize: query.pageSize,
+      role: query.role,
+      condominioId: query.condominio_id,
+      status: query.status,
+      q: query.q,
+    });
+
+    log.info({ total: result.total }, 'lista usuarios entregue');
+    return NextResponse.json(result);
+  } catch (err) {
+    return handleApiError(err, log);
+  }
+}
 
 /**
  * POST /api/super-admin/users (story 8.5)

@@ -223,7 +223,7 @@
 |---|-------|--------|
 | 12.1 | Dashboard `/super-admin` com KPIs (condomínios ativos, admins ativos, pacotes pendentes 24h, usuários por role) | **Done** ✅ |
 | 12.2 | Desativar/reativar condomínio (super-admin) + bloqueio de login dos users vinculados | **Done** ✅ |
-| 12.3 | CRUD usuários (super-admin) — listar cross-tenant, criar admin_master de qualquer cond, editar role, soft delete | Draft |
+| 12.3 | CRUD usuários (super-admin) — listar cross-tenant, criar admin_master de qualquer cond, editar role, soft delete | **Done** ✅ |
 | 12.4 | Audit log abrangente — middleware que captura toda mutation + before/after diff | Draft |
 | 12.5 | UI `/super-admin/audit` com filtros (ator, ação, recurso, período, condomínio) | Draft |
 | 12.6 | UI `/admin/audit` (admin_master vê só do próprio condomínio) | Draft |
