@@ -89,7 +89,10 @@ const baseShape = {
 
 export const condominioCreateSchema = z.object(baseShape);
 
-export const condominioUpdateSchema = z.object(baseShape).partial();
+export const condominioUpdateSchema = z.object({
+  ...baseShape,
+  ativo: z.boolean().optional(),
+}).partial();
 
 export type CondominioCreateInput = z.infer<typeof condominioCreateSchema>;
 export type CondominioUpdateInput = z.infer<typeof condominioUpdateSchema>;

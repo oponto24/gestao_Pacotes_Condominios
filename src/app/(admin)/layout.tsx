@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getTenantContext } from '@/server/middleware/tenant';
-import { isTenantError, PendingProvisioningError } from '@/server/errors';
+import { isTenantError, PendingProvisioningError, CondominioSuspendedError } from '@/server/errors';
 import { AdminLayoutClient } from '@/components/admin/AdminLayoutClient';
 
 export const dynamic = 'force-dynamic';
@@ -24,6 +24,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       );
     }
+    if (err instanceof CondominioSuspendedError) redirect('/suspended');
     if (isTenantError(err)) redirect('/');
     throw err;
   }

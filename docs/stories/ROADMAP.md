@@ -201,7 +201,7 @@
 | 10.4 | Fluxo bifurcado na chegada: porteiro confirma → vai pra admin organizar (se com adm) ou organiza direto (sem adm) | **Done** ✅ |
 | 10.5 | Tela `/administracao/organizar` (admin escolhe setor/posição → dispara WhatsApp) | **Done** ✅ |
 | 10.6 | Botão "Enviar pra administração" no detalhe do pacote (transição pra `em_administracao`) + tela `/administracao/em-transito` | **Done** ✅ |
-| 10.7 | Bipe entrega flexível: porteiro pode bipar pacote `em_administracao` com aviso de confirmação | Draft |
+| 10.7 | Bipe entrega flexível: porteiro pode bipar pacote `em_administracao` com aviso de confirmação | **Done** ✅ |
 
 ### Epic 11 — UX admin refinado
 
@@ -210,10 +210,10 @@
 | # | Story | Status |
 |---|-------|--------|
 | 11.1 | Modelo `Bloco` (entidade) + migration extraindo de `unidade.bloco` string | **Done** ✅ |
-| 11.2 | UI `/admin/blocos` hierárquica (lista de blocos → drill down apartamentos → moradores) | Draft |
-| 11.3 | Renomear menu "Unidades" → "Torres/Blocos" | Draft |
-| 11.4 | Componente `<GlobalSearch />` com `⌘K`/`Ctrl+K` no header admin | Draft |
-| 11.5 | Filtros padronizados em todas as listas admin | Draft |
+| 11.2 | UI `/admin/blocos` hierárquica (lista de blocos → drill down apartamentos → moradores) | **Done** ✅ |
+| 11.3 | Renomear menu "Unidades" → "Torres/Blocos" | **Done** ✅ |
+| 11.4 | Componente `<GlobalSearch />` com `⌘K`/`Ctrl+K` no header admin | **Done** ✅ |
+| 11.5 | Filtros padronizados em todas as listas admin | **Done** ✅ |
 
 ### Epic 12 — Operação SaaS madura (renomeado de "9")
 
@@ -222,7 +222,7 @@
 | # | Story | Status |
 |---|-------|--------|
 | 12.1 | Dashboard `/super-admin` com KPIs (condomínios ativos, admins ativos, pacotes pendentes 24h, usuários por role) | **Done** ✅ |
-| 12.2 | Desativar/reativar condomínio (super-admin) + bloqueio de login dos users vinculados | Draft |
+| 12.2 | Desativar/reativar condomínio (super-admin) + bloqueio de login dos users vinculados | **Done** ✅ |
 | 12.3 | CRUD usuários (super-admin) — listar cross-tenant, criar admin_master de qualquer cond, editar role, soft delete | Draft |
 | 12.4 | Audit log abrangente — middleware que captura toda mutation + before/after diff | Draft |
 | 12.5 | UI `/super-admin/audit` com filtros (ator, ação, recurso, período, condomínio) | Draft |

@@ -31,6 +31,12 @@ export class NoCondominioAssignedError extends TenantError {
   }
 }
 
+export class CondominioSuspendedError extends TenantError {
+  constructor(message = 'Seu condomínio está temporariamente suspenso. Contate o suporte.') {
+    super(message, 403, 'condominio_suspended');
+  }
+}
+
 export class ForbiddenError extends TenantError {
   constructor(message = 'Acesso negado') {
     super(message, 403, 'forbidden');

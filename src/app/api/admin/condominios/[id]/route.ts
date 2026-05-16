@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { loggerForRequest } from '@/lib/logger';
 import { requireSuperAdmin } from '@/lib/api/super-admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
-import { ConflictError, NotFoundError } from '@/server/errors';
+import { ConflictError, NotFoundError, ForbiddenError } from '@/server/errors';
 import { condominioUpdateSchema } from '@/lib/validators/condominio';
 import {
   archiveCondominio,
+  deactivateCondominio,
+  reactivateCondominio,
   findCondominioByCnpj,
   getCondominioById,
   updateCondominio,
 } from '@/lib/db/condominio';
+import { IMPERSONATE_COOKIE } from '@/server/middleware/tenant';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -43,6 +47,25 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
     const existing = await getCondominioById(id, true);
     if (!existing) throw new NotFoundError('Condomínio não encontrado');
+
+    // Story 12.2: se está alterando ativo, verifica se não está impersonando esse condomínio
+    if (data.ativo !== undefined && data.ativo !== existing.ativo) {
+      const store = await cookies();
+      const impersonatedId = store.get(IMPERSONATE_COOKIE)?.value;
+      if (impersonatedId === id) {
+        throw new ForbiddenError('Não é possível desativar um condomínio que você está impersonando');
+      }
+
+      if (data.ativo === false) {
+        await deactivateCondominio(id);
+        log.info('condomínio desativado (suspensão)');
+        return NextResponse.json({ ok: true, ativo: false });
+      } else {
+        await reactivateCondominio(id);
+        log.info('condomínio reativado');
+        return NextResponse.json({ ok: true, ativo: true });
+      }
+    }
 
     if (data.cnpj && data.cnpj !== existing.cnpj) {
       const conflict = await findCondominioByCnpj(data.cnpj, id);

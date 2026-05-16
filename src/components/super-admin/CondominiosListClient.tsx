@@ -74,6 +74,25 @@ export function CondominiosListClient({ rows, total, page, pageSize, includeArqu
     router.refresh();
   }
 
+  async function toggleAtivo(id: string, currentAtivo: boolean, nome: string, moradores: number) {
+    const action = currentAtivo ? 'Suspender' : 'Reativar';
+    const msg = currentAtivo
+      ? `Suspender "${nome}"? Todos os ${moradores} usuários perderão acesso imediatamente.`
+      : `Reativar "${nome}"? Os usuários vinculados recuperarão acesso.`;
+    if (!confirm(msg)) return;
+    const res = await fetch(`/api/admin/condominios/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ativo: !currentAtivo }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(`Falha ao ${action.toLowerCase()}: ${body.message ?? res.status}`);
+      return;
+    }
+    router.refresh();
+  }
+
   async function impersonate(id: string) {
     const res = await fetch('/api/super-admin/impersonate/start', {
       method: 'POST',
@@ -168,6 +187,15 @@ export function CondominiosListClient({ rows, total, page, pageSize, includeArqu
                     {!arquivado && (
                       <Button variant="ghost" size="sm" onClick={() => setEditTarget(c)}>
                         Editar
+                      </Button>
+                    )}
+                    {!arquivado && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleAtivo(c.id, c.ativo, c.nome, c._count.moradores)}
+                      >
+                        {c.ativo ? 'Suspender' : 'Reativar'}
                       </Button>
                     )}
                     {arquivado ? (

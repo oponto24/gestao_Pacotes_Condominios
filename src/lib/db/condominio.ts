@@ -93,6 +93,20 @@ export function updateCondominio(id: string, data: CondominioUpdateInput) {
   });
 }
 
+export function deactivateCondominio(id: string) {
+  return db.condominio.update({
+    where: { id },
+    data: { ativo: false },
+  });
+}
+
+export function reactivateCondominio(id: string) {
+  return db.condominio.update({
+    where: { id },
+    data: { ativo: true },
+  });
+}
+
 export function archiveCondominio(id: string) {
   return db.condominio.update({
     where: { id },

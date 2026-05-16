@@ -6,6 +6,7 @@ import {
   UnauthorizedError,
   PendingProvisioningError,
   NoCondominioAssignedError,
+  CondominioSuspendedError,
 } from '@/server/errors';
 
 /**
@@ -76,6 +77,15 @@ export const getTenantContext = cache(async (): Promise<TenantContext> => {
 
   if (!user.condominio_id) {
     throw new NoCondominioAssignedError();
+  }
+
+  // Story 12.2: bloqueia login se condomínio está suspenso
+  const cond = await db.condominio.findFirst({
+    where: { id: user.condominio_id, deleted_at: null },
+    select: { ativo: true },
+  });
+  if (!cond || !cond.ativo) {
+    throw new CondominioSuspendedError();
   }
 
   return {

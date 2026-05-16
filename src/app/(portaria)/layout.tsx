@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getTenantContext } from '@/server/middleware/tenant';
-import { isTenantError, PendingProvisioningError } from '@/server/errors';
+import { isTenantError, PendingProvisioningError, CondominioSuspendedError } from '@/server/errors';
 import { PortariaLayout } from '@/components/portaria/PortariaLayout';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +35,7 @@ export default async function PortariaServerLayout({
         </div>
       );
     }
+    if (err instanceof CondominioSuspendedError) redirect('/suspended');
     if (isTenantError(err)) redirect('/');
     throw err;
   }
