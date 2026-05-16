@@ -14,6 +14,10 @@ import {
   processEnviarLembretes,
   ENVIAR_LEMBRETES_JOB_NAME,
 } from './enviar-lembretes';
+import {
+  processExpirarPalavrasChave,
+  EXPIRAR_PALAVRAS_CHAVE_JOB_NAME,
+} from './expirar-palavras-chave';
 
 /**
  * Registro central de processadores de jobs.
@@ -35,6 +39,7 @@ export const JOB_PROCESSORS: Record<string, AnyProcessor> = {
   [PROCESS_WHATSAPP_WEBHOOK_JOB_NAME]: processWhatsappWebhook,
   [PROCESS_PALAVRA_CHAVE_JOB_NAME]: processPalavraChave,
   [ENVIAR_LEMBRETES_JOB_NAME]: processEnviarLembretes,
+  [EXPIRAR_PALAVRAS_CHAVE_JOB_NAME]: processExpirarPalavrasChave,
 };
 
 export {
@@ -44,6 +49,7 @@ export {
   PROCESS_WHATSAPP_WEBHOOK_JOB_NAME,
   PROCESS_PALAVRA_CHAVE_JOB_NAME,
   ENVIAR_LEMBRETES_JOB_NAME,
+  EXPIRAR_PALAVRAS_CHAVE_JOB_NAME,
 };
 export type { PingPayload, PingResult } from './ping';
 export type { ExtractLabelPayload, ExtractLabelResult } from './extract-label';

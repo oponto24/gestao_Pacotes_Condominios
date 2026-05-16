@@ -1,7 +1,7 @@
 import { Worker, type Job } from 'bullmq';
 import { redis } from '@/lib/redis';
-import { JOB_PROCESSORS } from '@/lib/queue/jobs';
-import { DEFAULT_QUEUE_NAME } from '@/lib/queue/queues';
+import { JOB_PROCESSORS, ENVIAR_LEMBRETES_JOB_NAME, EXPIRAR_PALAVRAS_CHAVE_JOB_NAME } from '@/lib/queue/jobs';
+import { DEFAULT_QUEUE_NAME, defaultQueue } from '@/lib/queue/queues';
 import { WORKER_DEFAULTS } from '@/lib/queue/connection';
 import { logger, loggerForJob } from '@/lib/logger';
 
@@ -79,3 +79,25 @@ const shutdown = async (signal: string) => {
 
 process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
+
+// --- Repeatable jobs (cron) ---
+// BullMQ deduplicates by jobId pattern — safe to call on every boot.
+(async () => {
+  try {
+    // Lembretes WhatsApp a cada 1h (story 4.6b decisao 2026-05-09)
+    await defaultQueue.add(ENVIAR_LEMBRETES_JOB_NAME, {}, {
+      repeat: { pattern: '0 * * * *' },
+      jobId: 'cron:enviarLembretes',
+    });
+
+    // Expirar palavras-chave diariamente as 06:00 UTC (story 7.5)
+    await defaultQueue.add(EXPIRAR_PALAVRAS_CHAVE_JOB_NAME, {}, {
+      repeat: { pattern: '0 6 * * *' },
+      jobId: 'cron:expirarPalavrasChave',
+    });
+
+    logger.info('[worker] repeatable jobs registrados (lembretes 1h, expiracao 06:00 UTC)');
+  } catch (err) {
+    logger.error({ err: err instanceof Error ? err.message : err }, '[worker] falha ao registrar repeatable jobs');
+  }
+})();
