@@ -14,8 +14,8 @@
 - ~~Aprovação Meta do template `pacote_chegou`~~ ✅ Aprovado (2026-05-15)
 - ~~Compra de chip dedicado WhatsApp pra produção~~ ✅ Chip +55 11 99440-8930 ativo, WABA `1017715357824074`
 - ~~Configurar webhook URL no painel Meta~~ ✅ Webhook ativo e validado
+- ~~Migrar Clerk dev → prod~~ ✅ Concluído — instancia producao em `clerk.condominios.oponto24.com.br`
 - Rotacionar 6 secrets — deferred para primeiro onboarding
-- Migrar Clerk dev → prod (keys de desenvolvimento)
 - Backup offsite — hoje só na própria VPS
 
 **Convenção de numeração:** `{epic}.{story}` — ex: `1.1`, `3.4`.
@@ -279,7 +279,7 @@ Audit de segurança completo com remediação de todos os itens CRITICAL, HIGH e
 
 ### Ações pendentes (prioridade)
 1. **Rotacionar 6 secrets** — deferred para primeiro onboarding de cliente
-2. **Migrar Clerk dev → prod** — keys de desenvolvimento, limite MAU, branding
+2. ~~**Migrar Clerk dev → prod**~~ ✅ Concluído — `clerk.condominios.oponto24.com.br` ativo
 3. **Backup offsite** — hoje backup só na própria VPS
 4. **Naming do produto** — brainstorm em `docs/planning/naming-brainstorm-2026-05-15.md`, pendente decisão com sócios
 

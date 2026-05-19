@@ -1078,7 +1078,6 @@ SUPER_ADMIN_EMAIL=gustavs.silvs@gmail.com
 - **Security hardening completo** (2026-05-19): CSRF, UUID validation, CASCADE→RESTRICT, audit log RLS, AI timeouts, security headers, rate limiting, SQL injection fix
 
 **Próximos:**
-1. **Epic 7 restante (7.2-7.4, 7.6):** parser palavra-chave regex+LLM, persistência, UI portaria, templates Meta
+1. **Epic 7 restante (7.4, 7.6):** banner durante chegada, templates Meta (bloqueio externo)
 2. **Rotação de secrets** — 6 secrets pendentes para primeiro onboarding
-3. **Migrar Clerk dev → prod** — keys de desenvolvimento
-4. **Backup offsite** — atualmente backup só na própria VPS
+3. **Backup offsite** — atualmente backup só na própria VPS

@@ -16,10 +16,10 @@ Status snapshot 2026-05-15. Atualizar conforme itens forem fechados.
 
 ## 🚧 Bloqueante pra primeiro cliente real
 
-### Migrar Clerk dev → prod
-- **Por quê**: Hoje usa keys de desenvolvimento da Clerk. Limite de MAU + branding "Powered by Clerk" + restrições de envio de email.
-- **O que fazer**: Criar Production Instance em dashboard Clerk. Configurar domínio `condominios.oponto24.com.br`. Trocar `CLERK_SECRET_KEY` e `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` em `.env.prod`. Reconfigurar webhook Clerk apontando pra prod URL. Migrar usuários existentes (Clerk tem ferramenta de export/import).
-- **Estimativa**: ~2-4h. Tem step de validação de domínio que pode demorar.
+### ~~Migrar Clerk dev → prod~~ ✅ Concluído
+- Instancia de producao ativa em `clerk.condominios.oponto24.com.br`
+- JWKS endpoint live, dominio customizado verificado
+- CSP atualizado pra incluir dominios Clerk producao (2026-05-19)
 
 ### Rotacionar 6 secrets vazadas em chat
 Histórico de chat anterior expôs 6 keys. Em ordem de criticidade:
