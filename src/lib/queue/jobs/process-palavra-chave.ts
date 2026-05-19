@@ -3,6 +3,7 @@ import { withSuperAdmin } from '@/lib/db-super-admin';
 import { sendTemplate } from '@/lib/meta-whatsapp';
 import { parsePalavraChave } from '@/lib/whatsapp/parse-palavra-chave';
 import { loggerForJob } from '@/lib/logger';
+import { processPalavraChavePayloadSchema } from './schemas';
 
 /**
  * Job `processPalavraChave` (Epic 7).
@@ -33,10 +34,15 @@ export async function processPalavraChave(
   job: Job<ProcessPalavraChavePayload>,
 ): Promise<{ ok: true; codigo_id?: string; skipped_reason?: string }> {
   const log = loggerForJob(job).child({ scope: 'palavraChave' });
+  const validPayload = processPalavraChavePayloadSchema.safeParse(job.data);
+  if (!validPayload.success) {
+    log.error({ errors: validPayload.error.flatten() }, 'payload inválido — descartando job');
+    return { ok: true, skipped_reason: 'invalid_payload' };
+  }
 
   const message = await withSuperAdmin((tx) =>
     tx.whatsAppMessage.findUnique({
-      where: { id: job.data.whatsapp_message_id },
+      where: { id: validPayload.data.whatsapp_message_id },
       select: {
         id: true,
         direction: true,

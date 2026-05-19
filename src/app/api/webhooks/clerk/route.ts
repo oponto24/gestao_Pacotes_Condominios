@@ -43,9 +43,8 @@ export async function POST(req: Request) {
   const log = loggerForRequest(req).child({ scope: 'clerk-webhook' });
   const secret = process.env.CLERK_WEBHOOK_SECRET;
   if (!secret || secret === 'whsec_PENDING_DASHBOARD_CONFIG') {
-    log.error('CLERK_WEBHOOK_SECRET não configurada');
-    // 200 para não causar retry da Clerk até config estar pronta
-    return NextResponse.json({ ok: false, reason: 'webhook_not_configured' }, { status: 200 });
+    log.error('CLERK_WEBHOOK_SECRET não configurada — retornando 503 para Clerk re-tentar');
+    return NextResponse.json({ ok: false, reason: 'webhook_not_configured' }, { status: 503 });
   }
 
   const svixId = req.headers.get('svix-id');
@@ -134,8 +133,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    // Sempre 200 para Clerk não ficar retentando indefinidamente; logamos para debug.
+    // 500 para Clerk re-tentar em caso de erro transiente (DB down, etc.)
     log.error({ err }, 'erro interno');
-    return NextResponse.json({ ok: false, reason: 'internal_error' }, { status: 200 });
+    return NextResponse.json({ ok: false, reason: 'internal_error' }, { status: 500 });
   }
 }

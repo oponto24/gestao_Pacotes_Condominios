@@ -4,6 +4,7 @@ import { withSuperAdmin } from '@/lib/db-super-admin';
 import { loggerForJob } from '@/lib/logger';
 import { normalizePhone } from '@/lib/validators/_shared';
 import type { MetaWebhookValue } from '@/lib/meta-whatsapp/webhook';
+import { processWebhookPayloadSchema } from './schemas';
 
 /**
  * Job `processWhatsappWebhook` (story 4.4).
@@ -41,7 +42,12 @@ export async function processWhatsappWebhook(
   job: Job<ProcessWebhookPayload>,
 ): Promise<ProcessWebhookResult> {
   const log = loggerForJob(job).child({ scope: 'webhookMeta' });
-  const { value } = job.data;
+  const validPayload = processWebhookPayloadSchema.safeParse(job.data);
+  if (!validPayload.success) {
+    log.error({ errors: validPayload.error.flatten() }, 'payload inválido — descartando job');
+    return { statuses_processed: 0, inbound_processed: 0, inbound_skipped_duplicate: 0 };
+  }
+  const { value } = validPayload.data as unknown as ProcessWebhookPayload;
 
   let statusesProcessed = 0;
   let inboundProcessed = 0;

@@ -74,6 +74,8 @@ CMD ["node", "server.js"]
 # Roda TS direto via tsx pra evitar custom build do worker.
 FROM base AS worker
 ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 worker
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
@@ -81,5 +83,7 @@ COPY package.json package-lock.json tsconfig.json ./
 COPY src ./src
 COPY prisma ./prisma
 COPY workers ./workers
+RUN mkdir -p /app/storage && chown -R worker:nodejs /app/storage
+USER worker
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["npx", "tsx", "workers/index.ts"]

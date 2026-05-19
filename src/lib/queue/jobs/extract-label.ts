@@ -8,6 +8,7 @@ import {
   type MatchResult,
 } from '@/lib/matching/match-unidade-morador';
 import { loggerForJob } from '@/lib/logger';
+import { extractLabelPayloadSchema } from './schemas';
 
 /**
  * Job `extractLabel` (story 3.5).
@@ -40,7 +41,12 @@ export async function processExtractLabel(
   job: Job<ExtractLabelPayload>,
 ): Promise<ExtractLabelResult> {
   const log = loggerForJob(job).child({ scope: 'extractLabel' });
-  const { pacote_id, condominio_id } = job.data;
+  const validPayload = extractLabelPayloadSchema.safeParse(job.data);
+  if (!validPayload.success) {
+    log.error({ errors: validPayload.error.flatten() }, 'payload inválido — descartando job');
+    throw new Error('Job payload inválido — não será retentado');
+  }
+  const { pacote_id, condominio_id } = validPayload.data;
 
   // 1. Carrega pacote + foto + condominio + unidades + moradores (bypassa RLS)
   const result = await db.$transaction(async (tx) => {

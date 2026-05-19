@@ -5,6 +5,7 @@ import { ensureQrForPacote } from '@/lib/qr';
 import { MetaApiError, sendTemplate } from '@/lib/meta-whatsapp';
 import { chooseRecipient } from '@/lib/whatsapp/recipient';
 import { loggerForJob } from '@/lib/logger';
+import { sendWhatsAppPayloadSchema } from './schemas';
 
 /**
  * Job `sendWhatsApp` (story 4.3).
@@ -46,7 +47,12 @@ export async function processSendWhatsApp(
   job: Job<SendWhatsAppPayload>,
 ): Promise<SendWhatsAppResult> {
   const log = loggerForJob(job).child({ scope: 'sendWhatsApp' });
-  const { pacote_id, condominio_id } = job.data;
+  const validPayload = sendWhatsAppPayloadSchema.safeParse(job.data);
+  if (!validPayload.success) {
+    log.error({ errors: validPayload.error.flatten() }, 'payload inválido — descartando job');
+    throw new Error('Job payload inválido — não será retentado');
+  }
+  const { pacote_id, condominio_id } = validPayload.data;
 
   // 1. Carrega contexto: pacote + condomínio + WABA compartilhado + destinatário
   const ctx = await db.$transaction(async (tx) => {
