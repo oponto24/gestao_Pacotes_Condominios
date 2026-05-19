@@ -54,7 +54,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/gestao_pacotes
-      DATABASE_RUNTIME_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/gestao_pacotes
+      DATABASE_RUNTIME_URL: ${DATABASE_RUNTIME_URL:-postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD}@postgres:5432/gestao_pacotes}
       REDIS_URL: redis://redis:6379
       # Provider de extração de etiqueta (default: gemini, fallback: anthropic)
       EXTRACT_LABEL_PROVIDER: ${EXTRACT_LABEL_PROVIDER:-gemini}
