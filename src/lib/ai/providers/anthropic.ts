@@ -6,15 +6,14 @@ import { ALLOWED_MIMES } from './types';
 
 const globalForAnthropic = globalThis as unknown as { anthropic?: Anthropic };
 
+const REQUEST_TIMEOUT_MS = 30_000;
+
 function buildClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || apiKey === '' || apiKey === 'sk-ant-') {
-    // Build-time fallback: Next.js 15 page data collection instancia clients
-    // mesmo de routes dynamic. Erro real só aparece em runtime quando rota
-    // tenta usar o client — SDK valida na call.
     return new Anthropic({ apiKey: 'sk-ant-buildtime-placeholder' });
   }
-  return new Anthropic({ apiKey });
+  return new Anthropic({ apiKey, timeout: REQUEST_TIMEOUT_MS });
 }
 
 const anthropic: Anthropic = globalForAnthropic.anthropic ?? buildClient();

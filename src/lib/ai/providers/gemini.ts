@@ -23,6 +23,7 @@ const client = globalForGemini.geminiClient ?? buildClient();
 if (process.env.NODE_ENV !== 'production') globalForGemini.geminiClient = client;
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite';
+const REQUEST_TIMEOUT_MS = 30_000;
 
 function stripMarkdownJson(text: string): string {
   return text
@@ -63,7 +64,7 @@ export class GeminiLabelExtractor implements LabelExtractor {
       {
         text: 'Extraia os dados desta etiqueta seguindo o schema. Retorne APENAS o JSON.',
       },
-    ]);
+    ], { timeout: REQUEST_TIMEOUT_MS });
 
     const durationMs = Date.now() - startedAt;
     const text = response.response.text();

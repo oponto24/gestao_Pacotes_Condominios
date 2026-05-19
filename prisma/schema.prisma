@@ -221,7 +221,7 @@ model Setor {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  condominio Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  condominio Condominio @relation(fields: [condominio_id], references: [id], onDelete: Restrict)
   pacotes    Pacote[]
 
   @@unique([condominio_id, nome])
@@ -244,7 +244,7 @@ model Bloco {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  condominio Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  condominio Condominio @relation(fields: [condominio_id], references: [id], onDelete: Restrict)
   unidades   Unidade[]
 
   @@unique([condominio_id, nome])
@@ -264,7 +264,7 @@ model Unidade {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  condominio Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  condominio Condominio @relation(fields: [condominio_id], references: [id], onDelete: Restrict)
   bloco_ref  Bloco?     @relation(fields: [bloco_id], references: [id], onDelete: SetNull)
   moradores  Morador[]
   pacotes    Pacote[]
@@ -291,8 +291,8 @@ model Morador {
   updated_at       DateTime  @updatedAt
   deleted_at       DateTime? // soft delete p/ LGPD (NFR-031)
 
-  condominio           Condominio         @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
-  unidade              Unidade            @relation(fields: [unidade_id], references: [id], onDelete: Cascade)
+  condominio           Condominio         @relation(fields: [condominio_id], references: [id], onDelete: Restrict)
+  unidade              Unidade            @relation(fields: [unidade_id], references: [id], onDelete: Restrict)
   pacotes_destinatario Pacote[]           @relation("PacoteDestinatario")
   pacotes_retirou      Pacote[]           @relation("PacoteRetiradoPor")
   notificacoes         WhatsAppMessage[]
@@ -368,7 +368,7 @@ model Pacote {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  condominio             Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  condominio             Condominio @relation(fields: [condominio_id], references: [id], onDelete: Restrict)
   unidade                Unidade?   @relation(fields: [unidade_id], references: [id], onDelete: Restrict)
   destinatario           Morador?   @relation("PacoteDestinatario", fields: [destinatario_id], references: [id], onDelete: SetNull)
   setor                  Setor?     @relation(fields: [setor_id], references: [id], onDelete: Restrict)
@@ -464,7 +464,7 @@ model WhatsAppMessage {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  condominio      Condominio     @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
+  condominio      Condominio     @relation(fields: [condominio_id], references: [id], onDelete: Restrict)
   whatsapp_number WhatsAppNumber @relation(fields: [whatsapp_number_id], references: [id], onDelete: Restrict)
   pacote          Pacote?        @relation(fields: [pacote_id], references: [id], onDelete: SetNull)
   morador         Morador?       @relation(fields: [morador_id], references: [id], onDelete: SetNull)
@@ -491,8 +491,8 @@ model CodigoMlPendente {
   expira_em          DateTime // now + 30 dias (FR-056)
   created_at         DateTime       @default(now())
 
-  condominio Condominio @relation(fields: [condominio_id], references: [id], onDelete: Cascade)
-  morador    Morador    @relation(fields: [morador_id], references: [id], onDelete: Cascade)
+  condominio Condominio @relation(fields: [condominio_id], references: [id], onDelete: Restrict)
+  morador    Morador    @relation(fields: [morador_id], references: [id], onDelete: Restrict)
   pacote     Pacote?    @relation(fields: [pacote_id], references: [id], onDelete: SetNull)
 
   @@index([condominio_id, morador_id, status])

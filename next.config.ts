@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   // Next 15 promoveu de experimental.typedRoutes pra typedRoutes top-level.
   typedRoutes: true,
+  // Security: remove X-Powered-By header
+  poweredByHeader: false,
 };
 
 export default nextConfig;
