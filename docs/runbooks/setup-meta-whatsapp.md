@@ -82,7 +82,39 @@ curl -s -X POST "https://graph.facebook.com/v25.0/1084364871431519/messages" \
 - [x] Envio real testado e confirmado
 - [ ] `META_APP_SECRET`, `META_ACCESS_TOKEN`, `META_WEBHOOK_VERIFY_TOKEN` rotacionados
 - [ ] Verificação de negócio Meta (CNPJ + cartão CNPJ) submetida
-- [ ] Templates `palavra_chave_recebida` + `morador_nao_cadastrado` submetidos (E7)
+- [ ] Templates `palavra_chave_recebida` + `morador_nao_cadastrado` submetidos (E7) — ver textos abaixo
+
+---
+
+## Templates pendentes (Epic 7 — Story 7.6)
+
+### `palavra_chave_recebida`
+
+| Campo | Valor |
+|-------|-------|
+| **Categoria** | UTILITY |
+| **Idioma** | pt_BR |
+| **Header** | Nenhum |
+| **Body** | `Olá! Recebemos sua palavra-chave: *{{1}}*` _(pula linha)_ `Ela vai ficar disponível pra portaria assim que o entregador pedir. Não precisa fazer mais nada agora.` |
+| **Footer** | Nenhum |
+| **Botões** | Nenhum |
+| **Parâmetro `{{1}}`** | Código extraído (ex: "123456") |
+
+> **Regra Meta:** variáveis não podem estar no início ou fim do body. O texto "Olá! Recebemos sua palavra-chave:" precede `{{1}}` e texto segue depois.
+
+### `morador_nao_cadastrado`
+
+| Campo | Valor |
+|-------|-------|
+| **Categoria** | UTILITY |
+| **Idioma** | pt_BR |
+| **Header** | Nenhum |
+| **Body** | `Olá! Não encontramos seu número cadastrado em nenhum condomínio. Peça ao seu administrador pra cadastrar seu telefone no sistema.` |
+| **Footer** | Nenhum |
+| **Botões** | Nenhum |
+| **Parâmetros** | Nenhum |
+
+**Onde submeter:** Meta Business Manager → WABA `1017715357824074` → Message Templates → Create Template
 
 ---
 
