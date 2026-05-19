@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Layers,
   Package,
+  ScrollText,
   ShieldCheck,
   UserCheck,
   UserCog,
@@ -34,6 +35,7 @@ interface NavGroup {
 const TOP_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Início', icon: <LayoutDashboard className="h-4 w-4" aria-hidden /> },
   { href: '/admin/pacotes', label: 'Pacotes', icon: <Package className="h-4 w-4" aria-hidden /> },
+  { href: '/admin/audit', label: 'Audit log', icon: <ScrollText className="h-4 w-4" aria-hidden /> },
 ];
 
 const EQUIPE: NavGroup = {

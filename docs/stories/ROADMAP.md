@@ -226,7 +226,7 @@
 | 12.3 | CRUD usuários (super-admin) — listar cross-tenant, criar admin_master de qualquer cond, editar role, soft delete | **Done** ✅ |
 | 12.4 | Audit log abrangente — helpers auditCreate/Update/Delete com before/after diff | **Done** ✅ |
 | 12.5 | UI `/super-admin/audit` com filtros (ator, ação, recurso, período, condomínio) | **Done** ✅ |
-| 12.6 | UI `/admin/audit` (admin_master vê só do próprio condomínio) | Draft |
+| 12.6 | UI `/admin/audit` (admin_master vê só do próprio condomínio) | **Done** ✅ |
 
 ---
 

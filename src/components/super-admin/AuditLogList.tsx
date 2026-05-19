@@ -156,9 +156,10 @@ function Pagination({ page, total, limit, baseUrl, searchParams }: PaginationPro
 interface AuditLogListProps {
   data: ListAuditLogsResult;
   searchParams?: Record<string, string | undefined>;
+  baseUrl?: string;
 }
 
-export function AuditLogList({ data, searchParams = {} }: AuditLogListProps) {
+export function AuditLogList({ data, searchParams = {}, baseUrl = '/super-admin/audit' }: AuditLogListProps) {
   const { items, total, page, limit } = data;
 
   if (items.length === 0) {
@@ -174,7 +175,7 @@ export function AuditLogList({ data, searchParams = {} }: AuditLogListProps) {
         page={page}
         total={total}
         limit={limit}
-        baseUrl="/super-admin/audit"
+        baseUrl={baseUrl}
         searchParams={searchParams}
       />
       <ul className="space-y-2">
@@ -210,7 +211,7 @@ export function AuditLogList({ data, searchParams = {} }: AuditLogListProps) {
         page={page}
         total={total}
         limit={limit}
-        baseUrl="/super-admin/audit"
+        baseUrl={baseUrl}
         searchParams={searchParams}
       />
     </div>

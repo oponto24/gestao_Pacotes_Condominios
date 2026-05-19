@@ -46,9 +46,10 @@ interface CondominioOption {
 
 interface AuditFiltersProps {
   condominios: CondominioOption[];
+  baseUrl?: string;
 }
 
-export function AuditFilters({ condominios }: AuditFiltersProps) {
+export function AuditFilters({ condominios, baseUrl = '/super-admin/audit' }: AuditFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -61,9 +62,9 @@ export function AuditFilters({ condominios }: AuditFiltersProps) {
         params.delete(key);
       }
       params.delete('page');
-      router.push(`/super-admin/audit?${params.toString()}`);
+      router.push(`${baseUrl}?${params.toString()}`);
     },
-    [router, searchParams],
+    [router, searchParams, baseUrl],
   );
 
   const selectClass =
@@ -88,21 +89,23 @@ export function AuditFilters({ condominios }: AuditFiltersProps) {
         </select>
       </label>
 
-      <label className="space-y-1">
-        <span className="text-xs text-text-secondary">Condomínio</span>
-        <select
-          className={selectClass}
-          value={searchParams.get('condominio_id') ?? ''}
-          onChange={(e) => update('condominio_id', e.target.value)}
-        >
-          <option value="">Todos</option>
-          {condominios.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nome}
-            </option>
-          ))}
-        </select>
-      </label>
+      {condominios.length > 0 && (
+        <label className="space-y-1">
+          <span className="text-xs text-text-secondary">Condomínio</span>
+          <select
+            className={selectClass}
+            value={searchParams.get('condominio_id') ?? ''}
+            onChange={(e) => update('condominio_id', e.target.value)}
+          >
+            <option value="">Todos</option>
+            {condominios.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <label className="space-y-1">
         <span className="text-xs text-text-secondary">Entidade</span>
