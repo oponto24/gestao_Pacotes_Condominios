@@ -11,6 +11,8 @@ import { db } from '@/lib/db';
 export interface AuditLogFilters {
   acao?: string | undefined;
   condominio_id?: string | undefined;
+  entidade_tipo?: string | undefined;
+  user_q?: string | undefined;
   from?: Date | undefined;
   to?: Date | undefined;
   page?: number | undefined;
@@ -48,6 +50,21 @@ export async function listAuditLogs(filters: AuditLogFilters): Promise<ListAudit
     where.acao = { contains: filters.acao.trim(), mode: 'insensitive' };
   }
   if (filters.condominio_id) where.condominio_id = filters.condominio_id;
+  if (filters.entidade_tipo && filters.entidade_tipo.trim().length > 0) {
+    where.entidade_tipo = filters.entidade_tipo.trim();
+  }
+  if (filters.user_q && filters.user_q.trim().length > 0) {
+    const matchingUsers = await db.user.findMany({
+      where: { nome: { contains: filters.user_q.trim(), mode: 'insensitive' } },
+      select: { id: true },
+      take: 50,
+    });
+    if (matchingUsers.length > 0) {
+      where.user_id = { in: matchingUsers.map((u) => u.id) };
+    } else {
+      return { items: [], total: 0, page, limit };
+    }
+  }
   if (filters.from || filters.to) {
     where.created_at = {};
     if (filters.from) where.created_at.gte = filters.from;
