@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { requireAdminAny } from '@/lib/api/admin-guard';
 import { loadPacoteForOrganizar } from '@/lib/db/pacote-organizar';
+import { listPalavrasChavePendentes } from '@/lib/db/palavra-chave';
 import { OrganizarForm } from '@/components/portaria/OrganizarForm';
 
 export const dynamic = 'force-dynamic';
@@ -22,14 +23,17 @@ export default async function AdministracaoOrganizarPacotePage({
   if (!pacote) notFound();
   if (pacote.ja_organizado) redirect('/administracao/organizar');
   if (!pacote.unidade_id) {
-    // Pacote sem unidade — admin precisa resolver pendência primeiro.
-    // Future: rota /administracao/pendentes (story 10.x)
     redirect('/administracao/organizar');
   }
 
+  // Story 7.4: buscar palavras-chave pendentes pra unidade do pacote
+  const palavrasChave = await listPalavrasChavePendentes(ctx, {
+    unidade_id: pacote.unidade_id,
+  });
+
   return (
     <div className="mx-auto max-w-2xl">
-      <OrganizarForm pacote={pacote} />
+      <OrganizarForm pacote={pacote} palavrasChave={palavrasChave} />
     </div>
   );
 }

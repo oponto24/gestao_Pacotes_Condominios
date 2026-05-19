@@ -183,11 +183,11 @@
 | # | Story | Status |
 |---|-------|--------|
 | 7.1 | Worker `processIncomingMessage` consome `WhatsAppMessage inbound` (4.4) e extrai palavra-chave via regex+LLM | **Done** ✅ |
-| 7.2 | Persiste `palavra_chave_pendente` + auto-reply via template aprovado | Draft |
-| 7.3 | Tela `/portaria/palavras-chave` com filtros (apto, bloco, morador, data) — aba admin read-only | Draft |
-| 7.4 | Banner sugestão durante chegada do pacote ("vincular palavra-chave?") | Draft |
+| 7.2 | Persiste `palavra_chave_pendente` + auto-reply via template aprovado | **Done** ✅ (implementado junto com 7.1) |
+| 7.3 | Tela `/portaria/palavras-chave` com filtros (apto, bloco, morador, data) — aba admin read-only | **Done** ✅ (UI portaria implementada) |
+| 7.4 | Banner sugestão durante chegada do pacote ("vincular palavra-chave?") | **Done** ✅ |
 | 7.5 | Cron diário expira palavras-chave > 30d | **Done** ✅ |
-| 7.6 | Templates Meta `palavra_chave_recebida` + `morador_nao_cadastrado` submetidos | Draft |
+| 7.6 | Templates Meta `palavra_chave_recebida` + `morador_nao_cadastrado` submetidos | Blocked (externo — aguarda submissão Meta) |
 
 ### Epic 10 — Hierarquia operacional (recomendado primeiro pós-MVP)
 
@@ -225,7 +225,7 @@
 | 12.2 | Desativar/reativar condomínio (super-admin) + bloqueio de login dos users vinculados | **Done** ✅ |
 | 12.3 | CRUD usuários (super-admin) — listar cross-tenant, criar admin_master de qualquer cond, editar role, soft delete | **Done** ✅ |
 | 12.4 | Audit log abrangente — helpers auditCreate/Update/Delete com before/after diff | **Done** ✅ |
-| 12.5 | UI `/super-admin/audit` com filtros (ator, ação, recurso, período, condomínio) | Draft |
+| 12.5 | UI `/super-admin/audit` com filtros (ator, ação, recurso, período, condomínio) | **Done** ✅ |
 | 12.6 | UI `/admin/audit` (admin_master vê só do próprio condomínio) | Draft |
 
 ---
@@ -249,8 +249,8 @@
 - ✅ Epic 8 completo (8.1-8.7): super-admin layout, impersonar, audit base, equipe, funcionários
 - ✅ Epic 10 completo (10.1-10.7): admin_master/admin_funcionario, rota administração
 - ✅ Epic 11 completo (11.1-11.5): blocos, UI hierárquica, busca Cmd+K, filtros
-- ✅ Epic 12 parcial (12.1-12.4): dashboard KPIs, desativar condomínio, CRUD users, audit log abrangente
-- ✅ Epic 7 parcial (7.1, 7.5): webhook inbound + cron expiração
+- ✅ Epic 12 parcial (12.1-12.5): dashboard KPIs, desativar condomínio, CRUD users, audit log abrangente, UI audit super-admin
+- ✅ Epic 7 quase completo (7.1-7.3, 7.5 Done): webhook inbound, persistência+reply, UI portaria, cron expiração. Falta 7.4 (banner) e 7.6 (templates Meta externo)
 - ✅ Documentação sync: stories, SCHEMA.md, PRD.md, ROADMAP.md atualizados
 
 ### Ações pendentes (prioridade)

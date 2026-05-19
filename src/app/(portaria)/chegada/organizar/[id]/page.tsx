@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { requirePorteiro } from '@/lib/api/portaria-guard';
 import { loadPacoteForOrganizar } from '@/lib/db/pacote-organizar';
+import { listPalavrasChavePendentes } from '@/lib/db/palavra-chave';
 import { OrganizarForm } from '@/components/portaria/OrganizarForm';
 
 export const dynamic = 'force-dynamic';
@@ -28,5 +29,10 @@ export default async function OrganizarPacotePage({
     redirect(`/chegada/confirmar/${id}`);
   }
 
-  return <OrganizarForm pacote={pacote} />;
+  // Story 7.4: buscar palavras-chave pendentes pra unidade do pacote
+  const palavrasChave = await listPalavrasChavePendentes(ctx, {
+    unidade_id: pacote.unidade_id,
+  });
+
+  return <OrganizarForm pacote={pacote} palavrasChave={palavrasChave} />;
 }

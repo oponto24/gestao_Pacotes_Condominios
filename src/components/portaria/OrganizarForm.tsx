@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   CheckCircle2,
+  Key,
   Loader2,
   Mail,
   Package,
@@ -37,11 +38,20 @@ const TAMANHOS: Array<{
   { value: 'extra_grande', label: 'Extra Grande', hint: 'TV, eletrodoméstico', icon: Truck },
 ];
 
-interface Props {
-  pacote: PacoteForOrganizar;
+interface PalavraChaveInfo {
+  id: string;
+  codigo: string;
+  morador_nome: string;
+  expira_em: Date;
+  descricao: string | null;
 }
 
-export function OrganizarForm({ pacote }: Props) {
+interface Props {
+  pacote: PacoteForOrganizar;
+  palavrasChave?: PalavraChaveInfo[];
+}
+
+export function OrganizarForm({ pacote, palavrasChave = [] }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   // Story 10.5: se está sendo usado em /administracao, retornar pra lista admin
@@ -113,6 +123,48 @@ export function OrganizarForm({ pacote }: Props) {
           {pacote.unidade_label && ` · ${pacote.unidade_label}`}
         </p>
       </header>
+
+      {palavrasChave.length > 0 && (
+        <div className="rounded-lg border border-warning/30 bg-warning/5 p-4">
+          <div className="flex items-start gap-2">
+            <Key className="mt-0.5 size-4 text-warning" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-warning">
+                Palavra-chave pendente pra esta unidade
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {palavrasChave.map((pc) => {
+                  const dias = Math.max(
+                    0,
+                    Math.ceil(
+                      (new Date(pc.expira_em).getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+                    ),
+                  );
+                  return (
+                    <li key={pc.id} className="flex items-center gap-2 text-sm">
+                      <code className="rounded bg-warning/10 px-2 py-0.5 font-bold tracking-wider text-warning">
+                        {pc.codigo}
+                      </code>
+                      <span className="text-text-secondary">
+                        {pc.morador_nome}
+                        {pc.descricao && ` · ${pc.descricao}`}
+                      </span>
+                      <span
+                        className={cn(
+                          'ml-auto text-xs',
+                          dias <= 3 ? 'text-danger' : 'text-text-secondary',
+                        )}
+                      >
+                        {dias}d
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label>Tamanho *</Label>
