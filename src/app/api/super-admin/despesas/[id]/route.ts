@@ -3,15 +3,13 @@ import { loggerForRequest } from '@/lib/logger';
 import { handleApiError } from '@/lib/api/handle-error';
 import { getTenantContext } from '@/server/middleware/tenant';
 import { ForbiddenError, ValidationError } from '@/server/errors';
+import { parseIdParam } from '@/lib/validators/_shared';
 import { criarDespesaInputSchema } from '@/lib/validators/despesa';
 import { atualizarDespesa, removerDespesa } from '@/lib/db/despesa';
 import { writeAuditLog } from '@/lib/audit/write-log';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface RouteCtx {
   params: Promise<{ id: string }>;
@@ -21,8 +19,8 @@ interface RouteCtx {
 export async function PATCH(req: Request, { params }: RouteCtx) {
   const log = loggerForRequest(req).child({ scope: 'super-admin:editar-despesa' });
   try {
-    const { id } = await params;
-    if (!UUID_RE.test(id)) throw new ValidationError('ID inválido');
+    const id = parseIdParam((await params).id);
+    if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
 
     const ctx = await getTenantContext();
     if (ctx.kind !== 'super_admin') {
@@ -68,8 +66,8 @@ export async function PATCH(req: Request, { params }: RouteCtx) {
 export async function DELETE(req: Request, { params }: RouteCtx) {
   const log = loggerForRequest(req).child({ scope: 'super-admin:remover-despesa' });
   try {
-    const { id } = await params;
-    if (!UUID_RE.test(id)) throw new ValidationError('ID inválido');
+    const id = parseIdParam((await params).id);
+    if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
 
     const ctx = await getTenantContext();
     if (ctx.kind !== 'super_admin') {
