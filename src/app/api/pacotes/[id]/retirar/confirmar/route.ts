@@ -3,6 +3,7 @@ import { loggerForRequest } from '@/lib/logger';
 import { requirePorteiro } from '@/lib/api/portaria-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ValidationError, NotFoundError } from '@/server/errors';
+import { parseIdParam } from '@/lib/validators/_shared';
 import { retirarConfirmarSchema } from '@/lib/validators/retirar';
 import { confirmarRetirada } from '@/lib/db/pacote-retirada';
 
@@ -21,7 +22,8 @@ export async function PATCH(
   const log = loggerForRequest(req).child({ scope: 'pacotes:retirar:confirmar' });
   try {
     const ctx = await requirePorteiro();
-    const { id: pacoteId } = await params;
+    const pacoteId = parseIdParam((await params).id);
+    if (!pacoteId) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== 'object') {

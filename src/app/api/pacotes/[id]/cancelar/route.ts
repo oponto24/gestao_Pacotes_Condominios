@@ -3,6 +3,7 @@ import { loggerForRequest } from '@/lib/logger';
 import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ValidationError, NotFoundError } from '@/server/errors';
+import { parseIdParam } from '@/lib/validators/_shared';
 import { cancelarPacote } from '@/lib/db/pacote-cancelar';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,8 @@ export async function POST(
   const log = loggerForRequest(req).child({ scope: 'pacotes:cancelar' });
   try {
     const ctx = await requireAdminMaster();
-    const { id: pacoteId } = await params;
+    const pacoteId = parseIdParam((await params).id);
+    if (!pacoteId) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
 
     const body = (await req.json().catch(() => null)) as { motivo?: string } | null;
     if (!body || typeof body.motivo !== 'string') {

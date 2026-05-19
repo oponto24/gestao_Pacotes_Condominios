@@ -3,6 +3,7 @@ import { loggerForRequest } from '@/lib/logger';
 import { handleApiError } from '@/lib/api/handle-error';
 import { getTenantContext } from '@/server/middleware/tenant';
 import { ForbiddenError, NotFoundError } from '@/server/errors';
+import { parseIdParam } from '@/lib/validators/_shared';
 import { userUpdateSuperAdminSchema } from '@/lib/validators/user-create';
 import { getUserById, updateUser } from '@/lib/db/user-management';
 import { writeAuditLog } from '@/lib/audit/write-log';
@@ -21,7 +22,8 @@ interface Ctx {
  * - Nao pode promover a super_admin
  */
 export async function PATCH(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'super-admin:update-user', target_user_id: id });
   try {
     const tenantCtx = await getTenantContext();

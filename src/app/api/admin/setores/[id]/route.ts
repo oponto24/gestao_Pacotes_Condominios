@@ -3,6 +3,7 @@ import { loggerForRequest } from '@/lib/logger';
 import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ConflictError, NotFoundError } from '@/server/errors';
+import { parseIdParam } from '@/lib/validators/_shared';
 import { setorUpdateSchema } from '@/lib/validators/setor';
 import {
   deleteSetor,
@@ -20,7 +21,8 @@ interface Ctx {
 }
 
 export async function GET(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/setores:get', setor_id: id });
   try {
     await requireAdminMaster();
@@ -33,7 +35,8 @@ export async function GET(req: Request, ctx: Ctx) {
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/setores:update', setor_id: id });
   try {
     const adminCtx = await requireAdminMaster();
@@ -61,7 +64,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/setores:delete', setor_id: id });
   try {
     const adminCtx = await requireAdminMaster();

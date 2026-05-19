@@ -3,6 +3,7 @@ import { loggerForRequest } from '@/lib/logger';
 import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ConflictError, NotFoundError } from '@/server/errors';
+import { parseIdParam } from '@/lib/validators/_shared';
 import { moradorUpdateSchema } from '@/lib/validators/morador';
 import {
   archiveMorador,
@@ -20,7 +21,8 @@ interface Ctx {
 }
 
 export async function GET(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:get', morador_id: id });
   try {
     await requireAdminMaster();
@@ -35,7 +37,8 @@ export async function GET(req: Request, ctx: Ctx) {
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:update', morador_id: id });
   try {
     const adminCtx = await requireAdminMaster();
@@ -66,7 +69,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
 /** Soft delete LGPD — seta deleted_at, NUNCA DELETE físico. */
 export async function DELETE(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:archive', morador_id: id });
   try {
     const adminCtx = await requireAdminMaster();

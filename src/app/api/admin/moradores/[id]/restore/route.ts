@@ -3,6 +3,7 @@ import { loggerForRequest } from '@/lib/logger';
 import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { NotFoundError } from '@/server/errors';
+import { parseIdParam } from '@/lib/validators/_shared';
 import { getMoradorById, restoreMorador } from '@/lib/db/morador';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,8 @@ interface Ctx {
 }
 
 export async function POST(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:restore', morador_id: id });
   try {
     await requireAdminMaster();

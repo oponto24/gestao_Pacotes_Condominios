@@ -3,6 +3,7 @@ import { loggerForRequest } from '@/lib/logger';
 import { requirePorteiro } from '@/lib/api/portaria-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ValidationError, NotFoundError } from '@/server/errors';
+import { parseIdParam } from '@/lib/validators/_shared';
 import { withTenantContext } from '@/server/db-tenant';
 import { enqueueSendWhatsApp } from '@/lib/queue/enqueue-send-whatsapp';
 
@@ -26,7 +27,8 @@ export async function POST(
   const log = loggerForRequest(req).child({ scope: 'pacotes:reenviar-whatsapp' });
   try {
     const ctx = await requirePorteiro();
-    const { id: pacoteId } = await params;
+    const pacoteId = parseIdParam((await params).id);
+    if (!pacoteId) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
 
     const result = await withTenantContext(ctx, async (tx) => {
       const pacote = await tx.pacote.findFirst({

@@ -37,6 +37,22 @@ export async function POST(req: Request) {
       );
     }
 
+    // Rate limit: max 20 impersonate starts per hour per user
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentCount = await db.auditLog.count({
+      where: {
+        user_id: ctx.userId,
+        acao: 'impersonate_start',
+        created_at: { gte: oneHourAgo },
+      },
+    });
+    if (recentCount >= 20) {
+      return NextResponse.json(
+        { ok: false, message: 'Limite de impersonate atingido (20/hora)' },
+        { status: 429 },
+      );
+    }
+
     const cond = await db.condominio.findFirst({
       where: { id: parsed.data.condominio_id, ativo: true, deleted_at: null },
       select: { id: true, nome: true },

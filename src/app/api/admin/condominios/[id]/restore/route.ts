@@ -3,6 +3,7 @@ import { loggerForRequest } from '@/lib/logger';
 import { requireSuperAdmin } from '@/lib/api/super-admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { NotFoundError } from '@/server/errors';
+import { parseIdParam } from '@/lib/validators/_shared';
 import { getCondominioById, restoreCondominio } from '@/lib/db/condominio';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,8 @@ interface Ctx {
 }
 
 export async function POST(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/condominios:restore', condominio_id: id });
   try {
     await requireSuperAdmin();

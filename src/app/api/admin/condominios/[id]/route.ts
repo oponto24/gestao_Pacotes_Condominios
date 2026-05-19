@@ -4,6 +4,7 @@ import { loggerForRequest } from '@/lib/logger';
 import { requireSuperAdmin } from '@/lib/api/super-admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
 import { ConflictError, NotFoundError, ForbiddenError } from '@/server/errors';
+import { parseIdParam } from '@/lib/validators/_shared';
 import { condominioUpdateSchema } from '@/lib/validators/condominio';
 import {
   archiveCondominio,
@@ -24,7 +25,8 @@ interface Ctx {
 }
 
 export async function GET(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/condominios:get', condominio_id: id });
   try {
     await requireSuperAdmin();
@@ -39,7 +41,8 @@ export async function GET(req: Request, ctx: Ctx) {
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/condominios:update', condominio_id: id });
   try {
     const superCtx = await requireSuperAdmin();
@@ -100,7 +103,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(req: Request, ctx: Ctx) {
-  const { id } = await ctx.params;
+  const id = parseIdParam((await ctx.params).id);
+  if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
   const log = loggerForRequest(req).child({ scope: 'admin/condominios:archive', condominio_id: id });
   try {
     const superCtx = await requireSuperAdmin();
