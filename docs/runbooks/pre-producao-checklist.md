@@ -12,6 +12,8 @@ Status snapshot 2026-05-15. Atualizar conforme itens forem fechados.
 - [x] **Webhook Meta WhatsApp** — configurado em `https://condominios.oponto24.com.br/api/webhooks/meta-whatsapp`, validado por Meta (challenge OK), inscrito em `messages` + `message_template_status_update`.
 - [x] **Token e WABA atualizados na VPS** — `.env.prod` com META_ACCESS_TOKEN, META_WABA_ID e META_PHONE_NUMBER_ID de produção. Containers reiniciados 2026-05-15.
 
+- [x] **Security hardening completo (2026-05-19)** — CSRF Origin validation, UUID param validation em 16 rotas, CASCADE→RESTRICT em 9 FKs, audit log RLS, AI timeouts 30s, security headers (CSP/HSTS/X-Frame/Permissions-Policy), Redis auth, non-root worker, Docker network isolation, SQL injection fix, impersonate rate limit 20/hr, BullMQ Zod validation, X-Powered-By removido, GitHub Actions permissions mínimas. Commits: `96dc97e`, `25a8d70`, `17bf6ee`, `f353f99`, `a6434d7`.
+
 ## 🚧 Bloqueante pra primeiro cliente real
 
 ### Migrar Clerk dev → prod

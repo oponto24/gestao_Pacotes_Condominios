@@ -6,6 +6,36 @@ Histórico de mudanças do projeto. Formato baseado em [Keep a Changelog](https:
 
 ---
 
+## [2026-05-19] — Security Hardening (Audit completo)
+
+### Security — CRITICAL/HIGH (commits 96dc97e, 25a8d70)
+- **Redis auth** obrigatório (requirepass) + non-root worker container + Docker network isolation (`internal: true`)
+- **CSP headers** completos (Clerk domains whitelisted) + X-Frame-Options DENY + HSTS preload + Permissions-Policy
+- **Rate limiting** global via nginx (60 req/min) + BullMQ job validation com Zod schemas
+- **GitHub Actions** permissions mínimas (read-only default + write explícito por job)
+- **CASCADE→RESTRICT** em 9 foreign keys (condominio, unidade→morador, morador→codigos) — previne deleção acidental em cascata
+- **X-Powered-By removido** (`poweredByHeader: false` no next.config.ts)
+- **AI provider timeouts** 30s (Anthropic SDK + Gemini `requestOptions`)
+- **SQL injection fix** no `promote-user.sh` — `psql -v` parameterizado + validação regex de email
+
+### Security — MEDIUM (commits 17bf6ee, f353f99, a6434d7)
+- **CSRF Origin validation** no middleware Next.js — bloqueia mutations cross-origin, isenta webhooks
+- **UUID param validation** centralizada (`parseIdParam`) em 16 rotas com `[id]` dinâmico
+- **Impersonate rate limit** 20/hora por usuario (contagem via audit_log)
+- **Audit log RLS** — SELECT por tenant, INSERT irrestrito, UPDATE/DELETE apenas super_admin
+- **`parseIdParam` compartilhado** em `src/lib/validators/_shared.ts` (elimina regex duplicada)
+
+### Changed
+- `src/middleware.ts` reescrito com CSRF protection
+- 16 route.ts files atualizados com `parseIdParam`
+- 2 migrations novas: `20260519180000_cascade_to_restrict_security`, `20260519190000_audit_log_rls`
+- Security headers verificados em produção (CSP, HSTS, X-Frame-Options, Permissions-Policy)
+
+### Tests
+- Suite: **450+ tests** passando (vitest)
+
+---
+
 ## [2026-05-09] — Sessão noturna autônoma (Orion)
 
 ### Added — Epic 10 completo (hierarquia operacional)

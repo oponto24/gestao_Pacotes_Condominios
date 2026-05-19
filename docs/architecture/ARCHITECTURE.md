@@ -782,7 +782,21 @@ Guards em `src/lib/api/`:
 
 Role armazenado em `user.role` + Clerk `publicMetadata.role` (sincronizado via webhook Clerk).
 
-### 9.3 Webhooks Meta — validação HMAC
+### 9.3 CSRF Protection (middleware)
+
+Middleware Next.js valida `Origin` header em requests de mutação (POST/PUT/PATCH/DELETE):
+- Compara `Origin` host com `Host` header — rejeita cross-origin com 403 `csrf_rejected`
+- Webhooks (`/api/webhooks/`) isentos (Meta envia de domínio externo)
+- Requests sem `Origin` (same-origin fetch, server-side) passam normalmente
+
+```typescript
+// src/middleware.ts — integrado ao clerkMiddleware
+if (MUTATION_METHODS.has(req.method) && origin && new URL(origin).host !== host) {
+  return NextResponse.json({ code: 'csrf_rejected' }, { status: 403 });
+}
+```
+
+### 9.4 Webhooks Meta — validação HMAC
 
 ```typescript
 // src/lib/whatsapp/webhook-verify.ts
@@ -795,23 +809,75 @@ export function verifyMetaWebhook(rawBody: string, signature: string, secret: st
 }
 ```
 
-### 9.4 URLs assinadas para fotos
+### 9.5 UUID Param Validation
+
+Todas as rotas com `[id]` dinâmico validam UUID antes de consultar o banco:
+
+```typescript
+// src/lib/validators/_shared.ts
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function parseIdParam(id: unknown): string | null {
+  if (typeof id !== 'string') return null;
+  return UUID_RE.test(id) ? id : null;
+}
+```
+
+16 rotas protegidas: admin/blocos, condominios, moradores, setores, unidades, pacotes (cancelar, confirmar, organizar, reenviar, reagendar, retirar), super-admin/users, super-admin/despesas.
+
+### 9.6 URLs assinadas para fotos
 
 Storage local não expõe diretamente. Endpoint `/api/pacotes/{id}/foto` valida:
 1. Auth (Clerk).
 2. Tenant (mesmo `condominio_id` do pacote).
 3. Token query string com expiração 1h (HMAC + timestamp).
 
-### 9.5 Rate limiting
+### 9.7 Rate limiting
 
 - `/api/webhooks/meta-whatsapp` — sem rate limit (Meta exige resposta).
-- Demais endpoints: 60 req/min por usuário (middleware simples baseado em Redis INCR).
+- Demais endpoints: 60 req/min por IP (nginx `limit_req_zone`).
+- Impersonate start: 20/hora por usuario (contagem via `audit_log` entries).
+- Reenviar WhatsApp: 3/hora por pacote (contagem em `WhatsAppMessage`).
 
-### 9.6 Secrets
+### 9.8 Security Headers (produção — nginx)
+
+```
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev; ...
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+Referrer-Policy: strict-origin-when-cross-origin
+```
+
+- `X-Powered-By` removido via `poweredByHeader: false` (next.config.ts)
+- `server_tokens off` no nginx (sem versão no header)
+
+### 9.9 Audit Log RLS
+
+A tabela `audit_log` possui Row-Level Security habilitado com 4 policies:
+- **SELECT:** tenant ve logs do proprio condominio, super_admin ve todos
+- **INSERT:** qualquer role autenticado pode escrever (sem restrição)
+- **UPDATE/DELETE:** apenas super_admin (logs devem ser imutaveis)
+
+### 9.10 Foreign Key Protection
+
+9 foreign keys convertidas de `CASCADE` para `RESTRICT` (migration `20260519180000`):
+- Previne deleção acidental de condominio/unidade/morador que apagaria dados dependentes
+- Tabelas protegidas: bloco, setor, unidade, pacote, user, whatsapp_number, audit_log → condominio; morador → unidade; codigo_ml → morador
+
+### 9.11 AI Provider Timeouts
+
+Ambos os providers IA possuem timeout de 30s:
+- Anthropic: `timeout: 30_000` no constructor do SDK
+- Gemini: `requestOptions: { timeout: 30_000 }` no `generateContent`
+
+### 9.12 Secrets
 
 - Local: `.env.local` (gitignored).
 - Produção: `.env.production` na VPS, permissão `600`, owner root.
 - **Nunca** commitar. `.env.example` lista variáveis sem valores.
+- Rotação de 6 secrets pendente para primeiro onboarding de cliente.
 
 ---
 
@@ -1007,12 +1073,12 @@ SUPER_ADMIN_EMAIL=gustavs.silvs@gmail.com
 
 **Concluído:**
 - Epics 1-6 (MVP completo), Epic 8 (super-admin), Epic 10 (hierarquia operacional), Epic 11 (UX refinado)
-- Epic 7 parcial (7.1, 7.5), Epic 12 parcial (12.1-12.4)
+- Epic 7 parcial (7.1, 7.5), Epic 12 completo (12.1-12.6)
 - ~55 stories Done, 450+ testes, MVP em produção
+- **Security hardening completo** (2026-05-19): CSRF, UUID validation, CASCADE→RESTRICT, audit log RLS, AI timeouts, security headers, rate limiting, SQL injection fix
 
 **Próximos:**
-1. **Epic 12.5-12.6:** UI de audit log para super-admin e admin_master
-2. **Epic 7 restante (7.2-7.4, 7.6):** parser palavra-chave regex+LLM, persistência, UI portaria, templates Meta
-3. **Deploy RLS em prod** — migration pronta, bloqueador para multi-tenant real
-4. **Rotação de secrets** — 6 secrets expostos aguardam rotação
-5. **Migrar Clerk dev → prod** — keys de desenvolvimento
+1. **Epic 7 restante (7.2-7.4, 7.6):** parser palavra-chave regex+LLM, persistência, UI portaria, templates Meta
+2. **Rotação de secrets** — 6 secrets pendentes para primeiro onboarding
+3. **Migrar Clerk dev → prod** — keys de desenvolvimento
+4. **Backup offsite** — atualmente backup só na própria VPS

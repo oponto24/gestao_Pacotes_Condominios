@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { loggerForRequest } from '@/lib/logger';
 import { requireAdminMaster } from '@/lib/api/admin-guard';
 import { handleApiError } from '@/lib/api/handle-error';
-import { ConflictError, NotFoundError, ValidationError } from '@/server/errors';
+import { ConflictError, NotFoundError } from '@/server/errors';
 import { parseIdParam } from '@/lib/validators/_shared';
 import { blocoUpdateSchema } from '@/lib/validators/bloco';
 import { findBlocoByNome, getBlocoById, softDeleteBloco, updateBloco } from '@/lib/db/bloco';

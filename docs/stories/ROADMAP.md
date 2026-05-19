@@ -9,14 +9,14 @@
 ## Visão geral
 
 **Total:** 60+ stories distribuídas em 12 épicos.
-**Progresso atual (2026-05-19):** **~55 stories Done** · **450+ tests passing** · MVP em produção https://condominios.oponto24.com.br · Epics 1-6, 8, 10, 11 completos · Epic 7 parcial (7.1, 7.5 done) · Epic 12 parcial (12.1-12.4 done) · **WhatsApp produção ativo** (chip dedicado + template aprovado + envio testado)
+**Progresso atual (2026-05-19):** **~55 stories Done** · **450+ tests passing** · MVP em produção https://condominios.oponto24.com.br · Epics 1-8, 10-12 completos · Epic 7 parcial (7.1-7.3, 7.5 done) · **Security hardening completo** · **WhatsApp produção ativo** (chip dedicado + template aprovado + envio testado)
 **Bloqueios externos restantes:**
 - ~~Aprovação Meta do template `pacote_chegou`~~ ✅ Aprovado (2026-05-15)
 - ~~Compra de chip dedicado WhatsApp pra produção~~ ✅ Chip +55 11 99440-8930 ativo, WABA `1017715357824074`
 - ~~Configurar webhook URL no painel Meta~~ ✅ Webhook ativo e validado
-- RLS em produção — migration pronta (`20260510160000_enable_rls_prod`), falta deploy na VPS
-- Rotacionar 6 secrets expostos em chat anterior
+- Rotacionar 6 secrets — deferred para primeiro onboarding
 - Migrar Clerk dev → prod (keys de desenvolvimento)
+- Backup offsite — hoje só na própria VPS
 
 **Convenção de numeração:** `{epic}.{story}` — ex: `1.1`, `3.4`.
 **Convenção de branch:** `feature/{epic}.{story}-slug` — ex: `feature/1.1-init-monorepo`.
@@ -228,6 +228,29 @@
 | 12.5 | UI `/super-admin/audit` com filtros (ator, ação, recurso, período, condomínio) | **Done** ✅ |
 | 12.6 | UI `/admin/audit` (admin_master vê só do próprio condomínio) | **Done** ✅ |
 
+### Security Hardening (2026-05-19) ✅ Completo
+
+Audit de segurança completo com remediação de todos os itens CRITICAL, HIGH e MEDIUM.
+
+| Item | Severidade | Status |
+|------|-----------|--------|
+| Redis auth + non-root worker + Docker network isolation | CRITICAL/HIGH | **Done** ✅ |
+| CSP + HSTS + X-Frame-Options + Permissions-Policy headers | HIGH | **Done** ✅ |
+| GitHub Actions permissions mínimas | HIGH | **Done** ✅ |
+| CASCADE→RESTRICT em 9 FKs | HIGH | **Done** ✅ |
+| X-Powered-By removido | HIGH | **Done** ✅ |
+| AI provider timeouts 30s | HIGH | **Done** ✅ |
+| SQL injection fix em promote-user.sh | HIGH | **Done** ✅ |
+| BullMQ job validation com Zod | HIGH | **Done** ✅ |
+| CSRF Origin validation middleware | MEDIUM | **Done** ✅ |
+| UUID param validation (16 rotas) | MEDIUM | **Done** ✅ |
+| Impersonate rate limit 20/hr | MEDIUM | **Done** ✅ |
+| Audit log RLS policies | MEDIUM | **Done** ✅ |
+| parseIdParam compartilhado | MEDIUM | **Done** ✅ |
+
+**Commits:** `96dc97e`, `25a8d70`, `17bf6ee`, `f353f99`, `a6434d7`
+**Detalhes:** `memory/security-audit-2026-05-19.md`
+
 ---
 
 ## Sequência sugerida de execução
@@ -249,21 +272,21 @@
 - ✅ Epic 8 completo (8.1-8.7): super-admin layout, impersonar, audit base, equipe, funcionários
 - ✅ Epic 10 completo (10.1-10.7): admin_master/admin_funcionario, rota administração
 - ✅ Epic 11 completo (11.1-11.5): blocos, UI hierárquica, busca Cmd+K, filtros
-- ✅ Epic 12 parcial (12.1-12.5): dashboard KPIs, desativar condomínio, CRUD users, audit log abrangente, UI audit super-admin
-- ✅ Epic 7 quase completo (7.1-7.3, 7.5 Done): webhook inbound, persistência+reply, UI portaria, cron expiração. Falta 7.4 (banner) e 7.6 (templates Meta externo)
-- ✅ Documentação sync: stories, SCHEMA.md, PRD.md, ROADMAP.md atualizados
+- ✅ Epic 12 completo (12.1-12.6): dashboard KPIs, desativar condomínio, CRUD users, audit log abrangente, UI audit
+- ✅ Epic 7 quase completo (7.1-7.3, 7.5 Done): webhook inbound, persistência+reply, UI portaria, cron expiração
+- ✅ **Security hardening completo** — audit CRITICAL/HIGH/MEDIUM zerado (5 commits, 13 items)
+- ✅ Documentação sync: stories, SCHEMA.md, PRD.md, ROADMAP.md, ARCHITECTURE.md, CHANGELOG.md atualizados
 
 ### Ações pendentes (prioridade)
-1. **Deploy RLS em prod** — migration `20260510160000_enable_rls_prod` pronta. Bloqueador pra 2º cliente (multi-tenant real). Ver `docs/stories/rls-001-ligar-em-prod.story.md`
-2. **Rotacionar 6 secrets** expostos em chat anterior (Anthropic, Google, senha VPS, Clerk, Meta App Secret, Meta Access Token)
-3. **Migrar Clerk dev → prod** — keys de desenvolvimento, limite MAU, branding
-4. **Storage offsite do backup** — hoje backup só na própria VPS
+1. **Rotacionar 6 secrets** — deferred para primeiro onboarding de cliente
+2. **Migrar Clerk dev → prod** — keys de desenvolvimento, limite MAU, branding
+3. **Backup offsite** — hoje backup só na própria VPS
+4. **Naming do produto** — brainstorm em `docs/planning/naming-brainstorm-2026-05-15.md`, pendente decisão com sócios
 
 ### Próximas frentes de dev
 
-- **Epic 12** (12.5-12.6): UI de audit log para super-admin e admin_master
-- **Epic 7** (7.2-7.4, 7.6): parser regex+LLM, persistência, UI portaria, templates Meta
-- **Naming do produto** — brainstorm em `docs/planning/naming-brainstorm-2026-05-15.md`, pendente decisão com sócios
+- **Epic 7** (7.4, 7.6): banner durante chegada, templates Meta (bloqueio externo)
+- **API integration tests** — auth guards, tenant isolation, audit assertions (pendente)
 
 ### Backlog UX (descoberto durante smoke 2.6 — 2026-05-07)
 

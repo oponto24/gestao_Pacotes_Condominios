@@ -2,9 +2,9 @@
 
 PWA mobile-first **com identidade Ponto24** (amarelo `#FDC800` + violet `#7C3AED`) para gerenciar a chegada e retirada de encomendas em condomínios, com notificação ao morador via WhatsApp e extração automática de dados de etiqueta por IA (Gemini Flash-Lite default + Claude Haiku 4.5 fallback, ambos com vision).
 
-> **Status (2026-05-10):** Em produção em [https://condominios.oponto24.com.br](https://condominios.oponto24.com.br). **431 tests passando** (3 falhos preexistentes em integração Clerk). Epics 1-7, 10, parcial 11/12 entregues. Pipeline real: foto → IA → matching apto+bloco+nome → confirmação (porteiro ou admin) → organização → **notificação WhatsApp + QR + lembrete 24h automático** → scan QR → retirada com auditoria completa. Suporta condomínios com **administração dedicada** (rota separada porteiro vs admin) ou só portaria.
+> **Status (2026-05-19):** Em produção em [https://condominios.oponto24.com.br](https://condominios.oponto24.com.br). **450+ tests passando**. Epics 1-8, 10-12 completos, Epic 7 parcial. Security hardening completo (CSRF, UUID validation, RLS audit log, rate limiting, security headers). Pipeline real: foto → IA → matching apto+bloco+nome → confirmação (porteiro ou admin) → organização → **notificação WhatsApp + QR + lembrete 24h automático** → scan QR → retirada com auditoria completa. Suporta condomínios com **administração dedicada** (rota separada porteiro vs admin) ou só portaria.
 >
-> **Pendências externas:** aprovação Meta do template `pacote_chegou` + submissão dos templates `palavra_chave_recebida` e `morador_nao_cadastrado`, chip dedicado WhatsApp pra produção real. Detalhes no runbook [`docs/runbooks/setup-meta-whatsapp.md`](docs/runbooks/setup-meta-whatsapp.md).
+> **Pendências externas:** submissão dos templates `palavra_chave_recebida` e `morador_nao_cadastrado`. Template `pacote_chegou` aprovado e WhatsApp ativo (chip +55 11 99440-8930). Detalhes no runbook [`docs/runbooks/setup-meta-whatsapp.md`](docs/runbooks/setup-meta-whatsapp.md).
 
 **Documentação completa:**
 - 📋 PRD: [`docs/prd/PRD.md`](docs/prd/PRD.md)
@@ -76,7 +76,7 @@ Detalhes do seed (variáveis, idempotência, reconciliação Clerk) em [`docs/ru
 - **Storage abstraction** local (volume Docker) — trocável por S3/R2 sem refactor
 - **IA dual-provider:** **Google Gemini Flash-Lite** (default, ~15× mais barato) + **Anthropic Claude Haiku 4.5** (fallback) — vision + extração estruturada
 - **Meta WhatsApp Cloud API** — template messages com header de imagem (QR), webhook HMAC, retry exponencial via BullMQ
-- **Vitest** + **Testing Library** (~430 testes — unit + integration tenant-scoped + UI components)
+- **Vitest** + **Testing Library** (~450+ testes — unit + integration tenant-scoped + UI components)
 - **Docker Compose** dev: postgres + redis + app + worker
 
 ## Estrutura
@@ -87,7 +87,7 @@ src/
 ├── components/     # Componentes React (ui/ = shadcn base)
 ├── lib/            # logger, db, redis, storage, queue helpers
 ├── server/         # tenant context, errors, db-tenant (RLS-aware)
-└── middleware.ts   # Clerk auth middleware
+└── middleware.ts   # Clerk auth + CSRF Origin validation
 
 workers/            # BullMQ worker (entry point)
 prisma/             # schema, migrations, seed
@@ -124,7 +124,7 @@ Categorias:
 
 ## Status
 
-Epics 1-6 concluídos (MVP funcional ponta-a-ponta + Epic 4 WhatsApp). Detalhes vivos em [`docs/stories/ROADMAP.md`](docs/stories/ROADMAP.md). Roadmap pós-MVP capturado no PRD §6.
+Epics 1-8, 10-12 concluídos (MVP + SaaS operação + hierarquia + UX refinado + security hardening). Epic 7 parcial (palavra-chave WhatsApp). Detalhes vivos em [`docs/stories/ROADMAP.md`](docs/stories/ROADMAP.md).
 
 **Pipeline end-to-end (em produção):**
 
