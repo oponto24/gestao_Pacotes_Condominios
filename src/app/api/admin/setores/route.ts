@@ -12,6 +12,7 @@ import {
   findSetorByNome,
   listSetores,
 } from '@/lib/db/setor';
+import { auditCreate } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -51,6 +52,10 @@ export async function POST(req: Request) {
     }
 
     const created = await createSetor(data, ctx.condominioId);
+    await auditCreate(
+      { userId: ctx.userId, condominioId: ctx.condominioId, request: req },
+      'setor', created as unknown as Record<string, unknown>,
+    );
     log.info({ condominio_id: ctx.condominioId, setor_id: created.id }, 'setor criado');
     return NextResponse.json(created, { status: 201 });
   } catch (err) {

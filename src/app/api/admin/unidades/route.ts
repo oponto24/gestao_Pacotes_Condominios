@@ -9,6 +9,7 @@ import {
   findUnidadeByIdentificador,
   listUnidades,
 } from '@/lib/db/unidade';
+import { auditCreate } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -47,6 +48,10 @@ export async function POST(req: Request) {
     }
 
     const created = await createUnidade(data, ctx.condominioId);
+    await auditCreate(
+      { userId: ctx.userId, condominioId: ctx.condominioId, request: req },
+      'unidade', created as unknown as Record<string, unknown>,
+    );
     log.info({ condominio_id: ctx.condominioId, unidade_id: created.id }, 'unidade criada');
     return NextResponse.json(created, { status: 201 });
   } catch (err) {

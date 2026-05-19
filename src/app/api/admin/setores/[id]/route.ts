@@ -10,6 +10,7 @@ import {
   getSetorById,
   updateSetor,
 } from '@/lib/db/setor';
+import { auditUpdate, auditDelete } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -35,7 +36,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/setores:update', setor_id: id });
   try {
-    await requireAdminMaster();
+    const adminCtx = await requireAdminMaster();
     const body = await req.json();
     const data = setorUpdateSchema.parse(body);
 
@@ -48,6 +49,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
 
     const updated = await updateSetor(id, data);
+    await auditUpdate(
+      { userId: adminCtx.userId, condominioId: adminCtx.condominioId, request: req },
+      'setor', id, existing as unknown as Record<string, unknown>, updated as unknown as Record<string, unknown>,
+    );
     log.info({ changed: Object.keys(data) }, 'setor atualizado');
     return NextResponse.json(updated);
   } catch (err) {
@@ -59,7 +64,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/setores:delete', setor_id: id });
   try {
-    await requireAdminMaster();
+    const adminCtx = await requireAdminMaster();
     const existing = await getSetorById(id);
     if (!existing) throw new NotFoundError('Setor não encontrado');
 
@@ -69,6 +74,10 @@ export async function DELETE(req: Request, ctx: Ctx) {
       );
     }
 
+    await auditDelete(
+      { userId: adminCtx.userId, condominioId: adminCtx.condominioId, request: req },
+      'setor', id, existing as unknown as Record<string, unknown>,
+    );
     await deleteSetor(id);
     log.info('setor deletado');
     return NextResponse.json({ ok: true, deleted: true });

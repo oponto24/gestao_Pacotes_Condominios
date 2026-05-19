@@ -14,6 +14,7 @@ import {
   updateCondominio,
 } from '@/lib/db/condominio';
 import { IMPERSONATE_COOKIE } from '@/server/middleware/tenant';
+import { auditUpdate, auditDelete } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,7 +42,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/condominios:update', condominio_id: id });
   try {
-    await requireSuperAdmin();
+    const superCtx = await requireSuperAdmin();
     const body = await req.json();
     const data = condominioUpdateSchema.parse(body);
 
@@ -58,10 +59,22 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
       if (data.ativo === false) {
         await deactivateCondominio(id);
+        await auditUpdate(
+          { userId: superCtx.userId, condominioId: null, request: req },
+          'condominio', id,
+          existing as unknown as Record<string, unknown>,
+          { ...existing, ativo: false } as unknown as Record<string, unknown>,
+        );
         log.info('condomínio desativado (suspensão)');
         return NextResponse.json({ ok: true, ativo: false });
       } else {
         await reactivateCondominio(id);
+        await auditUpdate(
+          { userId: superCtx.userId, condominioId: null, request: req },
+          'condominio', id,
+          existing as unknown as Record<string, unknown>,
+          { ...existing, ativo: true } as unknown as Record<string, unknown>,
+        );
         log.info('condomínio reativado');
         return NextResponse.json({ ok: true, ativo: true });
       }
@@ -73,6 +86,12 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
 
     const updated = await updateCondominio(id, data);
+    await auditUpdate(
+      { userId: superCtx.userId, condominioId: null, request: req },
+      'condominio', id,
+      existing as unknown as Record<string, unknown>,
+      updated as unknown as Record<string, unknown>,
+    );
     log.info({ changed: Object.keys(data) }, 'condomínio atualizado');
     return NextResponse.json(updated);
   } catch (err) {
@@ -84,11 +103,15 @@ export async function DELETE(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/condominios:archive', condominio_id: id });
   try {
-    await requireSuperAdmin();
+    const superCtx = await requireSuperAdmin();
     const existing = await getCondominioById(id, false);
     if (!existing) throw new NotFoundError('Condomínio não encontrado ou já arquivado');
 
     const archived = await archiveCondominio(id);
+    await auditDelete(
+      { userId: superCtx.userId, condominioId: null, request: req },
+      'condominio', id, existing as unknown as Record<string, unknown>,
+    );
     log.info({ archived_at: archived.deleted_at }, 'condomínio arquivado');
     return NextResponse.json({ ok: true, archived_at: archived.deleted_at });
   } catch (err) {

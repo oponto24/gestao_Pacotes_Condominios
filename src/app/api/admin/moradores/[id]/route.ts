@@ -10,6 +10,7 @@ import {
   getMoradorById,
   updateMorador,
 } from '@/lib/db/morador';
+import { auditUpdate, auditDelete } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -37,7 +38,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:update', morador_id: id });
   try {
-    await requireAdminMaster();
+    const adminCtx = await requireAdminMaster();
     const body = await req.json();
     const data = moradorUpdateSchema.parse(body);
 
@@ -52,6 +53,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
 
     const updated = await updateMorador(id, data);
+    await auditUpdate(
+      { userId: adminCtx.userId, condominioId: adminCtx.condominioId, request: req },
+      'morador', id, existing as unknown as Record<string, unknown>, updated as unknown as Record<string, unknown>,
+    );
     log.info({ changed: Object.keys(data) }, 'morador atualizado');
     return NextResponse.json(updated);
   } catch (err) {
@@ -64,11 +69,15 @@ export async function DELETE(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/moradores:archive', morador_id: id });
   try {
-    await requireAdminMaster();
+    const adminCtx = await requireAdminMaster();
     const existing = await getMoradorById(id, false);
     if (!existing) throw new NotFoundError('Morador não encontrado ou já arquivado');
 
     const archived = await archiveMorador(id);
+    await auditDelete(
+      { userId: adminCtx.userId, condominioId: adminCtx.condominioId, request: req },
+      'morador', id, existing as unknown as Record<string, unknown>,
+    );
     log.info({ archived_at: archived.deleted_at }, 'morador arquivado (soft delete LGPD)');
     return NextResponse.json({ ok: true, archived_at: archived.deleted_at });
   } catch (err) {

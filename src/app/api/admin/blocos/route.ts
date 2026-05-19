@@ -5,6 +5,7 @@ import { handleApiError } from '@/lib/api/handle-error';
 import { ConflictError } from '@/server/errors';
 import { blocoCreateSchema, blocoListQuerySchema } from '@/lib/validators/bloco';
 import { createBloco, findBlocoByNome, listBlocos } from '@/lib/db/bloco';
+import { auditCreate } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,6 +42,10 @@ export async function POST(req: Request) {
     }
 
     const created = await createBloco(data, ctx.condominioId);
+    await auditCreate(
+      { userId: ctx.userId, condominioId: ctx.condominioId, request: req },
+      'bloco', created as unknown as Record<string, unknown>,
+    );
     log.info({ condominio_id: ctx.condominioId, bloco_id: created.id }, 'bloco criado');
     return NextResponse.json(created, { status: 201 });
   } catch (err) {

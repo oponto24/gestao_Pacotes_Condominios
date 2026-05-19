@@ -10,6 +10,7 @@ import {
   getUnidadeIdInTenant,
   listMoradores,
 } from '@/lib/db/morador';
+import { auditCreate } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -53,6 +54,10 @@ export async function POST(req: Request) {
     }
 
     const created = await createMorador(data, ctx.condominioId);
+    await auditCreate(
+      { userId: ctx.userId, condominioId: ctx.condominioId, request: req },
+      'morador', created as unknown as Record<string, unknown>,
+    );
     log.info(
       { condominio_id: ctx.condominioId, morador_id: created.id, is_principal: data.is_principal },
       'morador criado',

@@ -10,6 +10,7 @@ import {
   getUnidadeById,
   updateUnidade,
 } from '@/lib/db/unidade';
+import { auditUpdate, auditDelete } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -35,7 +36,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/unidades:update', unidade_id: id });
   try {
-    await requireAdminMaster();
+    const adminCtx = await requireAdminMaster();
     const body = await req.json();
     const data = unidadeUpdateSchema.parse(body);
 
@@ -58,6 +59,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
 
     const updated = await updateUnidade(id, data);
+    await auditUpdate(
+      { userId: adminCtx.userId, condominioId: adminCtx.condominioId, request: req },
+      'unidade', id, existing as unknown as Record<string, unknown>, updated as unknown as Record<string, unknown>,
+    );
     log.info({ changed: Object.keys(data) }, 'unidade atualizada');
     return NextResponse.json(updated);
   } catch (err) {
@@ -69,7 +74,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/unidades:delete', unidade_id: id });
   try {
-    await requireAdminMaster();
+    const adminCtx = await requireAdminMaster();
     const existing = await getUnidadeById(id);
     if (!existing) throw new NotFoundError('Unidade não encontrada');
 
@@ -84,6 +89,10 @@ export async function DELETE(req: Request, ctx: Ctx) {
       );
     }
 
+    await auditDelete(
+      { userId: adminCtx.userId, condominioId: adminCtx.condominioId, request: req },
+      'unidade', id, existing as unknown as Record<string, unknown>,
+    );
     await deleteUnidade(id);
     log.info('unidade deletada');
     return NextResponse.json({ ok: true, deleted: true });

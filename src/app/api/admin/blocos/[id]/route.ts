@@ -5,6 +5,7 @@ import { handleApiError } from '@/lib/api/handle-error';
 import { ConflictError, NotFoundError } from '@/server/errors';
 import { blocoUpdateSchema } from '@/lib/validators/bloco';
 import { findBlocoByNome, getBlocoById, softDeleteBloco, updateBloco } from '@/lib/db/bloco';
+import { auditUpdate, auditDelete } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -30,7 +31,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/blocos:update', bloco_id: id });
   try {
-    await requireAdminMaster();
+    const adminCtx = await requireAdminMaster();
     const body = await req.json();
     const data = blocoUpdateSchema.parse(body);
 
@@ -43,6 +44,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
 
     const updated = await updateBloco(id, data);
+    await auditUpdate(
+      { userId: adminCtx.userId, condominioId: adminCtx.condominioId, request: req },
+      'bloco', id, existing as unknown as Record<string, unknown>, updated as unknown as Record<string, unknown>,
+    );
     log.info({ changed: Object.keys(data) }, 'bloco atualizado');
     return NextResponse.json(updated);
   } catch (err) {
@@ -54,11 +59,15 @@ export async function DELETE(req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const log = loggerForRequest(req).child({ scope: 'admin/blocos:delete', bloco_id: id });
   try {
-    await requireAdminMaster();
+    const adminCtx = await requireAdminMaster();
     const existing = await getBlocoById(id);
     if (!existing) throw new NotFoundError('Bloco nao encontrado');
 
     const updated = await softDeleteBloco(id);
+    await auditDelete(
+      { userId: adminCtx.userId, condominioId: adminCtx.condominioId, request: req },
+      'bloco', id, existing as unknown as Record<string, unknown>,
+    );
     log.info('bloco desativado (soft delete)');
     return NextResponse.json({ ok: true, bloco: updated });
   } catch (err) {
