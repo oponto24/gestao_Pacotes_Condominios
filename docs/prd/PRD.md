@@ -1,10 +1,10 @@
 # PRD — Sistema de Gestão de Pacotes em Condomínios
 
-> **Versão:** 1.0 (MVP)
-> **Status:** Aprovado para desenvolvimento
+> **Versão:** 2.0 (pós-MVP, Epics 7-12)
+> **Status:** Em execução — MVP completo, pós-MVP em andamento
 > **Owner:** Gustavo Silva
 > **PM responsável:** Morgan (AIOX PM Agent)
-> **Última atualização:** 2026-05-06
+> **Última atualização:** 2026-05-19
 
 ---
 
@@ -273,7 +273,7 @@ Sistema web mobile-first (PWA) para portaria/administração, com notificação 
 
 ## 6. Estrutura de Épicos (alto nível)
 
-> **Status atual:** Epics 1-6 concluídos. Epics 7-11 são pós-MVP (alguns refactors, alguns features novos). Detalhe e progresso no [`docs/stories/ROADMAP.md`](../stories/ROADMAP.md).
+> **Status atual (2026-05-19):** Epics 1-6 (MVP) concluídos. Epics 7-12 (pós-MVP) em progresso. Detalhe e progresso no [`docs/stories/ROADMAP.md`](../stories/ROADMAP.md).
 
 | Epic | Nome | Status |
 |------|------|--------|
@@ -283,13 +283,13 @@ Sistema web mobile-first (PWA) para portaria/administração, com notificação 
 | **E4** | Notificação WhatsApp | ✅ Concluído (aguarda aprovação template Meta + chip dedicado pra prod real) |
 | **E5** | Retirada do pacote | ✅ Concluído |
 | **E6** | Painel administrativo | ✅ Concluído |
-| **E7** | Palavra-chave de entrega via WhatsApp (FR-050 a FR-056) | ⏳ Pendente |
-| **E8** | Operação SaaS — primeira fase | 🟡 Parcial (deploy VPS done, super-admin parcial) |
-| **E9** | Operação SaaS madura (FR-110 a FR-121) — dashboard, audit, governança | ⏳ Pendente |
-| **E10** | Hierarquia operacional (FR-080 a FR-085) — admin master + admin funcionário + condomínio com administração | ⏳ Pendente |
-| **E11** | UX admin refinado (FR-100 a FR-102) — Torres/Blocos + busca global + filtros padronizados | ⏳ Pendente |
+| **E7** | Palavra-chave de entrega via WhatsApp (FR-050 a FR-056) | 🟡 Parcial (7.1, 7.5 done; 7.2-7.4, 7.6 draft) |
+| **E8** | Operação SaaS — primeira fase (super-admin, impersonate, audit base, equipe) | ✅ Concluído (8.1-8.7 done) |
+| **E10** | Hierarquia operacional (FR-080 a FR-085) — admin_master + admin_funcionario + rota administração | ✅ Concluído (10.1-10.7 done) |
+| **E11** | UX admin refinado (FR-100 a FR-102) — Torres/Blocos + busca global Cmd+K + filtros | ✅ Concluído (11.1-11.5 done) |
+| **E12** | Operação SaaS madura (ex-E9, FR-110 a FR-121) — dashboard, audit abrangente, governança | 🟡 Parcial (12.1-12.4 done; 12.5-12.6 draft) |
 
-**Sequência sugerida pós-MVP:** E10 → E7 → E11 → E9 (~13 dias dev). Justificativa: E10 é diferencial competitivo (rota administração); E7 destrava casos de uso reais (palavra-chave ML); E11 melhora UX cotidiana; E9 é polish operacional.
+**Sequência executada pós-MVP:** E10 → E11 → E8 → E12 (parcial) → E7 (parcial). Próximos: E12.5-12.6 (UI audit) → E7 restante.
 
 ---
 

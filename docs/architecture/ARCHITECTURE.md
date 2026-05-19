@@ -1,9 +1,9 @@
 # Arquitetura Técnica — Sistema de Gestão de Pacotes em Condomínios
 
-> **Versão:** 1.0 (MVP)
-> **Status:** Aprovado para implementação
+> **Versão:** 2.0 (pós-Epic 12)
+> **Status:** Em produção — MVP + Epics 7-12 parciais
 > **Owner:** Aria (AIOX Architect)
-> **Última atualização:** 2026-05-06
+> **Última atualização:** 2026-05-19
 > **PRD de referência:** `docs/prd/PRD.md`
 
 ---
@@ -161,11 +161,11 @@ src/lib/queue/jobs/
 
 **Setup operacional:** ver `docs/runbooks/setup-meta-whatsapp.md` (Etapas 1-6).
 
-### 2.5 Hierarquia operacional (refactor Epic 10 — pendente)
+### 2.5 Hierarquia operacional (Epic 10 — Concluído)
 
-> **Status atual (2026-05-08):** schema atual usa enum `Role { super_admin | admin | porteiro }` e `PacoteStatus { rascunho | pendente_identificacao | confirmado | aguardando_retirada | retirado | cancelado }`. Epic 10 vai refatorar para suportar hierarquia operacional (PRD §3.8).
+> **Implementado em 2026-05-15.** Schema refatorado com 4 roles e 7 status de pacote. Stories 10.1-10.7 todas Done.
 
-**Refactor planejado em Epic 10:**
+**Refactor realizado no Epic 10:**
 
 | Antes | Depois |
 |-------|--------|
@@ -256,35 +256,43 @@ gestao_Pacotes_Condominios/
 │   │       └── PacotesList.tsx
 │   ├── lib/
 │   │   ├── db.ts                              ← Prisma client singleton
-│   │   ├── tenant.ts                          ← getTenantContext()
-│   │   ├── auth.ts                            ← Clerk helpers
-│   │   ├── anthropic.ts                       ← cliente Claude + cache
-│   │   ├── whatsapp/
-│   │   │   ├── client.ts                      ← Meta API wrapper
-│   │   │   ├── templates.ts                   ← template definitions
-│   │   │   └── webhook-verify.ts              ← HMAC verification
-│   │   ├── qrcode.ts                          ← geração QR
-│   │   ├── csv.ts                             ← parser/validator de import
 │   │   ├── logger.ts                          ← pino instance
-│   │   └── queue/
-│   │       ├── connection.ts                  ← redis + BullMQ config
-│   │       ├── queues.ts                      ← queue definitions
-│   │       └── jobs.ts                        ← job type definitions
+│   │   ├── ai/                                ← IA extraction (Epic 3)
+│   │   │   ├── extract-label.ts
+│   │   │   ├── prompts/label-extraction.ts
+│   │   │   ├── providers/anthropic.ts, gemini.ts
+│   │   │   └── schemas/label-extraction.ts
+│   │   ├── api/                               ← guards RBAC (Epic 10)
+│   │   │   ├── admin-guard.ts                 ← requireAdminMaster/Any
+│   │   │   ├── portaria-guard.ts              ← requirePorteiro
+│   │   │   ├── super-admin-guard.ts           ← requireSuperAdmin
+│   │   │   └── handle-error.ts
+│   │   ├── audit/                             ← audit log (Epics 8+12)
+│   │   │   ├── write-log.ts                   ← writeAuditLog()
+│   │   │   └── audited-mutation.ts            ← auditCreate/Update/Delete
+│   │   ├── csv/                               ← CSV import (Epic 2)
+│   │   ├── db/                                ← domain helpers (21 files)
+│   │   │   ├── bloco.ts, condominio.ts, morador.ts
+│   │   │   ├── pacote.ts, setor.ts, unidade.ts
+│   │   │   ├── user-management.ts, quotas.ts
+│   │   │   └── despesa.ts
+│   │   ├── matching/                          ← IA matching (Epic 3)
+│   │   ├── meta-whatsapp/                     ← Meta Cloud API (Epic 4)
+│   │   │   ├── client.ts, errors.ts, types.ts
+│   │   │   ├── webhook.ts
+│   │   │   └── index.ts
+│   │   ├── qr/                                ← QR generation (Epic 4)
+│   │   ├── queue/                             ← BullMQ jobs
+│   │   │   ├── connection.ts, queues.ts
+│   │   │   └── jobs/                          ← extractLabel, sendWhatsApp, etc.
+│   │   ├── storage/                           ← file storage abstraction
+│   │   ├── validators/                        ← 11 Zod schemas
+│   │   └── whatsapp/                          ← recipient matching (Epic 4)
 │   ├── server/
-│   │   ├── services/                          ← lógica de domínio
-│   │   │   ├── PacoteService.ts
-│   │   │   ├── MoradorService.ts
-│   │   │   ├── NotificacaoService.ts
-│   │   │   └── ExtracaoIAService.ts
-│   │   ├── repositories/                      ← acesso a dados (Prisma)
-│   │   │   ├── PacoteRepository.ts
-│   │   │   └── MoradorRepository.ts
+│   │   ├── db-tenant.ts                       ← withTenantContext(), withTenant()
+│   │   ├── errors.ts                          ← HTTP-mappable error classes
 │   │   └── middleware/
-│   │       ├── tenant.ts                      ← injeta condominio_id
-│   │       └── rls.ts                         ← seta SET LOCAL no Postgres
-│   ├── types/                                 ← shared TypeScript types
-│   │   ├── pacote.ts
-│   │   └── whatsapp.ts
+│   │       └── tenant.ts                      ← getTenantContext() + impersonate
 │   └── middleware.ts                          ← Clerk auth middleware
 ├── workers/
 │   ├── index.ts                               ← entry point do processo worker
@@ -388,7 +396,7 @@ CREATE INDEX idx_pacote_condominio ON pacote(condominio_id);
 ### 4.3 Tabelas tenant-scoped vs globais
 
 **Tenant-scoped (têm `condominio_id` + RLS):**
-- `unidade`, `morador`, `setor`, `posicao`
+- `bloco`, `unidade`, `morador`, `setor`
 - `pacote`, `pacote_evento`, `pacote_foto`
 - `whatsapp_message`, `codigo_ml_pendente`
 
@@ -397,6 +405,7 @@ CREATE INDEX idx_pacote_condominio ON pacote(condominio_id);
 - `user` (mas filtrada por `condominio_id` na maioria das queries)
 - `whatsapp_number` (1 registro no MVP, FK opcional pra `condominio_id`)
 - `audit_log`
+- `despesa` (controle financeiro do operador SaaS)
 
 ### 4.4 Por que essa abordagem
 
@@ -759,10 +768,17 @@ Logs vão para `stdout` → Docker captura → arquivo rotativo via `json-file` 
 
 ### 9.2 Autorização (RBAC)
 
-3 roles no MVP:
+4 roles (após Epic 10):
 - `porteiro` — pode bipar, registrar, retirar pacotes.
-- `admin` — tudo do porteiro + gerenciar cadastros + ver painel.
-- `super_admin` — tudo do admin + criar condomínio + impersonar.
+- `admin_funcionario` — operacional da administração (secretária, zelador adm). Organiza pacotes, acessa painel admin.
+- `admin_master` — síndico/admin geral. Tudo do funcionário + gerenciar equipe + configurações.
+- `super_admin` — tudo + criar condomínio + impersonar + CRUD cross-tenant.
+
+Guards em `src/lib/api/`:
+- `requirePorteiro()` — porteiro + qualquer admin
+- `requireAdminAny()` — admin_master ou admin_funcionario
+- `requireAdminMaster()` — admin_master only
+- `requireSuperAdmin()` — super_admin only
 
 Role armazenado em `user.role` + Clerk `publicMetadata.role` (sincronizado via webhook Clerk).
 
@@ -808,21 +824,44 @@ Storage local não expõe diretamente. Endpoint `/api/pacotes/{id}/foto` valida:
 | GET | `/api/pacotes` | Lista pacotes do condomínio (filtros via query) |
 | POST | `/api/pacotes` | Cria pacote rascunho (multipart: foto, barcode opcional) |
 | GET | `/api/pacotes/{id}` | Detalhe completo |
-| PATCH | `/api/pacotes/{id}` | Confirma dados, define setor, dispara notificação |
+| POST | `/api/pacotes/{id}/confirmar` | Confirma dados IA |
+| POST | `/api/pacotes/{id}/organizar` | Define setor+posição, dispara WhatsApp |
+| POST | `/api/pacotes/{id}/cancelar` | Cancelamento do pacote |
+| POST | `/api/pacotes/{id}/enviar-administracao` | Transição → em_administracao (Epic 10) |
+| POST | `/api/pacotes/{id}/reenviar-whatsapp` | Reenvio manual (rate limit 3/h) |
+| POST | `/api/pacotes/{id}/reagendar-lembrete` | Reagenda lembrete pausado (admin_master) |
 | GET | `/api/pacotes/{id}/extract-status` | Status do job de extração IA |
-| POST | `/api/pacotes/{id}/retirar/iniciar` | Valida QR token |
+| POST | `/api/pacotes/retirar/iniciar` | Valida QR token |
 | POST | `/api/pacotes/{id}/retirar/confirmar` | Registra retirada |
 
-### 10.2 Cadastros
+### 10.2 Cadastros Admin (tenant-scoped)
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| GET/POST/PATCH/DELETE | `/api/unidades` | CRUD unidades |
-| GET/POST/PATCH/DELETE | `/api/moradores` | CRUD moradores |
-| GET/POST/PATCH/DELETE | `/api/setores` | CRUD setores |
-| POST | `/api/importar-csv` | Upload CSV moradores/unidades |
+| GET/POST | `/api/admin/blocos` | CRUD blocos (Epic 11) |
+| GET/PATCH/DELETE | `/api/admin/blocos/[id]` | Operações por bloco |
+| GET/POST | `/api/admin/moradores` | Lista + criação moradores |
+| GET/PATCH/DELETE | `/api/admin/moradores/[id]` | Operações por morador |
+| GET/POST | `/api/admin/unidades` | Lista + criação unidades |
+| GET/PATCH/DELETE | `/api/admin/unidades/[id]` | Operações por unidade |
+| GET/POST | `/api/admin/setores` | Lista + criação setores |
+| GET/PATCH/DELETE | `/api/admin/setores/[id]` | Operações por setor |
+| GET | `/api/admin/search` | Busca global Cmd+K (Epic 11) |
+| POST | `/api/admin/users` | Admin cria porteiro/admin do mesmo cond (Epic 8) |
 
-### 10.3 Webhooks
+### 10.3 Super-Admin
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET/POST | `/api/admin/condominios` | CRUD condominios |
+| GET/PATCH/DELETE | `/api/admin/condominios/[id]` | Detalhe + desativar/reativar/arquivar |
+| POST | `/api/super-admin/impersonate/start` | Inicia impersonate (seta cookie) |
+| POST | `/api/super-admin/impersonate/stop` | Encerra impersonate |
+| GET/POST | `/api/super-admin/users` | Lista todos usuários / cria admin cross-tenant |
+| PATCH | `/api/super-admin/users/[id]` | Edita usuário cross-tenant |
+| GET/POST | `/api/super-admin/despesas` | CRUD despesas financeiras |
+
+### 10.4 Webhooks
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
@@ -830,11 +869,14 @@ Storage local não expõe diretamente. Endpoint `/api/pacotes/{id}/foto` valida:
 | POST | `/api/webhooks/meta-whatsapp` | Eventos Meta (msg, status) |
 | POST | `/api/webhooks/clerk` | User provisioning |
 
-### 10.4 Health
+### 10.5 Health e Contexto
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | GET | `/api/health` | Status app + db + redis |
+| GET | `/api/health/db` | Ping PostgreSQL isolado |
+| GET | `/api/health/redis` | Ping Redis isolado |
+| GET | `/api/me` | TenantContext do usuário autenticado |
 
 ---
 
@@ -961,18 +1003,16 @@ SUPER_ADMIN_EMAIL=gustavs.silvs@gmail.com
 
 ---
 
-## 13. Próximos passos
+## 13. Estado atual e próximos passos (2026-05-19)
 
-1. **`@data-engineer` (Dara):** modelar schema Prisma completo a partir dos FRs do PRD + tabelas listadas em [4.3](#43-tabelas-tenant-scoped-vs-globais).
-2. **`@ux-design-expert` (Uma):** wireframes mobile-first das 6 telas principais (chegada, confirmação IA, organização, retirada, lista admin, detalhe pacote).
-3. **`@sm` (River):** quebrar épicos do PRD em stories implementáveis usando esta arquitetura como referência.
-4. **`@po` (Pax):** validar cada story (10-point checklist).
-5. **`@dev` (Dex):** implementar story por story.
-6. **`@devops` (Gage):** setup VPS Hostinger, GitHub Actions CI/CD, Caddy, deploy inicial.
+**Concluído:**
+- Epics 1-6 (MVP completo), Epic 8 (super-admin), Epic 10 (hierarquia operacional), Epic 11 (UX refinado)
+- Epic 7 parcial (7.1, 7.5), Epic 12 parcial (12.1-12.4)
+- ~55 stories Done, 450+ testes, MVP em produção
 
-**Em paralelo (fundador):**
-- Comprar domínio (sugerido: algo curto tipo `pacotes.app.br` ou similar).
-- Configurar DNS apontando pra IP da VPS.
-- Criar conta Clerk e gerar keys de teste.
-- Criar conta Anthropic Console + API key.
-- Continuar processo Meta Business Manager.
+**Próximos:**
+1. **Epic 12.5-12.6:** UI de audit log para super-admin e admin_master
+2. **Epic 7 restante (7.2-7.4, 7.6):** parser palavra-chave regex+LLM, persistência, UI portaria, templates Meta
+3. **Deploy RLS em prod** — migration pronta, bloqueador para multi-tenant real
+4. **Rotação de secrets** — 6 secrets expostos aguardam rotação
+5. **Migrar Clerk dev → prod** — keys de desenvolvimento

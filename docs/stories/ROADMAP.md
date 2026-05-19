@@ -1,7 +1,7 @@
 # Roadmap de Stories — Gestão de Pacotes em Condomínios
 
 > **Owner:** River (AIOX Scrum Master)
-> **Última atualização:** 2026-05-15
+> **Última atualização:** 2026-05-19
 > **PRD:** `docs/prd/PRD.md` | **Architecture:** `docs/architecture/ARCHITECTURE.md` | **Schema:** `docs/architecture/database/SCHEMA.md` | **UX:** `docs/ux/UX_SPEC.md`
 
 ---
@@ -9,7 +9,7 @@
 ## Visão geral
 
 **Total:** 60+ stories distribuídas em 12 épicos.
-**Progresso atual (2026-05-15 sessão Orion):** **~50 stories Done** · **312 tests passing** · MVP em produção https://condominios.oponto24.com.br · Epics 1-6 + 4 done, Epic 7 core, Epic 10 completo, Epic 11.1 e 12.1 done · **WhatsApp produção ativo** (chip dedicado + template aprovado + envio testado)
+**Progresso atual (2026-05-19):** **~55 stories Done** · **450+ tests passing** · MVP em produção https://condominios.oponto24.com.br · Epics 1-6, 8, 10, 11 completos · Epic 7 parcial (7.1, 7.5 done) · Epic 12 parcial (12.1-12.4 done) · **WhatsApp produção ativo** (chip dedicado + template aprovado + envio testado)
 **Bloqueios externos restantes:**
 - ~~Aprovação Meta do template `pacote_chegou`~~ ✅ Aprovado (2026-05-15)
 - ~~Compra de chip dedicado WhatsApp pra produção~~ ✅ Chip +55 11 99440-8930 ativo, WABA `1017715357824074`
@@ -149,7 +149,7 @@
 | 7.2 | Worker processIncomingMessage — extração código (regex + LLM fallback) | Draft | 7.1 |
 | 7.3 | Persistência codigo_ml_pendente + resposta automática template "codigo_ml_recebido" | Draft | 7.2, 4.1 |
 | 7.4 | Exibição do código pendente na tela /chegada/organizar (banner amarelo) | Draft | 3.9, 7.3 |
-| 7.5 | Cron diário expira códigos com expira_em < now (FR-056) | Draft | 7.3 |
+| 7.5 | Cron diário expira códigos com expira_em < now (FR-056) | **Done** ✅ | 7.3 |
 
 ---
 
@@ -159,14 +159,14 @@
 
 | # | Story | Status | Dependência |
 |---|-------|--------|-------------|
-| 8.1 | Layout SuperAdminLayout + lista /super-admin/condominios | Draft | 2.1 |
-| 8.2 | Ação "Impersonar condomínio" + banner persistente (FR-071) | Draft | 8.1, 1.6 |
-| 8.3 | Audit log de ações sensíveis (impersonate, criação cond., delete) | Draft | 8.2 |
+| 8.1 | Layout SuperAdminLayout + lista /super-admin/condominios | **Done** ✅ | 2.1 |
+| 8.2 | Ação "Impersonar condomínio" + banner persistente (FR-071) | **Done** ✅ | 8.1, 1.6 |
+| 8.3 | Audit log de ações sensíveis (impersonate, criação cond., delete) | **Done** ✅ | 8.2 |
 | 8.4 | Setup VPS Hostinger + Caddy + GitHub Actions deploy + backup script (delegado @devops) | **Done** ✅ — coberto pela story 3.12 (Docker + Nginx + Let's Encrypt). CI/CD GitHub Actions e backup automatizado postgres ficam como tech debt da Epic 8.4-extended | 1.2 |
-| 8.5 | Tela super-admin cadastrar admin de cond (cadastro direto) | Draft | 8.1 |
-| 8.6 | Tela admin /admin/equipe — admin cadastra outros admins do mesmo cond | Draft | 8.5 |
-| 8.7 | Tela admin /admin/funcionarios — admin cadastra porteiros do cond | Draft | 8.6 |
-| 8.8 | Distinção admin master vs admin comum — **adiado, pendente decisão produto** | Backlog | 8.5 |
+| 8.5 | Tela super-admin cadastrar admin de cond (cadastro direto) | **Done** ✅ | 8.1 |
+| 8.6 | Tela admin /admin/equipe — admin cadastra outros admins do mesmo cond | **Done** ✅ | 8.5 |
+| 8.7 | Tela admin /admin/funcionarios — admin cadastra porteiros do cond | **Done** ✅ | 8.6 |
+| 8.8 | Distinção admin master vs admin comum — **supersedido pela story 10.1** | N/A | — |
 
 > **Epic 9 — Cobrança/Billing**: backlog não-iniciado. Decisões pendentes (gateway, preço, trial). Adiado deliberadamente até MVP estar 100% funcional + primeiros clientes manuais validarem produto.
 
@@ -186,7 +186,7 @@
 | 7.2 | Persiste `palavra_chave_pendente` + auto-reply via template aprovado | Draft |
 | 7.3 | Tela `/portaria/palavras-chave` com filtros (apto, bloco, morador, data) — aba admin read-only | Draft |
 | 7.4 | Banner sugestão durante chegada do pacote ("vincular palavra-chave?") | Draft |
-| 7.5 | Cron diário expira palavras-chave > 30d | Draft |
+| 7.5 | Cron diário expira palavras-chave > 30d | **Done** ✅ |
 | 7.6 | Templates Meta `palavra_chave_recebida` + `morador_nao_cadastrado` submetidos | Draft |
 
 ### Epic 10 — Hierarquia operacional (recomendado primeiro pós-MVP)
@@ -224,7 +224,7 @@
 | 12.1 | Dashboard `/super-admin` com KPIs (condomínios ativos, admins ativos, pacotes pendentes 24h, usuários por role) | **Done** ✅ |
 | 12.2 | Desativar/reativar condomínio (super-admin) + bloqueio de login dos users vinculados | **Done** ✅ |
 | 12.3 | CRUD usuários (super-admin) — listar cross-tenant, criar admin_master de qualquer cond, editar role, soft delete | **Done** ✅ |
-| 12.4 | Audit log abrangente — middleware que captura toda mutation + before/after diff | Draft |
+| 12.4 | Audit log abrangente — helpers auditCreate/Update/Delete com before/after diff | **Done** ✅ |
 | 12.5 | UI `/super-admin/audit` com filtros (ator, ação, recurso, período, condomínio) | Draft |
 | 12.6 | UI `/admin/audit` (admin_master vê só do próprio condomínio) | Draft |
 
@@ -243,14 +243,15 @@
 
 ---
 
-## Próximas ações (2026-05-15)
+## Próximas ações (2026-05-19)
 
-### Concluído nesta sessão
-- ✅ Git restaurado (corrompido pela cópia do Google Drive)
-- ✅ Ambiente dev configurado em PC novo (Docker Desktop + WSL + Postgres + Redis)
-- ✅ WhatsApp produção ativado: chip dedicado, template aprovado, WABA atualizada, token atualizado na VPS, envio testado com sucesso
-- ✅ SSH configurado para novo PC → VPS
-- ✅ Containers reiniciados em prod com novas credenciais
+### Concluído desde 2026-05-15
+- ✅ Epic 8 completo (8.1-8.7): super-admin layout, impersonar, audit base, equipe, funcionários
+- ✅ Epic 10 completo (10.1-10.7): admin_master/admin_funcionario, rota administração
+- ✅ Epic 11 completo (11.1-11.5): blocos, UI hierárquica, busca Cmd+K, filtros
+- ✅ Epic 12 parcial (12.1-12.4): dashboard KPIs, desativar condomínio, CRUD users, audit log abrangente
+- ✅ Epic 7 parcial (7.1, 7.5): webhook inbound + cron expiração
+- ✅ Documentação sync: stories, SCHEMA.md, PRD.md, ROADMAP.md atualizados
 
 ### Ações pendentes (prioridade)
 1. **Deploy RLS em prod** — migration `20260510160000_enable_rls_prod` pronta. Bloqueador pra 2º cliente (multi-tenant real). Ver `docs/stories/rls-001-ligar-em-prod.story.md`
@@ -258,12 +259,10 @@
 3. **Migrar Clerk dev → prod** — keys de desenvolvimento, limite MAU, branding
 4. **Storage offsite do backup** — hoje backup só na própria VPS
 
-### Próximas frentes de dev (priorizar com user)
+### Próximas frentes de dev
 
-- **Epic 7 — Palavra-chave via WhatsApp** (7.2-7.6): webhook handler 4.4 já registra mensagens inbound; falta parser regex+LLM + UI + cron expiração
-- **Epic 8 — Operação SaaS** (8.1-8.7): super-admin layout, impersonar, cadastrar admins/porteiros
-- **Epic 11 — UX refinado** (11.2-11.5): blocos hierárquicos, busca global, filtros
-- **Epic 12 — SaaS maduro** (12.2-12.6): audit log, desativar condomínio, CRUD users
+- **Epic 12** (12.5-12.6): UI de audit log para super-admin e admin_master
+- **Epic 7** (7.2-7.4, 7.6): parser regex+LLM, persistência, UI portaria, templates Meta
 - **Naming do produto** — brainstorm em `docs/planning/naming-brainstorm-2026-05-15.md`, pendente decisão com sócios
 
 ### Backlog UX (descoberto durante smoke 2.6 — 2026-05-07)

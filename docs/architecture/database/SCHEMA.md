@@ -1,8 +1,8 @@
 # Schema do Banco de Dados — Gestão de Pacotes em Condomínios
 
-> **Versão:** 1.0 (MVP)
+> **Versão:** 2.0 (pós-Epic 12)
 > **Owner:** Dara (AIOX Data Engineer)
-> **Última atualização:** 2026-05-06
+> **Última atualização:** 2026-05-19
 > **Arquivo Prisma:** `prisma/schema.prisma`
 > **RLS:** `prisma/migrations/20260506_initial_schema/rls_policies.sql`
 
@@ -10,10 +10,10 @@
 
 ## 1. Visão geral
 
-PostgreSQL 16, gerenciado via Prisma 6. **15 tabelas** organizadas em 2 grupos:
+PostgreSQL 16, gerenciado via Prisma 6. **14 tabelas** organizadas em 2 grupos:
 
-- **Globais (4):** `condominio`, `user`, `whatsapp_number`, `audit_log` — sem RLS, acesso controlado por role aplicacional.
-- **Tenant-scoped (8):** `setor`, `unidade`, `morador`, `pacote`, `pacote_foto`, `pacote_evento`, `whatsapp_message`, `codigo_ml_pendente` — com RLS isolando por `condominio_id`.
+- **Globais (5):** `condominio`, `user`, `whatsapp_number`, `audit_log`, `despesa` — sem RLS, acesso controlado por role aplicacional.
+- **Tenant-scoped (9):** `setor`, `bloco`, `unidade`, `morador`, `pacote`, `pacote_foto`, `pacote_evento`, `whatsapp_message`, `codigo_ml_pendente` — com RLS isolando por `condominio_id`.
 
 Convenções:
 - **PKs:** UUID v4 (`gen_random_uuid()`) em todas exceto `audit_log` e `pacote_evento` (BigInt, alto volume sequencial).
@@ -31,7 +31,7 @@ Convenções:
 └────────┬─────────┘
          │ 1:N
          ├─────────► setor
-         ├─────────► unidade ───────► morador
+         ├─────────► bloco ─────────► unidade ───────► morador
          ├─────────► user
          ├─────────► whatsapp_number (FK opcional, premium futuro)
          └─────────► pacote ◄──────┐
@@ -40,6 +40,8 @@ Convenções:
                        ├──► pacote_evento
                        ├──► whatsapp_message
                        └──► codigo_ml_pendente
+
+despesa (global, sem FK — controle financeiro do operador SaaS)
 
 pacote relations:
   - unidade_id (FK → unidade)
@@ -57,11 +59,17 @@ pacote relations:
 - **Acesso:** super_admin lê todos; admin/porteiro só leem o próprio (filtrado por `user.condominio_id`).
 - **Volume esperado:** 50-500 registros (escala SaaS).
 - **Índices:** `cep`, `ativo`.
+- **Campos adicionados pós-MVP:**
+  - `tem_administracao` (Boolean, default false) — story 10.1: define se fluxo passa pela administração.
+  - `max_unidades`, `max_moradores`, `max_pacotes_30d` (Int?, defaults generosos) — quotas por tenant.
+  - `deleted_at` (DateTime?) — soft delete para archivamento.
+  - `cidade`, `estado` — campos obrigatórios de endereço.
+- **Relations:** `unidades`, `blocos` (story 11.1), `setores`, `moradores`, `pacotes`, `users`.
 
 ### 3.2 `user` — Usuários do sistema
 - **Acesso:** Clerk é a fonte da verdade de auth; tabela espelha `clerk_id`, `email`, `nome`, `role`, `condominio_id`.
 - **Sincronização:** webhook Clerk em `/api/webhooks/clerk` mantém em dia.
-- **Roles:** `super_admin` (sem condomínio), `admin`, `porteiro`.
+- **Roles:** `super_admin` (sem condomínio), `admin_master` (ex-`admin`, story 10.1), `admin_funcionario` (story 10.1), `porteiro`.
 
 ### 3.3 `whatsapp_number` — Configuração WhatsApp
 - **MVP:** 1 registro com `condominio_id = NULL` (compartilhado).
@@ -75,6 +83,8 @@ pacote relations:
 ### 3.5 `unidade` — Apartamento/Casa
 - **Constraint:** `(condominio_id, identificador, bloco)` único — permite "Apto 101 Bloco A" e "Apto 101 Bloco B" coexistirem.
 - **Cascade:** delete de condomínio apaga unidades (cuidado em produção — usar soft delete via `condominio.ativo = false`).
+- **Campos adicionados:** `bloco_id` (UUID?, FK → `Bloco`, story 11.1). Campo legado `bloco` (String?) mantido por 1 release para rollback seguro.
+- **Índice:** `bloco_id` para queries hierárquicas.
 
 ### 3.6 `morador` — Pessoas que recebem pacotes
 - **Coluna chave:** `nome_normalizado` (lowercase + sem acentos) — usada pelo matching IA.
@@ -83,9 +93,12 @@ pacote relations:
 - **Constraint:** telefone único por condomínio (mesmo morador pode estar em 2 condomínios diferentes — pessoa com escritório + casa, por exemplo).
 
 ### 3.7 `pacote` — Entidade central
-- **Estados (PacoteStatus):** `rascunho` → `pendente_identificacao | aguardando_retirada` → `retirado | cancelado`.
-- **Campos derivados pela IA:** `nome_destinatario_etiqueta`, `endereco_etiqueta`, `cep_etiqueta`, `complemento_etiqueta`.
+- **Estados (PacoteStatus):** `rascunho` → `pendente_identificacao | aguardando_organizacao | aguardando_retirada | em_administracao` → `retirado | cancelado`.
+  - `aguardando_organizacao` (story 10.2): porteiro confirmou, aguarda admin organizar (condomínio com administração).
+  - `em_administracao` (story 10.2): saiu da portaria, admin entrega.
+- **Campos derivados pela IA:** `nome_destinatario_etiqueta`, `endereco_etiqueta`, `cep_etiqueta`, `complemento_etiqueta`, `bairro_etiqueta`, `remetente`.
 - **Campos resolvidos:** `unidade_id`, `destinatario_id`, `destinatario_resolvido_via`.
+- **Lembretes 24h:** `ultimo_lembrete_em`, `proximo_lembrete_em`, `lembretes_pausados`, `lembretes_pausados_em`, `lembretes_pausados_motivo` (decisão produto 2026-05-09).
 - **QR Code:** `qr_token` é random 64-char, único, invalidado via `qr_consumido_em` (FR-047).
 - **Auditoria:** `ia_extracao_raw`, `ia_confianca`, `ia_processada_em` para análise de qualidade do modelo.
 - **Índice composto crítico:** `(condominio_id, status, recebido_em DESC)` — query principal do dashboard porteiro/admin.
@@ -113,8 +126,23 @@ pacote relations:
 
 ### 3.12 `audit_log` — Auditoria centralizada
 - **Tabela append-only** (sem updated_at).
+- **Campos:** `user_id`, `condominio_id`, `acao`, `entidade_tipo`, `entidade_id`, `metadata` (JSON), `ip_address`, `user_agent`.
+- **Story 12.4:** `metadata` armazena diffs de mutações: `{ before: {...}, after: {...}, changed: [...] }`.
 - **Particionamento futuro:** por mês quando passar de 10M registros.
 - **Retenção:** 12 meses (NFR-033).
+
+### 3.13 `bloco` — Torre/Bloco (story 11.1)
+- **Entidade hierárquica:** Condomínio → Bloco → Unidade.
+- **Campos:** `nome`, `descricao`, `ordem`, `ativo`.
+- **Constraint:** `(condominio_id, nome)` único.
+- **Índice:** `condominio_id`.
+- **Substitui** o campo string `unidade.bloco` por FK real.
+
+### 3.14 `despesa` — Controle financeiro (global)
+- **Uso:** super-admin controla custos de infra, IA, telecom.
+- **Campos:** `servico`, `descricao`, `id_pagamento`, `id_assinatura`, `valor_brl` (Decimal), `pago_em`.
+- **Sem `condominio_id`** — despesa global do operador SaaS.
+- **Índice:** `pago_em DESC`.
 
 ---
 
@@ -136,6 +164,12 @@ pacote relations:
 | `whatsapp_message` | `(condominio_id, created_at DESC)` | Histórico admin |
 | `whatsapp_message` | `(meta_message_id)` | Idempotência webhook |
 | `codigo_ml_pendente` | `(condominio_id, status, expira_em)` | Cron cleanup |
+| `bloco` | `(condominio_id)` | Listagem por tenant |
+| `unidade` | `(bloco_id)` | Unidades por bloco |
+| `despesa` | `(pago_em DESC)` | Listagem cronológica |
+| `audit_log` | `(user_id, created_at)` | Ações por usuário |
+| `audit_log` | `(condominio_id, created_at)` | Ações por tenant |
+| `audit_log` | `(acao)` | Filtro por tipo de ação |
 
 ### 4.2 Índices NÃO criados (decisões)
 
@@ -279,7 +313,7 @@ Conforme NFR-011: cron diário 03:00 BRT executa `pg_dump`, retenção 30 dias l
 
 **Resultado validado:**
 - 12 tabelas criadas + 1 (`_prisma_migrations`) = 13 total
-- 8 enums Postgres criados (UserRole, TamanhoPacote, PacoteStatus, PacoteEventoTipo, WhatsAppMessageStatus, WhatsAppMessageDirection, CodigoMlStatus, Transportadora)
+- 8 enums Postgres criados (UserRole, TamanhoPacote, PacoteStatus, PacoteEventoTipo, WhatsAppMessageStatus, WhatsAppMessageDirection, CodigoMlStatus, Transportadora). Nota: UserRole agora tem 4 valores (`super_admin`, `admin_master`, `admin_funcionario`, `porteiro`) e PacoteStatus tem 7 valores (adicionados `aguardando_organizacao`, `em_administracao` na story 10.2)
 - Índices, FKs e constraints todos presentes
 - Seed (`prisma/seed.ts`) executado com sucesso: 1 super-admin + 1 WhatsApp number placeholder
 
