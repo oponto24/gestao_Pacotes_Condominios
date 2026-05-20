@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   SheetClose,
   SheetFooter,
   SheetHeader,
@@ -15,10 +22,16 @@ import { unidadeCreateSchema } from '@/lib/validators/unidade';
 
 export type UnidadeFormMode = 'create' | 'edit';
 
+export interface BlocoOption {
+  id: string;
+  nome: string;
+}
+
 export interface UnidadeFormInitial {
   id?: string;
   identificador?: string;
   bloco?: string | null;
+  bloco_id?: string | null;
   observacoes?: string | null;
   ativo?: boolean;
 }
@@ -26,13 +39,16 @@ export interface UnidadeFormInitial {
 interface Props {
   mode: UnidadeFormMode;
   initial?: UnidadeFormInitial;
+  blocos?: BlocoOption[];
   onDone?: () => void;
 }
 
-export function UnidadeForm({ mode, initial, onDone }: Props) {
+const NO_BLOCO = '__none__';
+
+export function UnidadeForm({ mode, initial, blocos = [], onDone }: Props) {
   const router = useRouter();
   const [identificador, setIdentificador] = useState(initial?.identificador ?? '');
-  const [bloco, setBloco] = useState(initial?.bloco ?? '');
+  const [blocoId, setBlocoId] = useState(initial?.bloco_id ?? '');
   const [observacoes, setObservacoes] = useState(initial?.observacoes ?? '');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -44,9 +60,12 @@ export function UnidadeForm({ mode, initial, onDone }: Props) {
     setServerError(null);
     setFieldErrors({});
 
+    const selectedBloco = blocos.find((b) => b.id === blocoId);
+
     const parsed = unidadeCreateSchema.safeParse({
       identificador,
-      bloco: bloco || undefined,
+      bloco: selectedBloco?.nome ?? undefined,
+      bloco_id: blocoId || undefined,
       observacoes: observacoes || undefined,
     });
     if (!parsed.success) {
@@ -110,16 +129,33 @@ export function UnidadeForm({ mode, initial, onDone }: Props) {
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="bloco">Bloco (opcional)</Label>
-          <Input
-            id="bloco"
-            value={bloco}
-            onChange={(e) => setBloco(e.target.value)}
-            placeholder="A, Torre 1, B…"
-            aria-invalid={Boolean(fieldErrors.bloco?.[0])}
-            disabled={submitting}
-          />
-          {fieldErrors.bloco?.[0] && <p className="text-xs text-danger">{fieldErrors.bloco[0]}</p>}
+          <Label htmlFor="bloco_id">Torre / Bloco (opcional)</Label>
+          {blocos.length > 0 ? (
+            <Select
+              value={blocoId || NO_BLOCO}
+              onValueChange={(v) => setBlocoId(v === NO_BLOCO ? '' : v)}
+              disabled={submitting}
+            >
+              <SelectTrigger id="bloco_id" aria-invalid={Boolean(fieldErrors.bloco_id?.[0])}>
+                <SelectValue placeholder="Selecione o bloco" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_BLOCO}>Sem bloco</SelectItem>
+                {blocos.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-text-secondary">
+              Nenhuma torre/bloco cadastrado. Cadastre primeiro em Torres/Blocos.
+            </p>
+          )}
+          {fieldErrors.bloco_id?.[0] && (
+            <p className="text-xs text-danger">{fieldErrors.bloco_id[0]}</p>
+          )}
         </div>
 
         <div className="space-y-1">

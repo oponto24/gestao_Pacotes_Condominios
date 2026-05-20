@@ -11,6 +11,7 @@ import {
   getUnidadeById,
   updateUnidade,
 } from '@/lib/db/unidade';
+import { getBlocoById } from '@/lib/db/bloco';
 import { auditUpdate, auditDelete } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,14 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const adminCtx = await requireAdminMaster();
     const body = await req.json();
     const data = unidadeUpdateSchema.parse(body);
+
+    // Se bloco_id mudou, sincroniza campo texto 'bloco'
+    if (data.bloco_id) {
+      const bloco = await getBlocoById(data.bloco_id);
+      if (bloco) data.bloco = bloco.nome;
+    } else if (data.bloco_id === null) {
+      data.bloco = '';
+    }
 
     const existing = await getUnidadeById(id);
     if (!existing) throw new NotFoundError('Unidade não encontrada');

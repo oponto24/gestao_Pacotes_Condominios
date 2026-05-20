@@ -23,12 +23,14 @@ import {
 } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { EmptyState } from '@/components/ui/empty-state';
-import { UnidadeForm, type UnidadeFormInitial } from './UnidadeForm';
+import { UnidadeForm, type UnidadeFormInitial, type BlocoOption } from './UnidadeForm';
 
 export interface UnidadeRow {
   id: string;
   identificador: string;
   bloco: string | null;
+  bloco_id: string | null;
+  bloco_ref: { id: string; nome: string } | null;
   observacoes: string | null;
   ativo: boolean;
   _count: { moradores: number; pacotes: number };
@@ -38,9 +40,10 @@ interface Props {
   rows: UnidadeRow[];
   total: number;
   includeInativas: boolean;
+  blocos: BlocoOption[];
 }
 
-export function UnidadesListClient({ rows, total, includeInativas }: Props) {
+export function UnidadesListClient({ rows, total, includeInativas, blocos }: Props) {
   const router = useRouter();
   const params = useSearchParams();
   const [, startTransition] = useTransition();
@@ -50,9 +53,12 @@ export function UnidadesListClient({ rows, total, includeInativas }: Props) {
   const [blocoFilter, setBlocoFilter] = useState('__all__');
 
   // Derive unique blocos for filter dropdown
-  const blocos = useMemo(() => {
+  const blocoNames = useMemo(() => {
     const set = new Set<string>();
-    rows.forEach((u) => { if (u.bloco) set.add(u.bloco); });
+    rows.forEach((u) => {
+      const name = u.bloco_ref?.nome ?? u.bloco;
+      if (name) set.add(name);
+    });
     return Array.from(set).sort();
   }, [rows]);
 
@@ -68,7 +74,7 @@ export function UnidadesListClient({ rows, total, includeInativas }: Props) {
       );
     }
     if (blocoFilter !== '__all__') {
-      result = result.filter((u) => u.bloco === blocoFilter);
+      result = result.filter((u) => (u.bloco_ref?.nome ?? u.bloco) === blocoFilter);
     }
     return result;
   }, [rows, q, blocoFilter]);
@@ -120,7 +126,7 @@ export function UnidadesListClient({ rows, total, includeInativas }: Props) {
               <Button>Nova unidade</Button>
             </SheetTrigger>
             <SheetContent>
-              <UnidadeForm mode="create" onDone={() => setCreateOpen(false)} />
+              <UnidadeForm mode="create" blocos={blocos} onDone={() => setCreateOpen(false)} />
             </SheetContent>
           </Sheet>
         </div>
@@ -151,14 +157,14 @@ export function UnidadesListClient({ rows, total, includeInativas }: Props) {
             </button>
           )}
         </div>
-        {blocos.length > 0 && (
+        {blocoNames.length > 0 && (
           <Select value={blocoFilter} onValueChange={setBlocoFilter}>
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Bloco" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos os blocos</SelectItem>
-              {blocos.map((b) => (
+              {blocoNames.map((b) => (
                 <SelectItem key={b} value={b}>
                   {b}
                 </SelectItem>
@@ -183,7 +189,7 @@ export function UnidadesListClient({ rows, total, includeInativas }: Props) {
                 <Button>Cadastrar primeira unidade</Button>
               </SheetTrigger>
               <SheetContent>
-                <UnidadeForm mode="create" onDone={() => setCreateOpen(false)} />
+                <UnidadeForm mode="create" blocos={blocos} onDone={() => setCreateOpen(false)} />
               </SheetContent>
             </Sheet>
           }
@@ -207,7 +213,7 @@ export function UnidadesListClient({ rows, total, includeInativas }: Props) {
               const label = u.bloco ? `${u.bloco} • ${u.identificador}` : u.identificador;
               return (
                 <TableRow key={u.id}>
-                  <TableCell className="text-text-secondary">{u.bloco ?? '—'}</TableCell>
+                  <TableCell className="text-text-secondary">{u.bloco_ref?.nome ?? u.bloco ?? '—'}</TableCell>
                   <TableCell className="font-medium">{u.identificador}</TableCell>
                   <TableCell className="max-w-xs truncate text-text-secondary">
                     {u.observacoes ?? '—'}
@@ -244,7 +250,7 @@ export function UnidadesListClient({ rows, total, includeInativas }: Props) {
       <Sheet open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
         <SheetContent>
           {editTarget && (
-            <UnidadeForm mode="edit" initial={editTarget} onDone={() => setEditTarget(null)} />
+            <UnidadeForm mode="edit" initial={editTarget} blocos={blocos} onDone={() => setEditTarget(null)} />
           )}
         </SheetContent>
       </Sheet>

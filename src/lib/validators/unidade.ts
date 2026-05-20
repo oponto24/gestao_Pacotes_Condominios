@@ -25,6 +25,7 @@ const baseShape = {
     .max(50, 'Identificador muito longo (max 50)'),
 
   bloco: optionalString(50, 'Bloco'),
+  bloco_id: z.string().uuid('Bloco inválido').optional().nullable(),
   observacoes: optionalString(500, 'Observações'),
 };
 

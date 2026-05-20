@@ -19,7 +19,10 @@ export interface ListUnidadesParams {
   includeInativas: boolean;
 }
 
-const COUNT_SELECT = { _count: { select: { moradores: true, pacotes: true } } } as const;
+const COUNT_SELECT = {
+  _count: { select: { moradores: true, pacotes: true } },
+  bloco_ref: { select: { id: true, nome: true } },
+} as const;
 
 export function listUnidades(params: ListUnidadesParams) {
   return withTenant(async (tx) => {
@@ -88,6 +91,7 @@ export function createUnidade(data: UnidadeCreateInput, condominioId: string) {
         condominio_id: condominioId,
         identificador: data.identificador,
         bloco: data.bloco ?? null,
+        bloco_id: data.bloco_id ?? null,
         observacoes: data.observacoes ?? null,
         ativo: true,
       },
@@ -102,6 +106,7 @@ export function updateUnidade(id: string, data: UnidadeUpdateInput) {
       data: {
         ...(data.identificador !== undefined && { identificador: data.identificador }),
         ...(data.bloco !== undefined && { bloco: data.bloco || null }),
+        ...(data.bloco_id !== undefined && { bloco_id: data.bloco_id || null }),
         ...(data.observacoes !== undefined && { observacoes: data.observacoes || null }),
         ...(data.ativo !== undefined && { ativo: data.ativo }),
       },

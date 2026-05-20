@@ -16,6 +16,7 @@ import {
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Building2, ArrowLeft } from 'lucide-react';
 import { BlocoForm, type BlocoFormInitial } from './BlocoForm';
+import { UnidadeForm, type BlocoOption } from './UnidadeForm';
 
 interface UnidadeRow {
   id: string;
@@ -41,6 +42,9 @@ interface Props {
 export function BlocoDetailClient({ bloco }: Props) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
+  const [createUnidadeOpen, setCreateUnidadeOpen] = useState(false);
+
+  const blocoOption: BlocoOption[] = [{ id: bloco.id, nome: bloco.nome }];
 
   const editInitial: BlocoFormInitial = {
     id: bloco.id,
@@ -98,12 +102,17 @@ export function BlocoDetailClient({ bloco }: Props) {
 
       {/* Unidades */}
       <div>
-        <h2 className="mb-2 text-lg font-medium text-foreground">
-          Unidades ({bloco._count.unidades})
-        </h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-lg font-medium text-foreground">
+            Unidades ({bloco._count.unidades})
+          </h2>
+          <Button size="sm" onClick={() => setCreateUnidadeOpen(true)}>
+            Nova unidade
+          </Button>
+        </div>
         {bloco.unidades.length === 0 ? (
           <p className="text-sm text-text-secondary">
-            Nenhuma unidade vinculada a este bloco.
+            Nenhuma unidade vinculada a este bloco. Clique em &quot;Nova unidade&quot; para criar.
           </p>
         ) : (
           <Table>
@@ -140,10 +149,25 @@ export function BlocoDetailClient({ bloco }: Props) {
         )}
       </div>
 
-      {/* Edit Sheet */}
+      {/* Edit Bloco Sheet */}
       <Sheet open={editOpen} onOpenChange={setEditOpen}>
         <SheetContent>
           <BlocoForm mode="edit" initial={editInitial} onDone={() => setEditOpen(false)} />
+        </SheetContent>
+      </Sheet>
+
+      {/* Create Unidade Sheet */}
+      <Sheet open={createUnidadeOpen} onOpenChange={setCreateUnidadeOpen}>
+        <SheetContent>
+          <UnidadeForm
+            mode="create"
+            blocos={blocoOption}
+            initial={{ bloco_id: bloco.id }}
+            onDone={() => {
+              setCreateUnidadeOpen(false);
+              router.refresh();
+            }}
+          />
         </SheetContent>
       </Sheet>
     </div>

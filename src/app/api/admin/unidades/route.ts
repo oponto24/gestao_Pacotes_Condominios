@@ -9,6 +9,7 @@ import {
   findUnidadeByIdentificador,
   listUnidades,
 } from '@/lib/db/unidade';
+import { getBlocoById } from '@/lib/db/bloco';
 import { auditCreate } from '@/lib/audit/audited-mutation';
 
 export const dynamic = 'force-dynamic';
@@ -39,6 +40,12 @@ export async function POST(req: Request) {
     const ctx = await requireAdminMaster();
     const body = await req.json();
     const data = unidadeCreateSchema.parse(body);
+
+    // Se bloco_id foi enviado, sincroniza o campo texto 'bloco' com o nome da entidade
+    if (data.bloco_id) {
+      const bloco = await getBlocoById(data.bloco_id);
+      if (bloco) data.bloco = bloco.nome;
+    }
 
     const existing = await findUnidadeByIdentificador(data.identificador, data.bloco);
     if (existing) {

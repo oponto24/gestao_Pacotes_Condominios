@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Building2,
+  DoorOpen,
   FileUp,
   LayoutDashboard,
   Layers,
@@ -55,6 +56,7 @@ const CADASTROS: NavGroup = {
   items: [
     { href: '/admin/setores', label: 'Setores', icon: <Layers className="h-4 w-4" aria-hidden /> },
     { href: '/admin/blocos', label: 'Torres/Blocos', icon: <Building2 className="h-4 w-4" aria-hidden /> },
+    { href: '/admin/unidades', label: 'Unidades', icon: <DoorOpen className="h-4 w-4" aria-hidden /> },
     { href: '/admin/moradores', label: 'Moradores', icon: <Users className="h-4 w-4" aria-hidden /> },
     { href: '/admin/cadastros/importar', label: 'Importar CSV', icon: <FileUp className="h-4 w-4" aria-hidden /> },
   ],

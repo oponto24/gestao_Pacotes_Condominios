@@ -32,7 +32,7 @@ export default async function MoradoresPage({ searchParams }: Props) {
   const unidades: UnidadeOption[] = unidadesResult.items.map((u) => ({
     id: u.id,
     identificador: u.identificador,
-    bloco: u.bloco,
+    bloco: (u as unknown as { bloco_ref: { nome: string } | null }).bloco_ref?.nome ?? u.bloco,
   }));
 
   return (
