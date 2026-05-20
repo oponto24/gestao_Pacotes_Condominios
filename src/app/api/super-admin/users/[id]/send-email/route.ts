@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomBytes } from 'node:crypto';
 import { loggerForRequest } from '@/lib/logger';
 import { handleApiError } from '@/lib/api/handle-error';
 import { getTenantContext } from '@/server/middleware/tenant';
@@ -14,16 +15,27 @@ interface Ctx {
   params: Promise<{ id: string }>;
 }
 
+function genTempPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  let pwd = '';
+  for (let i = 0; i < 4; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 4; i++) pwd += digits[Math.floor(Math.random() * digits.length)];
+  return pwd;
+}
+
 /**
  * POST /api/super-admin/users/[id]/send-email
  *
- * Gera link de acesso (sign-in token) pro admin compartilhar.
- * Se user é pending, cria no Clerk primeiro e atualiza clerk_id.
+ * Pendente → cria user no Clerk com senha temporária
+ * Ativo    → reseta senha com nova temporária
+ *
+ * Retorna as credenciais pro admin compartilhar.
  */
 export async function POST(req: Request, ctx: Ctx) {
   const id = parseIdParam((await ctx.params).id);
   if (!id) return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
-  const log = loggerForRequest(req).child({ scope: 'super-admin:send-email', target_user_id: id });
+  const log = loggerForRequest(req).child({ scope: 'super-admin:reset-password', target_user_id: id });
 
   try {
     const tenantCtx = await getTenantContext();
@@ -34,36 +46,35 @@ export async function POST(req: Request, ctx: Ctx) {
     const user = await getUserById(id);
     if (!user) throw new NotFoundError('Usuário não encontrado');
 
-    let clerkId = user.clerk_id;
+    const tempPassword = genTempPassword();
 
-    // Se pending, cria user no Clerk e atualiza o clerk_id no banco
-    if (isPending(clerkId)) {
+    if (isPending(user.clerk_id)) {
+      // Cria user no Clerk com senha
       const [firstName, ...rest] = user.nome.split(' ');
       const clerkUser = await clerk.users.createUser({
         emailAddress: [user.email],
         firstName,
         lastName: rest.join(' ') || undefined,
-        skipPasswordRequirement: true,
+        password: tempPassword,
       });
-      clerkId = clerkUser.id;
       await db.user.update({
         where: { id: user.id },
-        data: { clerk_id: clerkId },
+        data: { clerk_id: clerkUser.id },
       });
-      log.info({ email: user.email }, 'user criado no Clerk (era pending)');
+      log.info({ email: user.email }, 'user criado no Clerk com senha temporária');
+    } else {
+      // Reseta senha do user existente no Clerk
+      await clerk.users.updateUser(user.clerk_id, {
+        password: tempPassword,
+      });
+      log.info({ email: user.email }, 'senha resetada');
     }
 
-    // Gera sign-in token
-    const token = await clerk.signInTokens.createSignInToken({
-      userId: clerkId,
-      expiresInSeconds: 7 * 24 * 3600, // 7 dias
+    return NextResponse.json({
+      ok: true,
+      email: user.email,
+      tempPassword,
     });
-
-    const appUrl = process.env.APP_URL ?? 'https://condominios.oponto24.com.br';
-    const link = `${appUrl}/sign-in#/factor-one?__clerk_ticket=${token.token}`;
-
-    log.info({ email: user.email }, 'link de acesso gerado');
-    return NextResponse.json({ ok: true, action: 'sign_in_link', link });
   } catch (err) {
     return handleApiError(err, log);
   }

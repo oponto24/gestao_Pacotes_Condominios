@@ -63,19 +63,22 @@ export function AdminUserForm({ role, onDone }: Props) {
       });
       const body = (await res.json().catch(() => ({}))) as {
         message?: string;
-        accessLink?: string;
+        user?: { email: string };
+        tempPassword?: string;
       };
       if (!res.ok) {
         setServerError(body.message ?? `Erro ${res.status}`);
         return;
       }
+      const createdEmail = body.user?.email ?? email;
       setEmail('');
       setNome('');
       router.refresh();
-      if (body.accessLink) {
-        await navigator.clipboard.writeText(body.accessLink).catch(() => {});
+      if (body.tempPassword) {
+        const credentials = `Email: ${createdEmail}\nSenha: ${body.tempPassword}`;
+        await navigator.clipboard.writeText(credentials).catch(() => {});
         alert(
-          'Usuário cadastrado com sucesso!\n\nLink de acesso copiado para a área de transferência.\nEnvie ao usuário para ele acessar o sistema.\n\nVálido por 7 dias.',
+          `Usuário cadastrado com sucesso!\n\nCredenciais copiadas:\n${credentials}\n\nEnvie ao usuário para ele acessar o sistema.\nEle pode alterar a senha depois.`,
         );
       }
       onDone?.();

@@ -2,10 +2,11 @@
  * Gestão de users via UI (stories 8.5/8.6/8.7).
  *
  * Fluxo de cadastro:
- *   1. Cria user no Clerk via API (sem senha, skipPasswordRequirement)
- *   2. Cria User no banco com clerk_id real
- *   3. API retorna link de acesso (sign-in token) pro admin compartilhar
- *   4. Pessoa acessa o link, entra no app, define senha depois
+ *   1. Gera senha temporária aleatória
+ *   2. Cria user no Clerk com email + senha temporária
+ *   3. Cria User no banco com clerk_id real
+ *   4. Retorna senha temporária pro admin compartilhar (email + senha)
+ *   5. Pessoa faz login normal e pode mudar a senha depois
  */
 
 import { randomBytes } from 'node:crypto';
@@ -43,9 +44,24 @@ function genPendingClerkId(): string {
   return `pending_clerk_link_${randomBytes(12).toString('hex')}`;
 }
 
+function genTempPassword(): string {
+  // 4 chars aleatórios + 4 dígitos = fácil de compartilhar por WhatsApp
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  let pwd = '';
+  for (let i = 0; i < 4; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 4; i++) pwd += digits[Math.floor(Math.random() * digits.length)];
+  return pwd;
+}
+
+export interface CreateUserResult {
+  user: PendingUser;
+  tempPassword: string | null;
+}
+
 export async function createPendingUser(
   input: CreatePendingUserInput,
-): Promise<PendingUser> {
+): Promise<CreateUserResult> {
   const email = input.email.toLowerCase().trim();
   const nome = input.nome.trim();
 
@@ -67,15 +83,17 @@ export async function createPendingUser(
     throw new ValidationError('Condomínio inválido ou inativo');
   }
 
-  // Cria user no Clerk (sem senha — admin compartilha link de acesso)
+  // Cria user no Clerk com senha temporária
   let clerkId: string;
+  let tempPassword: string | null = null;
   try {
     const [firstName, ...rest] = nome.split(' ');
+    tempPassword = genTempPassword();
     const clerkUser = await clerk.users.createUser({
       emailAddress: [email],
       firstName,
       lastName: rest.join(' ') || undefined,
-      skipPasswordRequirement: true,
+      password: tempPassword,
     });
     clerkId = clerkUser.id;
   } catch (clerkErr: unknown) {
@@ -92,6 +110,7 @@ export async function createPendingUser(
     // Fallback: cria com pending (reconcilia por webhook)
     console.error('[user-management] Clerk createUser falhou, usando fallback:', clerkErr instanceof Error ? clerkErr.message : clerkErr);
     clerkId = genPendingClerkId();
+    tempPassword = null;
   }
 
   try {
@@ -105,7 +124,7 @@ export async function createPendingUser(
         ativo: true,
       },
     });
-    return created as PendingUser;
+    return { user: created as PendingUser, tempPassword };
   } catch (err) {
     // Se o DB falhou mas o Clerk user foi criado, limpa o Clerk
     if (!clerkId.startsWith('pending_clerk_link_')) {
