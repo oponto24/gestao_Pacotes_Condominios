@@ -30,3 +30,7 @@ DROP POLICY IF EXISTS audit_log_delete ON audit_log;
 CREATE POLICY audit_log_delete ON audit_log
   FOR DELETE
   USING (app_is_super_admin());
+
+-- Grant base privileges (RLS policies require underlying table permissions)
+GRANT SELECT, INSERT ON audit_log TO app_runtime;
+GRANT SELECT, INSERT ON audit_log TO webhook_worker;

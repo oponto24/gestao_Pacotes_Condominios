@@ -56,16 +56,21 @@ export function extractUserAgent(req: Request | null | undefined): string | null
 }
 
 export async function writeAuditLog(input: WriteAuditLogInput): Promise<void> {
-  await db.auditLog.create({
-    data: {
-      user_id: input.userId ?? null,
-      condominio_id: input.condominioId ?? null,
-      acao: input.acao,
-      entidade_tipo: input.entidadeTipo ?? null,
-      entidade_id: input.entidadeId ?? null,
-      metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
-      ip_address: extractIpFromRequest(input.request),
-      user_agent: extractUserAgent(input.request),
-    },
-  });
+  try {
+    await db.auditLog.create({
+      data: {
+        user_id: input.userId ?? null,
+        condominio_id: input.condominioId ?? null,
+        acao: input.acao,
+        entidade_tipo: input.entidadeTipo ?? null,
+        entidade_id: input.entidadeId ?? null,
+        metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
+        ip_address: extractIpFromRequest(input.request),
+        user_agent: extractUserAgent(input.request),
+      },
+    });
+  } catch (err) {
+    // Audit log nunca deve derrubar a operação principal
+    console.error('[audit] falha ao gravar log:', err instanceof Error ? err.message : err);
+  }
 }
