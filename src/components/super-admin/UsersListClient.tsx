@@ -97,27 +97,23 @@ export function UsersListClient({ rows, total, page, pageSize, condominios }: Pr
   }
 
   async function sendEmail(user: UserRow) {
-    const pending = isPending(user.clerk_id);
-    const action = pending ? 'Reenviar convite' : 'Gerar link de acesso';
-    if (!confirm(`${action} para "${user.email}"?`)) return;
+    if (!confirm(`Gerar link de acesso para "${user.email}"?`)) return;
     const res = await fetch(`/api/super-admin/users/${user.id}/send-email`, {
       method: 'POST',
     });
     const body = (await res.json().catch(() => ({}))) as {
       message?: string;
-      action?: string;
       link?: string;
     };
     if (!res.ok) {
       alert(`Falha: ${body.message ?? res.status}`);
       return;
     }
-    if (body.action === 'invitation_sent') {
-      alert('Convite reenviado com sucesso!');
-    } else if (body.action === 'sign_in_link' && body.link) {
+    if (body.link) {
       await navigator.clipboard.writeText(body.link).catch(() => {});
-      alert(`Link de acesso copiado!\n\nVálido por 24h.\n\nEnvie ao usuário para ele acessar e redefinir a senha.`);
+      alert('Link de acesso copiado!\n\nVálido por 7 dias.\nEnvie ao usuário para ele acessar o sistema.');
     }
+    router.refresh();
   }
 
   return (
@@ -233,15 +229,9 @@ export function UsersListClient({ rows, total, page, pageSize, condominios }: Pr
                     )}
                   </TableCell>
                   <TableCell className="space-x-1 text-right">
-                    {pending ? (
-                      <Button variant="ghost" size="sm" onClick={() => sendEmail(u)}>
-                        Reenviar convite
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => sendEmail(u)}>
-                        Enviar acesso
-                      </Button>
-                    )}
+                    <Button variant="ghost" size="sm" onClick={() => sendEmail(u)}>
+                      Gerar acesso
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => setEditTarget(u)}>
                       Editar
                     </Button>

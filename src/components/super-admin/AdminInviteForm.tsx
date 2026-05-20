@@ -55,7 +55,10 @@ export function AdminInviteForm({ condominios, onDone }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed.data),
       });
-      const body = (await res.json().catch(() => ({}))) as { message?: string };
+      const body = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        accessLink?: string;
+      };
       if (!res.ok) {
         setServerError(body.message ?? `Erro ${res.status}`);
         return;
@@ -63,6 +66,12 @@ export function AdminInviteForm({ condominios, onDone }: Props) {
       setEmail('');
       setNome('');
       router.refresh();
+      if (body.accessLink) {
+        await navigator.clipboard.writeText(body.accessLink).catch(() => {});
+        alert(
+          'Admin cadastrado com sucesso!\n\nLink de acesso copiado para a área de transferência.\nEnvie ao admin para ele acessar o sistema.\n\nVálido por 7 dias.',
+        );
+      }
       onDone?.();
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Falha de rede');

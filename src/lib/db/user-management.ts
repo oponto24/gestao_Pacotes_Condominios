@@ -2,10 +2,10 @@
  * Gestão de users via UI (stories 8.5/8.6/8.7).
  *
  * Fluxo de cadastro:
- *   1. Cria convite no Clerk (pessoa recebe email pra criar conta)
- *   2. Cria User no banco com clerk_id placeholder
- *   3. Pessoa aceita convite, define senha no Clerk
- *   4. Webhook user.created reconcilia clerk_id por email → acesso liberado
+ *   1. Cria user no Clerk via API (sem senha, skipPasswordRequirement)
+ *   2. Cria User no banco com clerk_id real
+ *   3. API retorna link de acesso (sign-in token) pro admin compartilhar
+ *   4. Pessoa acessa o link, entra no app, define senha depois
  */
 
 import { randomBytes } from 'node:crypto';
@@ -14,7 +14,7 @@ import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { ValidationError } from '@/server/errors';
 
-const clerk = createClerkClient({
+export const clerk = createClerkClient({
   secretKey: process.env.CLERK_SECRET_KEY!,
 });
 
@@ -67,14 +67,17 @@ export async function createPendingUser(
     throw new ValidationError('Condomínio inválido ou inativo');
   }
 
-  // Envia convite pelo Clerk (pessoa recebe email pra criar conta e definir senha)
-  // O user fica como pending no DB até o webhook user.created reconciliar por email.
+  // Cria user no Clerk (sem senha — admin compartilha link de acesso)
+  let clerkId: string;
   try {
-    await clerk.invitations.createInvitation({
-      emailAddress: email,
-      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://condominios.oponto24.com.br'}/sign-up`,
-      ignoreExisting: false,
+    const [firstName, ...rest] = nome.split(' ');
+    const clerkUser = await clerk.users.createUser({
+      emailAddress: [email],
+      firstName,
+      lastName: rest.join(' ') || undefined,
+      skipPasswordRequirement: true,
     });
+    clerkId = clerkUser.id;
   } catch (clerkErr: unknown) {
     const clerkErrors =
       clerkErr && typeof clerkErr === 'object' && 'errors' in clerkErr
@@ -84,16 +87,17 @@ export async function createPendingUser(
       (e) => e.code === 'form_identifier_exists',
     );
     if (isDuplicate) {
-      throw new ValidationError('Já existe uma conta no Clerk com este e-mail');
+      throw new ValidationError('Já existe uma conta com este e-mail');
     }
-    // Outros erros: loga mas não bloqueia criação no DB
-    console.error('[user-management] Clerk invitation falhou:', clerkErr instanceof Error ? clerkErr.message : clerkErr);
+    // Fallback: cria com pending (reconcilia por webhook)
+    console.error('[user-management] Clerk createUser falhou, usando fallback:', clerkErr instanceof Error ? clerkErr.message : clerkErr);
+    clerkId = genPendingClerkId();
   }
 
   try {
     const created = await db.user.create({
       data: {
-        clerk_id: genPendingClerkId(),
+        clerk_id: clerkId,
         email,
         nome,
         role: input.role,
@@ -103,7 +107,10 @@ export async function createPendingUser(
     });
     return created as PendingUser;
   } catch (err) {
-    // Race condition (concurrent create com mesmo email)
+    // Se o DB falhou mas o Clerk user foi criado, limpa o Clerk
+    if (!clerkId.startsWith('pending_clerk_link_')) {
+      clerk.users.deleteUser(clerkId).catch(() => {});
+    }
     if (
       err instanceof Prisma.PrismaClientKnownRequestError &&
       err.code === 'P2002'

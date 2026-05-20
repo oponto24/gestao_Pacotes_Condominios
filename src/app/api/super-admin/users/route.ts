@@ -4,7 +4,7 @@ import { handleApiError } from '@/lib/api/handle-error';
 import { getTenantContext } from '@/server/middleware/tenant';
 import { ForbiddenError, ValidationError } from '@/server/errors';
 import { userCreateSuperAdminSchema, userListQuerySchema } from '@/lib/validators/user-create';
-import { createPendingUser, listAllUsers } from '@/lib/db/user-management';
+import { createPendingUser, isPending, clerk, listAllUsers } from '@/lib/db/user-management';
 import { writeAuditLog } from '@/lib/audit/write-log';
 
 export const dynamic = 'force-dynamic';
@@ -83,13 +83,28 @@ export async function POST(req: Request) {
       request: req,
     });
 
+    // Gera link de acesso se o user foi criado no Clerk (não pending)
+    let accessLink: string | null = null;
+    if (!isPending(created.clerk_id)) {
+      try {
+        const token = await clerk.signInTokens.createSignInToken({
+          userId: created.clerk_id,
+          expiresInSeconds: 7 * 24 * 3600, // 7 dias
+        });
+        const appUrl = process.env.APP_URL ?? 'https://condominios.oponto24.com.br';
+        accessLink = `${appUrl}/sign-in#/factor-one?__clerk_ticket=${token.token}`;
+      } catch {
+        // Link não é crítico
+      }
+    }
+
     log.info(
-      { admin_user_id: created.id, cond: parsed.data.condominio_id },
+      { admin_user_id: created.id, cond: parsed.data.condominio_id, has_link: !!accessLink },
       'Admin criado pelo super-admin',
     );
 
     return NextResponse.json(
-      { ok: true, user: { id: created.id, email: created.email, nome: created.nome } },
+      { ok: true, user: { id: created.id, email: created.email, nome: created.nome }, accessLink },
       { status: 201 },
     );
   } catch (err) {

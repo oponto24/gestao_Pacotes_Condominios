@@ -1,18 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createClerkClient } from '@clerk/nextjs/server';
 import { loggerForRequest } from '@/lib/logger';
 import { handleApiError } from '@/lib/api/handle-error';
 import { getTenantContext } from '@/server/middleware/tenant';
-import { ForbiddenError, NotFoundError, ValidationError } from '@/server/errors';
+import { ForbiddenError, NotFoundError } from '@/server/errors';
 import { parseIdParam } from '@/lib/validators/_shared';
-import { getUserById, isPending } from '@/lib/db/user-management';
+import { getUserById, isPending, clerk } from '@/lib/db/user-management';
+import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-const clerk = createClerkClient({
-  secretKey: process.env.CLERK_SECRET_KEY!,
-});
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -21,8 +17,8 @@ interface Ctx {
 /**
  * POST /api/super-admin/users/[id]/send-email
  *
- * Pendente  → reenvia convite Clerk (invitation)
- * Ativo     → envia email de reset de senha
+ * Gera link de acesso (sign-in token) pro admin compartilhar.
+ * Se user é pending, cria no Clerk primeiro e atualiza clerk_id.
  */
 export async function POST(req: Request, ctx: Ctx) {
   const id = parseIdParam((await ctx.params).id);
@@ -38,60 +34,36 @@ export async function POST(req: Request, ctx: Ctx) {
     const user = await getUserById(id);
     if (!user) throw new NotFoundError('Usuário não encontrado');
 
-    if (isPending(user.clerk_id)) {
-      // Reenviar convite
-      await clerk.invitations.createInvitation({
-        emailAddress: user.email,
-        redirectUrl: `${process.env.APP_URL ?? 'https://condominios.oponto24.com.br'}/sign-up`,
-        ignoreExisting: true,
+    let clerkId = user.clerk_id;
+
+    // Se pending, cria user no Clerk e atualiza o clerk_id no banco
+    if (isPending(clerkId)) {
+      const [firstName, ...rest] = user.nome.split(' ');
+      const clerkUser = await clerk.users.createUser({
+        emailAddress: [user.email],
+        firstName,
+        lastName: rest.join(' ') || undefined,
+        skipPasswordRequirement: true,
       });
-      log.info({ email: user.email }, 'convite reenviado');
-      return NextResponse.json({ ok: true, action: 'invitation_sent' });
+      clerkId = clerkUser.id;
+      await db.user.update({
+        where: { id: user.id },
+        data: { clerk_id: clerkId },
+      });
+      log.info({ email: user.email }, 'user criado no Clerk (era pending)');
     }
 
-    // Usuário ativo — verificar se existe no Clerk
-    try {
-      const clerkUser = await clerk.users.getUser(user.clerk_id);
-      if (!clerkUser) throw new Error('not found');
-    } catch {
-      throw new ValidationError('Usuário não encontrado no Clerk');
-    }
-
-    // Enviar email de reset de senha via Clerk
-    // Clerk não tem endpoint direto de "send password reset" via Backend API,
-    // mas podemos usar signIn.createMagicLinkFlow ou simplesmente redirecionar
-    // o usuário para a página de forgot password.
-    // Alternativa: deletar a senha atual para forçar reset no próximo login.
-    // Melhor abordagem: usar o endpoint de verificação de email.
-    //
-    // Na prática, a melhor opção disponível é orientar o usuário a usar
-    // "Esqueci minha senha" na tela de login, OU podemos gerar um sign-in token.
-    //
-    // Clerk Backend API não expõe "send password reset email" diretamente.
-    // Vamos usar: criar um novo convite com ignoreExisting (reusa o fluxo).
-    // O usuário já tem conta, então o Clerk vai enviar um magic link.
-
-    // Approach: usar a Clerk Frontend API suggestion — na verdade,
-    // podemos usar o endpoint undocumented /v1/users/{id}/password_reset
-    // Mas é mais seguro simplesmente informar ao admin.
-
-    // Melhor approach real: usar Clerk's `createSignInToken` que gera um link one-time
+    // Gera sign-in token
     const token = await clerk.signInTokens.createSignInToken({
-      userId: user.clerk_id,
-      expiresInSeconds: 86400, // 24h
+      userId: clerkId,
+      expiresInSeconds: 7 * 24 * 3600, // 7 dias
     });
 
-    // Não temos sistema de email próprio, mas podemos retornar o link
-    // para o admin compartilhar, ou usar o Clerk invitation como fallback
-    const signInUrl = `${process.env.APP_URL ?? 'https://condominios.oponto24.com.br'}/sign-in#/factor-one?__clerk_ticket=${token.token}`;
+    const appUrl = process.env.APP_URL ?? 'https://condominios.oponto24.com.br';
+    const link = `${appUrl}/sign-in#/factor-one?__clerk_ticket=${token.token}`;
 
-    log.info({ email: user.email }, 'sign-in token gerado');
-    return NextResponse.json({
-      ok: true,
-      action: 'sign_in_link',
-      link: signInUrl,
-      message: 'Link de acesso gerado. Válido por 24h.',
-    });
+    log.info({ email: user.email }, 'link de acesso gerado');
+    return NextResponse.json({ ok: true, action: 'sign_in_link', link });
   } catch (err) {
     return handleApiError(err, log);
   }
