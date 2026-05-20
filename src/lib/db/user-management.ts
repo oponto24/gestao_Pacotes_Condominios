@@ -1,16 +1,22 @@
 /**
  * Gestão de users via UI (stories 8.5/8.6/8.7).
  *
- * Pattern de cadastro direto (decisão produto 2026-05-07):
- *   - Cria User com clerk_id placeholder único `pending_clerk_link_<random>`
- *   - Quando a pessoa cria conta no Clerk com mesmo email, webhook user.created
- *     reconcilia por email (já implementado em src/app/api/webhooks/clerk/route.ts)
+ * Fluxo de cadastro:
+ *   1. Cria convite no Clerk (pessoa recebe email pra criar conta)
+ *   2. Cria User no banco com clerk_id placeholder
+ *   3. Pessoa aceita convite, define senha no Clerk
+ *   4. Webhook user.created reconcilia clerk_id por email → acesso liberado
  */
 
 import { randomBytes } from 'node:crypto';
+import { createClerkClient } from '@clerk/nextjs/server';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { ValidationError } from '@/server/errors';
+
+const clerk = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY!,
+});
 
 export type CreatableRole = 'admin_master' | 'admin_funcionario' | 'porteiro';
 
@@ -40,9 +46,12 @@ function genPendingClerkId(): string {
 export async function createPendingUser(
   input: CreatePendingUserInput,
 ): Promise<PendingUser> {
+  const email = input.email.toLowerCase().trim();
+  const nome = input.nome.trim();
+
   // Valida email único
   const existing = await db.user.findUnique({
-    where: { email: input.email.toLowerCase().trim() },
+    where: { email },
     select: { id: true },
   });
   if (existing) {
@@ -58,12 +67,35 @@ export async function createPendingUser(
     throw new ValidationError('Condomínio inválido ou inativo');
   }
 
+  // Envia convite pelo Clerk (pessoa recebe email pra criar conta e definir senha)
+  // O user fica como pending no DB até o webhook user.created reconciliar por email.
+  try {
+    await clerk.invitations.createInvitation({
+      emailAddress: email,
+      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://condominios.oponto24.com.br'}/sign-up`,
+      ignoreExisting: false,
+    });
+  } catch (clerkErr: unknown) {
+    const clerkErrors =
+      clerkErr && typeof clerkErr === 'object' && 'errors' in clerkErr
+        ? (clerkErr as { errors: Array<{ code: string }> }).errors
+        : [];
+    const isDuplicate = clerkErrors.some(
+      (e) => e.code === 'form_identifier_exists',
+    );
+    if (isDuplicate) {
+      throw new ValidationError('Já existe uma conta no Clerk com este e-mail');
+    }
+    // Outros erros: loga mas não bloqueia criação no DB
+    console.error('[user-management] Clerk invitation falhou:', clerkErr instanceof Error ? clerkErr.message : clerkErr);
+  }
+
   try {
     const created = await db.user.create({
       data: {
         clerk_id: genPendingClerkId(),
-        email: input.email.toLowerCase().trim(),
-        nome: input.nome.trim(),
+        email,
+        nome,
         role: input.role,
         condominio_id: input.condominioId,
         ativo: true,

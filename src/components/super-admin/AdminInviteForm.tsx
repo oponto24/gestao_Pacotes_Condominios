@@ -126,7 +126,7 @@ export function AdminInviteForm({ condominios, onDone }: Props) {
           />
           {fieldErrors.email?.[0] && <p className="text-xs text-danger">{fieldErrors.email[0]}</p>}
           <p className="text-xs text-text-secondary">
-            O admin receberá acesso assim que criar conta no Clerk com este e-mail.
+            O admin receberá um e-mail para criar a conta e definir a senha.
           </p>
         </div>
 

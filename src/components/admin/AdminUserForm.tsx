@@ -18,13 +18,13 @@ const COPY = {
     title: 'Cadastrar admin da equipe',
     button: 'Cadastrar admin',
     placeholder: 'Maria Síndica',
-    helper: 'O admin receberá acesso ao painel assim que criar conta no Clerk com este e-mail.',
+    helper: 'O admin receberá um e-mail para criar a conta e definir a senha.',
   },
   porteiro: {
     title: 'Cadastrar porteiro',
     button: 'Cadastrar porteiro',
     placeholder: 'João Portaria',
-    helper: 'O porteiro entrará direto na tela /chegada após criar conta no Clerk com este e-mail.',
+    helper: 'O porteiro receberá um e-mail para criar a conta e definir a senha.',
   },
 } as const;
 
