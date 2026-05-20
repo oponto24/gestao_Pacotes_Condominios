@@ -1,11 +1,29 @@
+'use client';
+
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { SignUp } from '@clerk/nextjs';
 
 /**
- * Cadastro público desabilitado durante MVP (decisão produto 2026-05-07):
- * usuários só entram após serem provisionados pelo super-admin/admin via UI
- * (stories 8.5/8.6/8.7). Sem cobrança ainda — não pode haver self-signup.
+ * Cadastro público desabilitado durante MVP (decisão produto 2026-05-07),
+ * MAS permitido via convite (invitation) do Clerk.
+ *
+ * Se a URL tem `__clerk_ticket` (vindo do link de convite), renderiza o
+ * <SignUp /> do Clerk dentro da nossa interface para o usuário definir a senha.
+ * Caso contrário, mostra mensagem de cadastro indisponível.
  */
-export default function SignUpDisabledPage() {
+export default function SignUpPage() {
+  const params = useSearchParams();
+  const hasTicket = params.has('__clerk_ticket');
+
+  if (hasTicket) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+        <SignUp signInUrl="/sign-in" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
       <div className="w-full max-w-md rounded-lg border border-border bg-card p-8 text-center shadow-sm">
