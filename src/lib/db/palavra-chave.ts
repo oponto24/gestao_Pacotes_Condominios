@@ -89,3 +89,29 @@ export async function listPalavrasChavePendentes(
     }));
   });
 }
+
+export async function marcarPalavraChaveUsada(
+  ctx: PalavraChaveCtx,
+  id: string,
+): Promise<{ ok: true; already_used: boolean }> {
+  return withTenantContext(ctx, async (tx) => {
+    const palavra = await tx.codigoMlPendente.findFirst({
+      where: { id },
+      select: { id: true, status: true },
+    });
+    if (!palavra) {
+      throw new Error('Palavra-chave não encontrada');
+    }
+    if (palavra.status === 'consumido') {
+      return { ok: true, already_used: true };
+    }
+    await tx.codigoMlPendente.update({
+      where: { id },
+      data: {
+        status: 'consumido',
+        consumido_em: new Date(),
+      },
+    });
+    return { ok: true, already_used: false };
+  });
+}
