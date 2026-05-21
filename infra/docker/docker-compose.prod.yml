@@ -80,6 +80,7 @@ services:
       APP_URL: ${APP_URL:-https://${DOMAIN}}
       STORAGE_DRIVER: local
       STORAGE_LOCAL_ROOT: /app/storage
+      HEALTH_SECRET: ${HEALTH_SECRET:-}
       LOG_LEVEL: info
     volumes:
       - app_storage:/app/storage
