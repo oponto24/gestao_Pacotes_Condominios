@@ -108,18 +108,27 @@ export async function processPalavraChave(
   }
   const created = { id: result.id };
 
+  // Busca nome do morador pra usar no template de resposta
+  const morador = await withSuperAdmin((tx) =>
+    tx.morador.findUnique({
+      where: { id: message.morador_id! },
+      select: { nome: true },
+    }),
+  );
+  const moradorNome = morador?.nome ?? 'Morador';
+
   log.info(
     { codigo_id: created.id, codigo: parsed.codigo, morador_id: message.morador_id },
     'palavraChave: persistida',
   );
 
-  // Reply via Meta template (silenciosamente falha se template não aprovado ainda)
+  // Reply via Meta template
   try {
     await sendTemplate({
       to: message.from_phone,
       templateName: TEMPLATE_NAME,
       languageCode: TEMPLATE_LANG,
-      bodyParams: [parsed.codigo],
+      bodyParams: [moradorNome],
     });
   } catch (err) {
     log.warn(
