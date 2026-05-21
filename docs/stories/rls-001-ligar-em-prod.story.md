@@ -1,6 +1,6 @@
 # RLS-001 — Ligar Row Level Security em prod
 
-**Status:** Ready (migration criada — aguarda autorização user pra deploy)
+**Status:** Done
 **Severidade:** Alta — bloqueador pra multi-tenant real
 **Encontrado em:** Auditoria 2026-05-10 (Orion)
 
@@ -114,13 +114,13 @@ E `.env.prod` volta `DATABASE_RUNTIME_URL` pra usar role `app` (com bypass).
 ## Critérios de Aceitação
 
 1. ✅ Migration criada e revisada
-2. ⏳ Senhas geradas e armazenadas (1Password / vault)
-3. ⏳ `.env.prod` atualizado
-4. ⏳ Migration aplicada em prod (`./infra/scripts/deploy-vps.sh`)
-5. ⏳ ALTER ROLE PASSWORDS aplicados via psql
-6. ⏳ Containers restartados
-7. ⏳ Smoke test verde
-8. ⏳ Verificação `pg_tables.rowsecurity = true` em prod
+2. ✅ Senhas geradas e armazenadas
+3. ✅ `.env.prod` atualizado (DATABASE_RUNTIME_URL com app_runtime)
+4. ✅ Migration aplicada em prod (2026-05-10)
+5. ✅ ALTER ROLE PASSWORDS aplicados via psql
+6. ✅ Containers restartados com app_runtime
+7. ✅ Smoke test verde (2026-05-21: app_runtime retorna 0 rows sem context, app retorna 6)
+8. ✅ Verificação `pg_tables.rowsecurity = true` em prod (8/8 tabelas)
 
 ## Riscos
 
