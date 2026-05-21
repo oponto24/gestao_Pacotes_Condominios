@@ -25,8 +25,8 @@ export async function enqueueSendWhatsApp(
   options: EnqueueSendWhatsAppOptions = {},
 ) {
   const jobId = options.forceUnique
-    ? `sendWhatsApp:${payload.pacote_id}:${Date.now()}`
-    : `sendWhatsApp:${payload.pacote_id}`;
+    ? `sendWhatsApp-${payload.pacote_id}-${Date.now()}`
+    : `sendWhatsApp-${payload.pacote_id}`;
 
   return enqueue(SEND_WHATSAPP_JOB_NAME, payload, {
     attempts: 4,

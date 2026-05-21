@@ -194,7 +194,7 @@ async function handleInboundMessage(
       await enqueue(
         PROCESS_PALAVRA_CHAVE_JOB_NAME,
         { whatsapp_message_id: created.id },
-        { jobId: `palavraChave:${created.id}` },
+        { jobId: `palavraChave-${created.id}` },
       );
     } catch (err) {
       log.warn({ err, message_id: created.id }, 'Falha ao enfileirar processPalavraChave');
