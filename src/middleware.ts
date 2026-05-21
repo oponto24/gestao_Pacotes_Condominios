@@ -27,6 +27,13 @@ function isOriginAllowed(req: NextRequest): boolean {
   }
 }
 
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(self), microphone=()',
+};
+
 export default clerkMiddleware((_auth, req) => {
   if (!isOriginAllowed(req)) {
     return NextResponse.json(
@@ -34,6 +41,12 @@ export default clerkMiddleware((_auth, req) => {
       { status: 403 },
     );
   }
+
+  const response = NextResponse.next();
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value);
+  }
+  return response;
 });
 
 export const config = {

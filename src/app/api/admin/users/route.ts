@@ -57,11 +57,14 @@ export async function POST(req: Request) {
       'User criado pelo admin',
     );
 
+    // tempPassword is logged server-side only — never sent to client.
+    // Admin must use the "Criar acesso" flow to provision Clerk credentials.
+    log.info({ tempPassword }, 'senha temporária gerada (não enviada ao client)');
+
     return NextResponse.json(
       {
         ok: true,
         user: { id: created.id, email: created.email, nome: created.nome, role: created.role },
-        tempPassword,
       },
       { status: 201 },
     );

@@ -8,6 +8,8 @@ import { isTenantError, ValidationError } from '@/server/errors';
  * Loga o erro com contexto antes de responder.
  */
 export function handleApiError(err: unknown, log: Logger): NextResponse {
+  const isDev = process.env.NODE_ENV === 'development';
+
   if (err instanceof ZodError) {
     const fields: Record<string, string[]> = {};
     for (const issue of err.issues) {
@@ -16,7 +18,7 @@ export function handleApiError(err: unknown, log: Logger): NextResponse {
     }
     log.warn({ fields }, 'validação falhou');
     return NextResponse.json(
-      { ok: false, code: 'validation_error', message: 'Dados inválidos', fields },
+      { ok: false, code: 'validation_error', message: 'Dados inválidos', ...(isDev ? { fields } : {}) },
       { status: 400 },
     );
   }
@@ -24,7 +26,7 @@ export function handleApiError(err: unknown, log: Logger): NextResponse {
   if (err instanceof ValidationError) {
     log.warn({ fields: err.fields }, err.message);
     return NextResponse.json(
-      { ok: false, code: err.code, message: err.message, fields: err.fields },
+      { ok: false, code: err.code, message: err.message, ...(isDev ? { fields: err.fields } : {}) },
       { status: err.httpStatus },
     );
   }

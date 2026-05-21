@@ -2,7 +2,16 @@ interface AuditDiffViewerProps {
   metadata: Record<string, unknown>;
 }
 
-function formatValue(v: unknown): string {
+const REDACTED_FIELDS = new Set([
+  'telefone',
+  'email',
+  'clerk_id',
+  'contato_telefone',
+  'contato_email',
+]);
+
+function formatValue(v: unknown, field?: string): string {
+  if (field && REDACTED_FIELDS.has(field)) return '[redacted]';
   if (v === null || v === undefined) return '—';
   if (typeof v === 'boolean') return v ? 'Sim' : 'Não';
   if (typeof v === 'object') return JSON.stringify(v);
@@ -51,9 +60,9 @@ export function AuditDiffViewer({ metadata }: AuditDiffViewerProps) {
             <tr key={field} className="border-b border-border/50">
               <td className="py-1 pr-2 font-medium">{field}</td>
               <td className="py-1 pr-2 text-danger line-through">
-                {formatValue(before[field])}
+                {formatValue(before[field], field)}
               </td>
-              <td className="py-1 text-success">{formatValue(after[field])}</td>
+              <td className="py-1 text-success">{formatValue(after[field], field)}</td>
             </tr>
           ))}
         </tbody>
@@ -70,8 +79,9 @@ export function AuditDiffViewer({ metadata }: AuditDiffViewerProps) {
 }
 
 function SnapshotTable({ data }: { data: Record<string, unknown> }) {
+  const EXCLUDED_KEYS = new Set(['id', 'created_at', 'updated_at']);
   const entries = Object.entries(data).filter(
-    ([k]) => !['id', 'created_at', 'updated_at'].includes(k),
+    ([k]) => !EXCLUDED_KEYS.has(k),
   );
   if (entries.length === 0) return null;
   return (
@@ -80,7 +90,7 @@ function SnapshotTable({ data }: { data: Record<string, unknown> }) {
         {entries.map(([key, val]) => (
           <tr key={key} className="border-b border-border/50">
             <td className="py-0.5 pr-2 font-medium">{key}</td>
-            <td className="py-0.5">{formatValue(val)}</td>
+            <td className="py-0.5">{formatValue(val, key)}</td>
           </tr>
         ))}
       </tbody>

@@ -5,8 +5,13 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const HEALTH_KEY = 'health:test';
+const HEALTH_SECRET = process.env.HEALTH_SECRET;
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!HEALTH_SECRET || req.headers.get('authorization') !== `Bearer ${HEALTH_SECRET}`) {
+    return NextResponse.json({ ok: false, code: 'unauthorized' }, { status: 401 });
+  }
+
   const start = Date.now();
   try {
     const ping = await redis.ping();
@@ -17,7 +22,6 @@ export async function GET() {
       );
     }
 
-    // Round-trip: SET com TTL 5s + GET — valida read+write, não acumula lixo
     await redis.set(HEALTH_KEY, '1', 'EX', 5);
     const value = await redis.get(HEALTH_KEY);
 

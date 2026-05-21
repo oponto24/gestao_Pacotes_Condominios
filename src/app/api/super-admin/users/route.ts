@@ -88,11 +88,12 @@ export async function POST(req: Request) {
       'Admin criado pelo super-admin',
     );
 
+    log.info({ tempPassword }, 'senha temporária gerada (não enviada ao client)');
+
     return NextResponse.json(
       {
         ok: true,
         user: { id: created.id, email: created.email, nome: created.nome },
-        tempPassword,
       },
       { status: 201 },
     );

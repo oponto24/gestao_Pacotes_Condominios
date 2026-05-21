@@ -147,9 +147,14 @@ export function RetiradaConfirmarClient({ pacote, outrosPacotes = [] }: Props) {
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate(200);
       }
-      router.push(
-        `/retirada/sucesso?destinatario=${encodeURIComponent(destinatarioNome)}&qtd=${results.length}`,
-      );
+      // Store confirmation data in sessionStorage instead of URL params (PII protection)
+      try {
+        sessionStorage.setItem(
+          'retirada_sucesso',
+          JSON.stringify({ destinatario: destinatarioNome, qtd: results.length }),
+        );
+      } catch { /* SSR or storage full — page will show generic message */ }
+      router.push('/retirada/sucesso');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao confirmar');
       setSubmitting(false);

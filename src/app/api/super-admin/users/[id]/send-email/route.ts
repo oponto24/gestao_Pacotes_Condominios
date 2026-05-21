@@ -74,6 +74,7 @@ export async function POST(req: Request, ctx: Ctx) {
       ok: true,
       email: user.email,
       tempPassword,
+      message: 'Credenciais geradas. Copie agora — não serão exibidas novamente.',
     });
   } catch (err) {
     return handleApiError(err, log);
