@@ -18,15 +18,6 @@ interface PalavraChave {
 
 const POLL_INTERVAL = 10_000; // 10s
 
-function formatTs(d: string): string {
-  return new Date(d).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 function tempoAtras(d: string): string {
   const diff = Date.now() - new Date(d).getTime();
   const min = Math.floor(diff / 60_000);
