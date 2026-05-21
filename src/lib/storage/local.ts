@@ -82,8 +82,7 @@ export class LocalStorageDriver implements StorageDriver {
 
   publicUrl(key: string): string {
     assertValidKey(key);
-    // Em dev, expor via endpoint dedicado seria melhor; por enquanto retornamos
-    // um path lógico que o caller pode resolver. Story 4.2 vai mudar para signed URL.
-    return `/api/storage/local/${key}`;
+    const base = (process.env.APP_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+    return `${base}/api/storage/local/${key}`;
   }
 }
