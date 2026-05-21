@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AlertCircle, Camera, QrCode } from 'lucide-react';
+import { AlertCircle, Camera, Key, QrCode } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBottomNav, type FabState } from './BottomNavContext';
 
@@ -30,6 +30,13 @@ const PENDENTES: NavItem = {
   match: 'prefix',
 };
 
+const PALAVRAS_CHAVE: NavItem = {
+  href: '/portaria/palavras-chave',
+  label: 'Chaves',
+  icon: <Key className="h-5 w-5" aria-hidden />,
+  match: 'prefix',
+};
+
 const RETIRADA: NavItem = {
   href: '/retirada',
   label: 'Retirada',
@@ -53,6 +60,7 @@ export function BottomNavBar() {
   const pathname = usePathname() ?? '';
   const chegadaActive = isActive(pathname, CHEGADA);
   const pendentesActive = isActive(pathname, PENDENTES);
+  const palavrasChaveActive = isActive(pathname, PALAVRAS_CHAVE);
   const retiradaActive = isActive(pathname, RETIRADA);
   const { override } = useBottomNav();
 
@@ -119,6 +127,7 @@ export function BottomNavBar() {
     >
       <div className="relative mx-auto flex max-w-screen-md items-end justify-around">
         <SideTab item={PENDENTES} active={pendentesActive} />
+        <SideTab item={PALAVRAS_CHAVE} active={palavrasChaveActive} />
 
         {override ? (
           <button
