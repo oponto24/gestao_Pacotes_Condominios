@@ -8,18 +8,23 @@ export const runtime = 'nodejs';
 export default async function RetiradaSucessoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ destinatario?: string }>;
+  searchParams: Promise<{ destinatario?: string; qtd?: string }>;
 }) {
-  const { destinatario } = await searchParams;
+  const { destinatario, qtd } = await searchParams;
+  const quantidade = qtd ? parseInt(qtd, 10) : 1;
+  const plural = quantidade > 1;
   return (
     <div className="flex flex-col items-center gap-4 pt-8 pb-8 text-center">
       <div className="rounded-full bg-success/10 p-6 text-success">
         <CheckCircle2 className="size-16" aria-hidden />
       </div>
-      <h1 className="text-2xl font-semibold text-foreground">Entregue com sucesso!</h1>
+      <h1 className="text-2xl font-semibold text-foreground">
+        {plural ? `${quantidade} pacotes entregues!` : 'Entregue com sucesso!'}
+      </h1>
       {destinatario && (
         <p className="text-sm text-text-secondary">
-          Pacote de <strong>{destinatario}</strong> registrado como retirado.
+          {plural ? `${quantidade} pacotes` : 'Pacote'} de <strong>{destinatario}</strong>{' '}
+          {plural ? 'registrados como retirados' : 'registrado como retirado'}.
         </p>
       )}
       <div className="mt-4 flex w-full max-w-sm flex-col gap-2">

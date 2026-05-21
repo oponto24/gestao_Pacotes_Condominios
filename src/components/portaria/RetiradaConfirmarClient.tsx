@@ -2,7 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Loader2, MapPin, User, Building2 } from 'lucide-react';
+import {
+  CheckCircle2,
+  Loader2,
+  MapPin,
+  User,
+  Building2,
+  Package,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,39 +24,132 @@ import type { PacoteRetirada } from '@/lib/db/pacote-retirada';
 
 interface Props {
   pacote: PacoteRetirada;
+  outrosPacotes?: PacoteRetirada[];
 }
 
-export function RetiradaConfirmarClient({ pacote }: Props) {
+function PacoteCard({
+  pacote,
+  selected,
+  onToggle,
+  disabled,
+}: {
+  pacote: PacoteRetirada;
+  selected: boolean;
+  onToggle: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      className={`w-full rounded-lg border p-3 text-left transition-colors ${
+        selected
+          ? 'border-primary bg-primary/5'
+          : 'border-border bg-background hover:bg-muted/30'
+      } ${disabled ? 'opacity-50' : ''}`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded border ${
+            selected
+              ? 'border-primary bg-primary text-white'
+              : 'border-border'
+          }`}
+        >
+          {selected && <CheckCircle2 className="size-3.5" />}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-sm font-medium">
+            {pacote.remetente ?? 'Pacote'}
+            {pacote.nome_destinatario_etiqueta && (
+              <span className="text-text-secondary">
+                {' '}
+                → {pacote.nome_destinatario_etiqueta}
+              </span>
+            )}
+          </p>
+          {(pacote.setor || pacote.posicao) && (
+            <p className="flex items-center gap-1 text-xs text-text-secondary">
+              <MapPin className="size-3 shrink-0" aria-hidden />
+              {pacote.setor?.nome ?? '—'}
+              {pacote.posicao && ` · ${pacote.posicao}`}
+            </p>
+          )}
+          {pacote.unidade && (
+            <p className="flex items-center gap-1 text-xs text-text-secondary">
+              <Building2 className="size-3 shrink-0" aria-hidden />
+              {pacote.unidade.bloco ? `${pacote.unidade.bloco} · ` : ''}
+              {pacote.unidade.identificador}
+            </p>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+export function RetiradaConfirmarClient({ pacote, outrosPacotes = [] }: Props) {
   const router = useRouter();
+  const allPacotes = [pacote, ...outrosPacotes];
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(allPacotes.map((p) => p.id)),
+  );
   const [sheetOpen, setSheetOpen] = useState(false);
   const [terceiroNome, setTerceiroNome] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const destinatarioNome = pacote.destinatario?.nome ?? pacote.nome_destinatario_etiqueta ?? 'Destinatário';
+  const destinatarioNome =
+    pacote.destinatario?.nome ?? pacote.nome_destinatario_etiqueta ?? 'Destinatário';
   const unidadeLabel = pacote.unidade
     ? `${pacote.unidade.bloco ? `Bloco ${pacote.unidade.bloco} · ` : ''}${pacote.unidade.identificador}`
     : 'Unidade';
+
+  function togglePacote(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        // Don't allow deselecting the scanned package
+        if (id === pacote.id) return prev;
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
 
   async function confirmar(proprio: boolean, nomeTerceiro?: string) {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/pacotes/${pacote.id}/retirar/confirmar`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          proprio_destinatario: proprio,
-          retirado_por_terceiro: nomeTerceiro ?? null,
+      const ids = Array.from(selectedIds);
+      const results = await Promise.all(
+        ids.map(async (id) => {
+          const res = await fetch(`/api/pacotes/${id}/retirar/confirmar`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              proprio_destinatario: proprio,
+              retirado_por_terceiro: nomeTerceiro ?? null,
+            }),
+          });
+          const body = (await res.json().catch(() => ({}))) as {
+            ok?: boolean;
+            message?: string;
+          };
+          if (!res.ok) throw new Error(body.message ?? `HTTP ${res.status}`);
+          return id;
         }),
-      });
-      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string };
-      if (!res.ok) throw new Error(body.message ?? `HTTP ${res.status}`);
+      );
 
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate(200);
       }
-      router.push(`/retirada/sucesso?destinatario=${encodeURIComponent(destinatarioNome)}`);
+      router.push(
+        `/retirada/sucesso?destinatario=${encodeURIComponent(destinatarioNome)}&qtd=${results.length}`,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao confirmar');
       setSubmitting(false);
@@ -62,76 +162,85 @@ export function RetiradaConfirmarClient({ pacote }: Props) {
     confirmar(false, terceiroNome.trim());
   }
 
+  const hasMultiple = allPacotes.length > 1;
+
   return (
     <div className="space-y-4 pb-8">
       <header>
         <h1 className="text-2xl font-semibold text-foreground">Confirmar entrega</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Confira os dados antes de entregar o pacote.
+          {hasMultiple
+            ? `${allPacotes.length} pacotes encontrados para este destinatário.`
+            : 'Confira os dados antes de entregar o pacote.'}
         </p>
       </header>
 
-      {/* Decisão produto 2026-05-09: aviso quando pacote está em rota administração */}
-      {pacote.status === 'em_administracao' && (
-        <div
-          role="alert"
-          className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3"
-        >
-          <Building2 className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden />
-          <div>
-            <p className="text-sm font-medium">Pacote estava com a administração</p>
-            <p className="mt-0.5 text-xs text-text-secondary">
-              Este pacote foi enviado pra entrega via administração. Confirme se você
-              é o responsável por finalizar a entrega antes de prosseguir.
-            </p>
-          </div>
+      {/* Resumo do destinatário */}
+      <div className="flex items-center gap-3 rounded-lg border border-border bg-background p-4">
+        <User className="size-5 text-primary" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-lg font-semibold">{destinatarioNome}</p>
+          <p className="text-sm text-text-secondary">{unidadeLabel}</p>
         </div>
-      )}
-
-      <div className="space-y-3 rounded-lg border border-border bg-background p-4">
-        <div className="flex items-start gap-3">
-          <User className="mt-0.5 size-5 text-primary" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-text-secondary">Destinatário</p>
-            <p className="text-lg font-semibold">{destinatarioNome}</p>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-3">
-          <Building2 className="mt-0.5 size-5 text-accent" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-text-secondary">Unidade</p>
-            <p className="font-medium">{unidadeLabel}</p>
-          </div>
-        </div>
-
-        {(pacote.setor || pacote.posicao) && (
-          <div className="flex items-start gap-3">
-            <MapPin className="mt-0.5 size-5 text-text-secondary" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-text-secondary">Onde está</p>
-              <p className="font-medium">
-                {pacote.setor?.nome ?? '—'}
-                {pacote.posicao && ` · ${pacote.posicao}`}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {pacote.remetente && (
-          <div className="border-t border-border pt-3 text-xs text-text-secondary">
-            Remetente: <strong>{pacote.remetente}</strong>
+        {hasMultiple && (
+          <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+            <Package className="size-4" aria-hidden />
+            {selectedIds.size}/{allPacotes.length}
           </div>
         )}
       </div>
 
+      {/* Lista de pacotes */}
+      {hasMultiple ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">
+            Pacotes para retirada:
+          </p>
+          {allPacotes.map((p) => (
+            <PacoteCard
+              key={p.id}
+              pacote={p}
+              selected={selectedIds.has(p.id)}
+              onToggle={() => togglePacote(p.id)}
+              disabled={submitting}
+            />
+          ))}
+        </div>
+      ) : (
+        /* Pacote único — layout detalhado */
+        <div className="space-y-3 rounded-lg border border-border bg-background p-4">
+          {(pacote.setor || pacote.posicao) && (
+            <div className="flex items-start gap-3">
+              <MapPin className="mt-0.5 size-5 text-text-secondary" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-text-secondary">Onde está</p>
+                <p className="font-medium">
+                  {pacote.setor?.nome ?? '—'}
+                  {pacote.posicao && ` · ${pacote.posicao}`}
+                </p>
+              </div>
+            </div>
+          )}
+          {pacote.remetente && (
+            <div className="border-t border-border pt-3 text-xs text-text-secondary">
+              Remetente: <strong>{pacote.remetente}</strong>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Ação de confirmar */}
       <div className="space-y-2 rounded-lg border border-border bg-background p-4">
-        <p className="text-sm font-medium">É o próprio destinatário que está retirando?</p>
+        <p className="text-sm font-medium">
+          {hasMultiple
+            ? `Entregar ${selectedIds.size} pacote${selectedIds.size > 1 ? 's' : ''} — quem está retirando?`
+            : 'É o próprio destinatário que está retirando?'}
+        </p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             type="button"
             onClick={() => confirmar(true)}
-            disabled={submitting || !pacote.destinatario}
+            disabled={submitting || !pacote.destinatario || selectedIds.size === 0}
             aria-busy={submitting}
             className="h-12 flex-1 text-base"
           >
@@ -151,7 +260,7 @@ export function RetiradaConfirmarClient({ pacote }: Props) {
             type="button"
             variant="ghost"
             onClick={() => setSheetOpen(true)}
-            disabled={submitting}
+            disabled={submitting || selectedIds.size === 0}
             className="h-12 flex-1"
           >
             Não, outra pessoa

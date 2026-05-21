@@ -25,5 +25,10 @@ export default async function RetiradaConfirmarPage({
     redirect(`/retirada?erro=${result.reason}`);
   }
 
-  return <RetiradaConfirmarClient pacote={result.pacote} />;
+  return (
+    <RetiradaConfirmarClient
+      pacote={result.pacote}
+      outrosPacotes={result.outrosPacotes}
+    />
+  );
 }

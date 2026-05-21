@@ -29,8 +29,58 @@ export interface PacoteRetirada {
 }
 
 export type LoadResult =
-  | { ok: true; pacote: PacoteRetirada }
+  | { ok: true; pacote: PacoteRetirada; outrosPacotes: PacoteRetirada[] }
   | { ok: false; reason: 'not_found' | 'already_retirado' | 'cancelado' | 'nao_pronto' };
+
+const PACOTE_SELECT = {
+  id: true,
+  qr_token: true,
+  status: true,
+  qr_consumido_em: true,
+  nome_destinatario_etiqueta: true,
+  complemento_etiqueta: true,
+  remetente: true,
+  posicao: true,
+  unidade: { select: { id: true, identificador: true, bloco: true } },
+  destinatario: { select: { id: true, nome: true } },
+  setor: { select: { id: true, nome: true } },
+} as const;
+
+async function toPacoteRetirada(
+  tx: Parameters<Parameters<typeof withTenantContext>[1]>[0],
+  pacote: {
+    id: string;
+    qr_token: string;
+    status: string;
+    qr_consumido_em: Date | null;
+    nome_destinatario_etiqueta: string | null;
+    complemento_etiqueta: string | null;
+    remetente: string | null;
+    posicao: string | null;
+    unidade: { id: string; identificador: string; bloco: string | null } | null;
+    destinatario: { id: string; nome: string } | null;
+    setor: { id: string; nome: string } | null;
+  },
+): Promise<PacoteRetirada> {
+  const foto = await tx.pacoteFoto.findFirst({
+    where: { pacote_id: pacote.id, is_principal: true },
+    select: { storage_path: true },
+  });
+  return {
+    id: pacote.id,
+    qr_token: pacote.qr_token,
+    status: pacote.status,
+    qr_consumido_em: pacote.qr_consumido_em,
+    nome_destinatario_etiqueta: pacote.nome_destinatario_etiqueta,
+    complemento_etiqueta: pacote.complemento_etiqueta,
+    remetente: pacote.remetente,
+    posicao: pacote.posicao,
+    unidade: pacote.unidade,
+    destinatario: pacote.destinatario,
+    setor: pacote.setor,
+    foto_storage_path: foto?.storage_path ?? null,
+  };
+}
 
 export async function loadPacoteByQrToken(
   ctx: RetiradaCtx,
@@ -39,19 +89,7 @@ export async function loadPacoteByQrToken(
   return withTenantContext(ctx, async (tx) => {
     const pacote = await tx.pacote.findFirst({
       where: { qr_token: qrToken },
-      select: {
-        id: true,
-        qr_token: true,
-        status: true,
-        qr_consumido_em: true,
-        nome_destinatario_etiqueta: true,
-        complemento_etiqueta: true,
-        remetente: true,
-        posicao: true,
-        unidade: { select: { id: true, identificador: true, bloco: true } },
-        destinatario: { select: { id: true, nome: true } },
-        setor: { select: { id: true, nome: true } },
-      },
+      select: { ...PACOTE_SELECT, unidade_id: true, destinatario_id: true },
     });
     if (!pacote) return { ok: false, reason: 'not_found' };
 
@@ -61,8 +99,6 @@ export async function loadPacoteByQrToken(
     if (pacote.status === 'cancelado') {
       return { ok: false, reason: 'cancelado' };
     }
-    // Story 10.6: aceita também em_administracao (rota administração).
-    // FR-083: qualquer role operacional pode finalizar entrega.
     if (
       pacote.status !== 'aguardando_retirada' &&
       pacote.status !== 'em_administracao'
@@ -70,27 +106,37 @@ export async function loadPacoteByQrToken(
       return { ok: false, reason: 'nao_pronto' };
     }
 
-    const foto = await tx.pacoteFoto.findFirst({
-      where: { pacote_id: pacote.id, is_principal: true },
-      select: { storage_path: true },
-    });
+    // Busca outros pacotes pendentes do mesmo morador ou unidade
+    const outrosPacotes: PacoteRetirada[] = [];
+    const orConditions = [];
+    if (pacote.destinatario_id) {
+      orConditions.push({ destinatario_id: pacote.destinatario_id });
+    }
+    if (pacote.unidade_id) {
+      orConditions.push({ unidade_id: pacote.unidade_id });
+    }
+
+    if (orConditions.length > 0) {
+      const outros = await tx.pacote.findMany({
+        where: {
+          id: { not: pacote.id },
+          status: { in: ['aguardando_retirada', 'em_administracao'] },
+          qr_consumido_em: null,
+          OR: orConditions,
+        },
+        select: PACOTE_SELECT,
+        orderBy: { created_at: 'desc' },
+      });
+
+      for (const outro of outros) {
+        outrosPacotes.push(await toPacoteRetirada(tx, outro));
+      }
+    }
 
     return {
       ok: true,
-      pacote: {
-        id: pacote.id,
-        qr_token: pacote.qr_token,
-        status: pacote.status,
-        qr_consumido_em: pacote.qr_consumido_em,
-        nome_destinatario_etiqueta: pacote.nome_destinatario_etiqueta,
-        complemento_etiqueta: pacote.complemento_etiqueta,
-        remetente: pacote.remetente,
-        posicao: pacote.posicao,
-        unidade: pacote.unidade,
-        destinatario: pacote.destinatario,
-        setor: pacote.setor,
-        foto_storage_path: foto?.storage_path ?? null,
-      },
+      pacote: await toPacoteRetirada(tx, pacote),
+      outrosPacotes,
     };
   });
 }
