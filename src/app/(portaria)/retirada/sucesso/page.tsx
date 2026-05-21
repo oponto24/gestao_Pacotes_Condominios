@@ -2,9 +2,6 @@ import Link from 'next/link';
 import { CheckCircle2, Package, QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
-
 export default async function RetiradaSucessoPage({
   searchParams,
 }: {
