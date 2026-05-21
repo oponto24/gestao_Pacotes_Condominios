@@ -1,17 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Package,
   AlertCircle,
   Camera,
   Aperture,
   Check,
+  CheckCircle2,
   Loader2,
   RotateCcw,
   ImagePlus,
   ChevronDown,
+  X,
 } from 'lucide-react';
 import {
   PhotoCapture,
@@ -44,7 +46,11 @@ import { useBottomNavOverride } from '@/components/portaria/BottomNavContext';
  */
 export function CapturaPageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [state, dispatch] = useReducer(capturaReducer, initialCapturaState);
+  const [showAdminBanner, setShowAdminBanner] = useState(
+    () => searchParams.get('msg') === 'enviado_administracao',
+  );
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [showCodigoInput, setShowCodigoInput] = useState(false);
   const [photoCaptureKind, setPhotoCaptureKind] =
@@ -274,6 +280,26 @@ export function CapturaPageClient() {
           </p>
         </div>
       </header>
+
+      {showAdminBanner && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-success/30 bg-success-light p-3 text-sm text-foreground"
+        >
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+          <span className="flex-1">
+            Pacote enviado para a <strong>administração</strong> organizar.
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowAdminBanner(false)}
+            className="shrink-0 text-success/70 hover:text-success"
+            aria-label="Fechar aviso"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        </div>
+      )}
 
       {cameraError && (
         <div

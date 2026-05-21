@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Briefcase,
   ChevronDown,
   ChevronRight,
   Building2,
@@ -35,6 +36,7 @@ interface NavGroup {
 
 const TOP_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Início', icon: <LayoutDashboard className="h-4 w-4" aria-hidden /> },
+  { href: '/administracao/organizar', label: 'Organizar pacotes', icon: <Briefcase className="h-4 w-4" aria-hidden /> },
   { href: '/admin/pacotes', label: 'Pacotes', icon: <Package className="h-4 w-4" aria-hidden /> },
   { href: '/admin/audit', label: 'Audit log', icon: <ScrollText className="h-4 w-4" aria-hidden /> },
 ];
