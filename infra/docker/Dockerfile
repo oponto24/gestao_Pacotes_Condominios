@@ -83,7 +83,7 @@ COPY package.json package-lock.json tsconfig.json ./
 COPY src ./src
 COPY prisma ./prisma
 COPY workers ./workers
-RUN mkdir -p /app/storage && chown -R worker:nodejs /app/storage
+RUN mkdir -p /app/storage/qr /app/storage/pacotes && chown -R worker:nodejs /app/storage
 USER worker
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["npx", "tsx", "workers/index.ts"]
