@@ -4,7 +4,7 @@ import sharp from 'sharp';
 import { generateQrImage } from '@/lib/qr/generator';
 
 describe('generateQrImage', () => {
-  it('gera PNG válido com dimensões 1200x628', async () => {
+  it('gera PNG válido com dimensões 800x800', async () => {
     const { buffer, mimeType } = await generateQrImage({
       qrPayloadUrl: 'https://condominios.oponto24.com.br/retirada/confirmar/abc123def456',
       condominioNome: 'Edifício Central',
@@ -19,8 +19,8 @@ describe('generateQrImage', () => {
     expect(buffer[3]).toBe(0x47);
 
     const meta = await sharp(buffer).metadata();
-    expect(meta.width).toBe(1200);
-    expect(meta.height).toBe(628);
+    expect(meta.width).toBe(800);
+    expect(meta.height).toBe(800);
     expect(meta.format).toBe('png');
   }, 10_000);
 
@@ -40,7 +40,7 @@ describe('generateQrImage', () => {
       condominioNome: 'Edifício <Test> & "Co"',
     });
     const meta = await sharp(buffer).metadata();
-    expect(meta.width).toBe(1200);
-    expect(meta.height).toBe(628);
+    expect(meta.width).toBe(800);
+    expect(meta.height).toBe(800);
   }, 10_000);
 });

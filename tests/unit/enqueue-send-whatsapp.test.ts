@@ -25,7 +25,7 @@ describe('enqueueSendWhatsApp — retry config', () => {
         attempts: 4,
         backoff: { type: 'exponential', delay: 5_000 },
         removeOnFail: false,
-        jobId: 'sendWhatsApp:p1',
+        jobId: 'sendWhatsApp-p1',
       }),
     );
   });
@@ -35,7 +35,7 @@ describe('enqueueSendWhatsApp — retry config', () => {
     await enqueueSendWhatsApp({ pacote_id: 'p1', condominio_id: 'c1' }, { forceUnique: true });
 
     const call = enqueueMock.mock.calls[0];
-    expect(call?.[2]?.jobId).toMatch(/^sendWhatsApp:p1:\d+$/);
+    expect(call?.[2]?.jobId).toMatch(/^sendWhatsApp-p1-\d+$/);
   });
 
   it('forceUnique=false (default) preserva jobId determinístico', async () => {
@@ -43,7 +43,7 @@ describe('enqueueSendWhatsApp — retry config', () => {
     await enqueueSendWhatsApp({ pacote_id: 'p1', condominio_id: 'c1' });
     await enqueueSendWhatsApp({ pacote_id: 'p1', condominio_id: 'c1' });
 
-    expect(enqueueMock.mock.calls[0]?.[2]?.jobId).toBe('sendWhatsApp:p1');
-    expect(enqueueMock.mock.calls[1]?.[2]?.jobId).toBe('sendWhatsApp:p1');
+    expect(enqueueMock.mock.calls[0]?.[2]?.jobId).toBe('sendWhatsApp-p1');
+    expect(enqueueMock.mock.calls[1]?.[2]?.jobId).toBe('sendWhatsApp-p1');
   });
 });

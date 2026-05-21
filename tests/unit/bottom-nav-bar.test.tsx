@@ -10,10 +10,11 @@ vi.mock('next/navigation', () => ({
 describe('BottomNavBar', () => {
   beforeEach(() => mockPathname.mockReturnValue('/chegada'));
 
-  it('renderiza 3 abas com labels visíveis (Chegada, Pendentes, Retirada)', () => {
+  it('renderiza 4 abas com labels visíveis (Pendentes, Chaves, Chegada, Retirada)', () => {
     render(<BottomNavBar />);
     expect(screen.getByRole('link', { name: /Chegada/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Pendentes/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Chaves/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Retirada/ })).toBeInTheDocument();
   });
 
@@ -36,14 +37,23 @@ describe('BottomNavBar', () => {
     expect(screen.getByRole('link', { name: /Chegada/ })).not.toHaveAttribute('aria-current');
   });
 
+  it('Chaves ativa quando pathname é /portaria/palavras-chave', () => {
+    mockPathname.mockReturnValue('/portaria/palavras-chave');
+    render(<BottomNavBar />);
+    expect(screen.getByRole('link', { name: /Chaves/ })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /Pendentes/ })).not.toHaveAttribute('aria-current');
+  });
+
   it('touch target adequado: side tabs ≥56px, FAB Chegada ≥64px (h-16)', () => {
     render(<BottomNavBar />);
     // FAB Chegada é botão primário central, alvo maior
     const chegada = screen.getByRole('link', { name: /Chegada/ });
     expect(chegada.className).toMatch(/h-16/);
-    // Side tabs (Pendentes / Retirada) mantêm min-h-[56px]
+    // Side tabs (Pendentes / Chaves / Retirada) mantêm min-h-[56px]
     const pendentes = screen.getByRole('link', { name: /Pendentes/ });
     expect(pendentes.className).toContain('min-h-[56px]');
+    const chaves = screen.getByRole('link', { name: /Chaves/ });
+    expect(chaves.className).toContain('min-h-[56px]');
     const retirada = screen.getByRole('link', { name: /Retirada/ });
     expect(retirada.className).toContain('min-h-[56px]');
   });
