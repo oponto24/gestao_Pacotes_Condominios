@@ -36,6 +36,7 @@ export const viewport: Viewport = {
   // Sem userScalable=false. maximumScale alto pra suportar baixa visão sem
   // permitir zoom-in acidental que destruísse layout.
   maximumScale: 5,
+  viewportFit: 'cover',
   themeColor: '#FDC800',
 };
 

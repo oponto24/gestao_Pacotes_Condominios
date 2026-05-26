@@ -41,7 +41,7 @@ export function PortariaLayout({
 
       {/* Main scrollable — pb-24 deixa espaço pra bottom nav (~56px + folga) */}
       <BottomNavProvider>
-        <main className="flex-1 overflow-y-auto px-4 pb-24 pt-4 md:px-6">{children}</main>
+        <main className="flex-1 overflow-y-auto px-4 pt-4 md:px-6" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>{children}</main>
         <BottomNavBar />
       </BottomNavProvider>
     </div>
