@@ -1,12 +1,14 @@
 'use client';
 
-import { useSignIn } from '@clerk/nextjs';
+import { useSignIn } from '@clerk/nextjs/legacy';
+import { useClerk } from '@clerk/nextjs';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 export default function SignInPage() {
-  const { signIn, setActive, isLoaded } = useSignIn();
+  const { signIn, isLoaded } = useSignIn();
+  const { setActive } = useClerk();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,10 +36,11 @@ export default function SignInPage() {
       }
     } catch (err: unknown) {
       const clerkError = err as { errors?: Array<{ message?: string; code?: string }> };
+      const code = clerkError.errors?.[0]?.code;
       const msg = clerkError.errors?.[0]?.message;
-      if (clerkError.errors?.[0]?.code === 'form_password_incorrect') {
+      if (code === 'form_password_incorrect') {
         setError('Senha incorreta.');
-      } else if (clerkError.errors?.[0]?.code === 'form_identifier_not_found') {
+      } else if (code === 'form_identifier_not_found') {
         setError('Email não encontrado.');
       } else {
         setError(msg ?? 'Erro ao fazer login. Tente novamente.');
