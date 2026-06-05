@@ -76,7 +76,8 @@ export function BottomNavBar() {
     'shadow-[0_8px_24px_-4px_var(--fab-glow)] ' +
     'before:pointer-events-none before:absolute before:inset-0 before:rounded-full ' +
     "before:bg-[linear-gradient(180deg,oklch(1_0_0/0.25),oklch(1_0_0/0)_45%)] before:content-['']" +
-    ' disabled:opacity-60';
+    ' disabled:opacity-60' +
+    ' fab-pressable';
 
   // Lookup state → estilo visual. Único ponto de verdade pro look do FAB.
   // - idle-route: gradiente padrão (link em outras rotas)
@@ -135,7 +136,7 @@ export function BottomNavBar() {
             onClick={override.onClick}
             disabled={override.disabled}
             aria-label={override.ariaLabel ?? override.label}
-            aria-busy={override.disabled || undefined}
+            aria-busy={override.state === 'submitting' ? 'true' : undefined}
             className={cn(
               fabBaseClass,
               fabStateTextClass[override.state],

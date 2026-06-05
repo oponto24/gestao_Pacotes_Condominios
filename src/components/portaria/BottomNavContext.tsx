@@ -48,6 +48,13 @@ export interface BottomNavCenterOverride {
   disabled?: boolean;
 }
 
+/**
+ * Alias canônico de `BottomNavCenterOverride` — nome alinhado com a spec
+ * (`docs/design/fab-chegada-spec.md`). PR-3 migrará os usos internos para
+ * este nome. Por enquanto ambos coexistem; são estruturalmente idênticos.
+ */
+export type FabOverride = BottomNavCenterOverride;
+
 interface BottomNavContextValue {
   override: BottomNavCenterOverride | null;
   setOverride: (o: BottomNavCenterOverride | null) => void;

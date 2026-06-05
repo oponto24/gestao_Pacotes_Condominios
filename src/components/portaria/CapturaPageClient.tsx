@@ -164,6 +164,14 @@ export function CapturaPageClient() {
     photoRef.current?.retake();
   }, [state.kind]);
 
+  // Haptics duplo ao entrar no estado captured (foto pronta pra confirmar).
+  // Padrão [20,40,20] = toque + pausa + toque — feedback de "foto capturada".
+  // O vibrate(50) do disparo do shutter já existe em PhotoCapture.
+  useEffect(() => {
+    if (photoCaptureKind !== 'captured') return;
+    navigator.vibrate?.([20, 40, 20]);
+  }, [photoCaptureKind]);
+
   // Auto-upload após o user confirmar explicitamente (FAB "Usar foto").
   // O confirm() dispara onCapture → handlePhotoCaptured → state.kind='photo_taken'.
   // Aqui detectamos a transição e disparamos uploadPacote 1x (dedupe via ref).
@@ -246,6 +254,15 @@ export function CapturaPageClient() {
 
   useBottomNavOverride(fabOverride);
 
+  // Mensagem anunciada via aria-live para leitores de tela — transições nomeadas.
+  // Fica separada do microcopy visual pra não criar duplicação de conteúdo.
+  const ariaAnnounce = (() => {
+    if (photoCaptureKind === 'streaming' && state.kind === 'idle') return 'Câmera aberta';
+    if (photoCaptureKind === 'captured') return 'Foto capturada';
+    if (state.kind === 'submitting') return 'Enviando';
+    return '';
+  })();
+
   // Microcopy abaixo do visor, baseado no estado combinado.
   const microcopy = (() => {
     if (state.kind === 'submitting') return 'Enviando foto… · não feche o app';
@@ -311,17 +328,30 @@ export function CapturaPageClient() {
         </div>
       )}
 
-      {/* Link "Refazer foto" — descoberta clara antes do visor, conforme spec UX */}
+      {/* Região aria-live dedicada — anuncia transições de estado para leitores
+          de tela. Invisível visualmente. Mantida separada do microcopy pra evitar
+          duplicação: microcopy é instrução de uso, esta região é anúncio de evento.
+          Spec: "Câmera aberta", "Foto capturada", "Enviando" (fab-chegada-spec.md). */}
+      <span
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {ariaAnnounce}
+      </span>
+
+      {/* Link "Refazer foto" — descoberta clara antes do visor, conforme spec UX.
+          Cor var(--fab-default-from) + underline, conforme fab-chegada-spec.md §Refazer foto. */}
       {showRetakeLink && (
         <button
           type="button"
           onClick={handleRetakePhoto}
           disabled={isSubmitting}
-          className="flex w-full items-center justify-center gap-1.5 text-sm font-medium text-primary underline-offset-2 hover:underline disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-1.5 text-sm font-medium underline-offset-2 hover:underline disabled:opacity-50"
+          style={{ color: 'var(--fab-default-from)' }}
           aria-label="Refazer foto"
         >
-          <RotateCcw className="size-4" aria-hidden />
-          Refazer foto
+          ↻ Refazer foto
         </button>
       )}
 

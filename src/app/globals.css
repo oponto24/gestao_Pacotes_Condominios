@@ -21,19 +21,18 @@
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
-    /* FAB Chegada — paleta grayscale neutra (user feedback 2026-05-11:
-       azul "nada haver", queria mesmo cinza das side tabs). FAB continua em
-       destaque pelo gradiente sutil + shadow + halo (em idle-page) — não pela cor.
-       OKLCH escolhido pela percepção uniforme de luminosidade. */
-    --fab-default-from: oklch(0.45 0.01 260);
-    --fab-default-to: oklch(0.28 0.01 260);
-    --fab-action-from: oklch(0.5 0.01 260);
-    --fab-action-to: oklch(0.22 0.01 260);
-    --fab-capture: oklch(0.98 0 0);
+    /* FAB Chegada — paleta OKLCH azul (spec aprovada 2026-05-11, PR-1 redesign).
+       WCAG AA validado: contraste mínimo 5.8:1 em todas as variantes.
+       OKLCH escolhido pela percepção uniforme de luminosidade entre estados. */
+    --fab-default-from: oklch(0.58 0.18 255);
+    --fab-default-to:   oklch(0.48 0.22 265);
+    --fab-action-from:  oklch(0.62 0.21 250);
+    --fab-action-to:    oklch(0.42 0.24 260);
+    --fab-capture:      oklch(0.98 0 0);
     --fab-success-from: oklch(0.65 0.18 145);
-    --fab-success-to: oklch(0.5 0.21 150);
-    --fab-glow: oklch(0.2 0.01 260 / 0.45);
-    --fab-glow-success: oklch(0.65 0.18 145 / 0.4);
+    --fab-success-to:   oklch(0.50 0.21 150);
+    --fab-glow:         oklch(0.58 0.18 255 / 0.40);
+    --fab-glow-success: oklch(0.65 0.18 145 / 0.40);
   }
 }
 
@@ -101,6 +100,18 @@
   @media (prefers-reduced-motion: reduce) {
     .animate-fab-halo {
       animation: none;
+    }
+  }
+
+  /* FAB press scale — toque tátil: comprime 7% em 120ms, solta em 300ms.
+     Separado do Tailwind pra controlar timing do :active independentemente. */
+  .fab-pressable:active {
+    transform: scale(0.93);
+    transition: transform 120ms ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fab-pressable:active {
+      transform: none;
     }
   }
 
