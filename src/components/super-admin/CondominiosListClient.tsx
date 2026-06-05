@@ -104,8 +104,7 @@ export function CondominiosListClient({ rows, total, page, pageSize, includeArqu
       alert(`Falha ao impersonar: ${body.message ?? res.status}`);
       return;
     }
-    router.push('/admin');
-    router.refresh();
+    window.location.href = '/admin';
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));

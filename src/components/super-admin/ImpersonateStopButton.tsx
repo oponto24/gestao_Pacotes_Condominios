@@ -12,8 +12,7 @@ export function ImpersonateStopButton() {
     setLoading(true);
     try {
       await fetch('/api/super-admin/impersonate/stop', { method: 'POST' });
-      router.push('/super-admin/condominios');
-      router.refresh();
+      window.location.href = '/super-admin/condominios';
     } finally {
       setLoading(false);
     }
