@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { randomBytes } from 'node:crypto';
 import { loggerForRequest } from '@/lib/logger';
 import { handleApiError } from '@/lib/api/handle-error';
 import { getTenantContext } from '@/server/middleware/tenant';
